@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <!-- Subtle noise-like grain via turbulence -->
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="4" stitchTiles="stitch" result="noise"/>
+      <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise"/>
+      <feBlend in="SourceGraphic" in2="grayNoise" mode="overlay" result="blended"/>
+      <feComposite in="blended" in2="SourceGraphic" operator="in"/>
+    </filter>
+  </defs>
+
+  <!-- Black background, no radius — sharp, editorial -->
+  <rect width="100" height="100" fill="#0e0e0e"/>
+
+  <!-- Grain texture overlay -->
+  <rect width="100" height="100" fill="#ffffff" opacity="0.03" filter="url(#grain)"/>
+
+  <!-- 
+    The U is made of two design ideas merged:
+    1. A bold geometric cutout U (negative space)
+    2. A white rounded-bottom arch form
+    
+    Approach: Draw a white rectangle covering upper portion,
+    then punch a U-shape into it using a clipped black rect,
+    leaving the U arms standing. Bottom is a white semicircle arch.
+  -->
+
+  <!-- White left arm -->
+  <rect x="16" y="14" width="20" height="52" rx="2" fill="#f5f5f5"/>
+
+  <!-- White right arm -->
+  <rect x="64" y="14" width="20" height="52" rx="2" fill="#f5f5f5"/>
+
+  <!-- White bottom arch — semicircle connecting both arms -->
+  <path d="M 16 62 Q 16 88 50 88 Q 84 88 84 62 L 64 62 Q 64 76 50 76 Q 36 76 36 62 Z" fill="#f5f5f5"/>
+
+  <!-- Thin accent line — top, full width, single pixel, very elegant -->
+  <line x1="16" y1="11" x2="84" y2="11" stroke="#ffffff" stroke-width="1.2" opacity="0.25"/>
+
+  <!-- Dot accent — bottom right corner, geometric detail -->
+  <circle cx="84" cy="89" r="3" fill="#f5f5f5" opacity="0.5"/>
+
+</svg>
