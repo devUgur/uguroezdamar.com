@@ -1,5 +1,13 @@
-import { HomeLanding } from "@/features/home";
+import { Hero, About, Work, Education, Contact } from "@/features/home";
 
 export default function HomePage() {
-  return <HomeLanding />;
+  return (
+    <>
+      <Hero />
+      <About />
+      <Work />
+      <Education />
+      <Contact />
+    </>
+  );
 }

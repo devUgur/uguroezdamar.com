@@ -19,7 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="min-h-dvh bg-white text-zinc-900">
+      <body className="min-h-dvh antialiased">
         <Header />
         <main>{children}</main>
         <Footer />
