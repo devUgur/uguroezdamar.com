@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { readCookie } from "@/shared/lib/cookies";
 import { getAdminSession } from "@/features/admin";
