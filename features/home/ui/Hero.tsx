@@ -1,6 +1,8 @@
 import React from "react";
 
 export function Hero() {
+  const currentYear = new Date().getFullYear();
+
   return (
     <section className="h-screen flex flex-col justify-center px-6 md:px-12 lg:px-24">
       <div className="max-w-5xl animate-in fade-in slide-in-from-bottom-3 duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]">
@@ -12,7 +14,7 @@ export function Hero() {
         <div className="flex items-center gap-4 text-secondary-foreground font-mono text-sm tracking-wide">
           <p>Fullstack Developer</p>
           <span className="w-4 h-[1px] bg-border"></span>
-          <p>Dortmund — 2026</p>
+          <p>Dortmund — {currentYear}</p>
         </div>
       </div>
 

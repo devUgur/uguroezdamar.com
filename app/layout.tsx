@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 
 import "./globals.css";
-import { Header } from "@/shared/ui/Header";
-import { Footer } from "@/shared/ui/Footer";
 import { ThemeProvider } from "@/shared/ui/ThemeProvider";
-import { ScrollProgress } from "@/shared/ui/ScrollProgress";
 
 export const metadata: Metadata = {
   title: {
@@ -28,10 +25,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ScrollProgress />
-          <Header />
-          <main>{children}</main>
-          <Footer />
+          {children}
         </ThemeProvider>
       </body>
     </html>

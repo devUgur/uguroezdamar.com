@@ -20,9 +20,9 @@ export function Work() {
   const [activeDevices, setActiveDevices] = useState<Record<number, DeviceType>>({});
 
   const projects: ProjectProps[] = [
-    { name: "Aura Core", year: "2025", role: "Architecture", stack: "React, Node, Go", types: ['web', 'mobile'], image: "/src/assets/images/project-1.jpg", description: "Design system infrastructure with deep Git integration." },
-    { name: "Lumina Data", year: "2024", role: "Fullstack", stack: "TypeScript, PostgreSQL", types: ['cli', 'web'], image: "/src/assets/images/project-2.jpg", description: "High-performance data aggregation CLI and dashboard." },
-    { name: "Vanguard Platform", year: "2023", role: "Frontend", stack: "Next.js, WebGL", types: ['web', 'mobile', 'cli'], image: "/src/assets/images/project-3.jpg", description: "Real-time WebGL analytics for global user traffic." },
+    { name: "ViralSync", year: "2024", role: "Architecture", stack: "AI, SaaS, Media Automation", types: ['web'], image: "/src/assets/images/project-1.jpg", description: "AI-powered content automation platform with agent orchestration and node-based workflows." },
+    { name: "Cherry Comm", year: "2024", role: "Fullstack", stack: "JS, Node, DevOps", types: ['web'], image: "/src/assets/images/project-2.jpg", description: "Fullstack development, project structure and scalable IT infrastructure implementation." },
+    { name: "SEO Portfolios", year: "2023", role: "Freelance", stack: "SEO, Nuxt 3", types: ['web'], image: "/src/assets/images/project-3.jpg", description: "High-performance websites for diverse local businesses with focus on ranking." },
   ];
 
   return (

@@ -1,12 +1,15 @@
+import React from "react";
+import { getWorkItems } from "@/features/work/server/repo";
+import WorkGrid from "@/features/work/ui/WorkGrid";
+import WorkHero from "@/features/work/ui/WorkHero";
 import { Container } from "@/shared/ui/Container";
-import { Section } from "@/shared/ui/Section";
 
-export default function WorkPage() {
+export default async function WorkPage() {
+  const items = await getWorkItems();
   return (
     <Container>
-      <Section title="Work" description="Experience timeline.">
-        <p className="text-sm text-zinc-700">Add your experience here.</p>
-      </Section>
+      <WorkHero />
+      <WorkGrid items={items} />
     </Container>
   );
 }

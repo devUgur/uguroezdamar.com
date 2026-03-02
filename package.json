@@ -8,8 +8,10 @@
   },
   "scripts": {
     "dev": "next dev",
+    "test": "vitest --run",
     "build": "next build",
     "start": "next start",
+    "setup:indexes": "node ./scripts/setup-indexes.mjs",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -26,10 +28,12 @@
   },
   "homepage": "https://github.com/devUgur/uguroezdamar.com#readme",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1000.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.34.3",
     "gray-matter": "^4.0.3",
     "lucide-react": "^0.575.0",
+    "mongodb": "^5.9.2",
     "next": "^16.1.6",
     "next-mdx-remote": "^6.0.0",
     "next-themes": "^0.4.6",
@@ -62,6 +66,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.2.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^1.0.0"
   }
 }

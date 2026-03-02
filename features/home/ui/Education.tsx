@@ -2,9 +2,27 @@ import React from "react";
 
 export function Education() {
   const education = [
-    { year: "2022", title: "MSc Computer Science", institution: "Technical University of Munich" },
-    { year: "2020", title: "BSc Software Engineering", institution: "University of Stuttgart" },
-    { year: "2019", title: "Design Systems Certificate", institution: "Nielsen Norman Group" },
+    { 
+      year: "2027", 
+      title: "B.Sc. Informatik", 
+      institution: "FH Dortmund",
+      location: "Dortmund, DE",
+      status: "Starting soon (Partner placement phase)"
+    },
+    { 
+      year: "2026", 
+      title: "B.Sc. IT- & Softwaresysteme", 
+      institution: "IT-Center Dortmund",
+      location: "Dortmund, DE",
+      status: "Dual study program started"
+    },
+    { 
+      year: "2011–2015", 
+      title: "Fachoberschulreife", 
+      institution: "Kartal Anadolu Gymnasium",
+      location: "Istanbul, TR",
+      status: "Final Grade: 1.7"
+    },
   ];
 
   return (
@@ -20,8 +38,18 @@ export function Education() {
             <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-accent scale-y-0 group-hover:scale-y-100 origin-top transition-transform duration-500 ease-out"></div>
             <div className="font-mono text-sm text-secondary-foreground md:pt-1 group-hover:text-accent transition-colors duration-300">{item.year}</div>
             <div className="md:col-span-3 flex flex-col md:flex-row md:items-baseline justify-between gap-2">
-              <h3 className="font-serif text-xl md:text-2xl group-hover:text-foreground transition-colors duration-300">{item.title}</h3>
-              <p className="font-sans text-muted-foreground text-sm group-hover:text-secondary-foreground transition-colors duration-300">{item.institution}</p>
+              <div>
+                <h3 className="font-serif text-xl md:text-2xl group-hover:text-foreground transition-colors duration-300">{item.title}</h3>
+                <p className="font-sans text-muted-foreground text-sm group-hover:text-secondary-foreground transition-colors duration-300">
+                  {item.institution} — {item.location}
+                </p>
+                {item.status && (
+                  <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-accent opacity-0 group-hover:opacity-100 translate-x-[-10px] group-hover:translate-x-0 transition-all duration-500 ease-out flex items-center gap-2">
+                    <span className="w-2 h-[1px] bg-accent"></span>
+                    {item.status}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         ))}

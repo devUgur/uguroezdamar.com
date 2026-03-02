@@ -1,6 +1,7 @@
 "use server";
 
-import { contactSchema } from "@/features/contact/server/validators";
+import { contactSchema, type ContactInput } from "@/features/contact/server/validators";
+import { createLead } from "@/features/contact/server/repo";
 
 export async function submitContact(_: unknown, formData: FormData) {
   const raw = {
@@ -20,6 +21,11 @@ export async function submitContact(_: unknown, formData: FormData) {
     return { ok: true as const };
   }
 
-  // Stub for persistence/email.
-  return { ok: true as const };
+  try {
+    const id = await createLead(parsed.data as ContactInput);
+    return { ok: true as const, id };
+  } catch (error: unknown) {
+    console.error("Failed to save lead:", error);
+    return { ok: false as const, error: "Failed to save lead" };
+  }
 }

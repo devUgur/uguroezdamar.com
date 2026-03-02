@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
+        options: --health-cmd="mongosh --eval \"db.adminCommand('ping')\"" --health-interval=5s --health-timeout=5s --health-retries=5
+    env:
+      MONGODB_URI: mongodb://localhost:27017/uguroezdamar_ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Enable corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Create indexes
+        run: node scripts/setup-indexes.mjs
+      - name: Run tests
+        run: pnpm test
