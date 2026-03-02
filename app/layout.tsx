@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Header } from "@/shared/ui/Header";
 import { Footer } from "@/shared/ui/Footer";
+import { ThemeProvider } from "@/shared/ui/ThemeProvider";
+import { ScrollProgress } from "@/shared/ui/ScrollProgress";
 
 export const metadata: Metadata = {
   title: {
@@ -18,11 +20,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className="min-h-dvh antialiased">
-        <Header />
-        <main>{children}</main>
-        <Footer />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <ScrollProgress />
+          <Header />
+          <main>{children}</main>
+          <Footer />
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { Terminal, Globe } from "lucide-react";
 
 type DeviceType = 'web' | 'mobile' | 'cli';
@@ -42,7 +43,9 @@ export function MockupFrame({ type, image, name, zIndex = 0, scale = 1, xOffset 
           </div>
           <div className="mb-2">Developing high-performance CLI utilities...</div>
           <div className="animate-pulse">_</div>
-          <img src={image} className="mt-4 opacity-20 grayscale filter blur-[1px] object-cover h-32 w-full rounded" alt="" />
+          <div className="relative mt-4 h-32 w-full rounded overflow-hidden">
+            <Image src={image} alt="" fill className="object-cover opacity-20 grayscale filter blur-[1px]" />
+          </div>
         </div>
       </div>
     );
@@ -51,8 +54,8 @@ export function MockupFrame({ type, image, name, zIndex = 0, scale = 1, xOffset 
   if (type === 'mobile') {
     return (
       <div className="relative border-gray-800 dark:border-gray-800 bg-gray-800 border-[8px] rounded-[2.5rem] h-[400px] w-[200px] shadow-2xl overflow-hidden transition-all duration-500" style={style}>
-        <div className="rounded-[2rem] overflow-hidden w-full h-full bg-white dark:bg-gray-900">
-          <img src={image} className="w-full h-full object-cover grayscale opacity-80" alt={name} />
+        <div className="relative rounded-[2rem] overflow-hidden w-full h-full bg-white dark:bg-gray-900">
+          <Image src={image} alt={name} fill className="w-full h-full object-cover grayscale opacity-80" />
           <div className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-4 bg-gray-800 rounded-full" />
         </div>
       </div>
@@ -72,8 +75,8 @@ export function MockupFrame({ type, image, name, zIndex = 0, scale = 1, xOffset 
         </div>
         <div className="w-10" />
       </div>
-      <div className="flex-1 overflow-hidden">
-        <img src={image} className="w-full h-full object-cover grayscale opacity-80 group-hover:grayscale-[40%] transition-all duration-700" alt={name} />
+      <div className="flex-1 overflow-hidden relative">
+        <Image src={image} alt={name} fill className="object-cover grayscale opacity-80 group-hover:grayscale-[40%] transition-all duration-700" />
       </div>
     </div>
   );
