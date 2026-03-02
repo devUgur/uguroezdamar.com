@@ -40,7 +40,13 @@ function projectToWorkItem(p: ProjectRecord): WorkItem {
 
 export async function getWorkItems(options?: { status?: string; limit?: number }): Promise<WorkItem[]> {
   const mongo = await getMongo();
-  if (useMongo && mongo) return mongo.getWorkItems(options);
+  if (useMongo && mongo) {
+    try {
+      return await mongo.getWorkItems(options);
+    } catch (err) {
+      console.error("MongoDB fetch failed, falling back to MDX:", err);
+    }
+  }
   
   const projects = await getAllProjects();
   return projects.map(projectToWorkItem);
@@ -48,7 +54,13 @@ export async function getWorkItems(options?: { status?: string; limit?: number }
 
 export async function getWorkItemBySlug(slug: string): Promise<WorkItem | null> {
   const mongo = await getMongo();
-  if (useMongo && mongo) return mongo.getWorkItemBySlug(slug);
+  if (useMongo && mongo) {
+    try {
+      return await mongo.getWorkItemBySlug(slug);
+    } catch (err) {
+      console.error(`MongoDB fetch for slug ${slug} failed, falling back to MDX:`, err);
+    }
+  }
   
   const p = await getProjectBySlug(slug);
   if (!p) return null;
