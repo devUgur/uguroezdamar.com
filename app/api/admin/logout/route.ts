@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { deleteAdminSession } from "@/features/admin";
 
+export const runtime = "nodejs";
+
 export async function POST(request: NextRequest) {
   const sessionId = request.cookies.get("admin_session")?.value ?? null;
   if (sessionId) {

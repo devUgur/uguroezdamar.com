@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAdmin, type Admin } from "@/features/admin";
 import { getDb } from "@/shared/lib/mongodb";
 
+export const runtime = "nodejs";
+
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request);
   if (!auth.ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

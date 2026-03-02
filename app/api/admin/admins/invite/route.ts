@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAdmin, canInvite, createAdminInvite, type AdminRole } from "@/features/admin";
 
+export const runtime = "nodejs";
+
 export async function POST(request: NextRequest) {
   const auth = await requireAdmin(request);
   if (!auth.ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

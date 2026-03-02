@@ -3,6 +3,8 @@ import { requireAdmin } from "@/features/admin";
 import { getWorkItems } from "@/features/work/server/repo";
 import { CreateWorkItemSchema } from "@/features/work/server/validators";
 
+export const runtime = "nodejs";
+
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request);
   if (!auth.ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

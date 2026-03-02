@@ -3,6 +3,8 @@ import { requireAdmin, canDelete } from "@/features/admin";
 import { getWorkItemBySlug, updateWorkItem as dbUpdateWorkItem, softDeleteWorkItem } from "@/features/work/server/mongo";
 import { UpdateWorkItemSchema } from "@/features/work/server/validators";
 
+export const runtime = "nodejs";
+
 export async function GET(request: NextRequest, context: any) {
   const auth = await requireAdmin(request);
   if (!auth.ok) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
