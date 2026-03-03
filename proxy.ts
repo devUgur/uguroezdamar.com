@@ -11,10 +11,12 @@ export async function proxy(request: NextRequest) {
   // Admin UI guard (cookie presence only)
   if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
     if (!hasAdminCookie(request)) {
-      // UX-friendly default: redirect to login so developers can see why they're blocked.
-      // This is deterministic and debuggable. If you prefer stealth behavior in
-      // production, we can gate it behind an env var later.
-      return NextResponse.redirect(new URL("/admin/login", request.url));
+      // UX-friendly default: redirect to login and preserve the original URL
+      // so the user can be returned to their intended page after login.
+      const loginUrl = new URL("/admin/login", request.url);
+      const nextParam = request.nextUrl.pathname + request.nextUrl.search;
+      loginUrl.searchParams.set("next", nextParam);
+      return NextResponse.redirect(loginUrl);
     }
   }
 
