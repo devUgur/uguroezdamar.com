@@ -5,9 +5,15 @@
 [build.environment]
   NEXT_USE_NETLIFY_EDGE = "true"
   NETLIFY_NEXT_SKEW_PROTECTION = "true"
+  # Ensures Next.js knows it's being deployed on Netlify
+  NETLIFY_EMAILS_DIRECTORY = "emails" 
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[functions]
+  node_version = "22"
+  external_node_modules = ["mongodb"]
 
 [[headers]]
   for = "/_next/static/*"
