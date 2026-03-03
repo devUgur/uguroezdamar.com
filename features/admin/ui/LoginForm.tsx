@@ -22,10 +22,21 @@ export function LoginForm() {
       if (!res.ok) {
         setError(json.error || "Login failed");
       } else {
-        window.location.href = "/admin/dashboard";
+        // Handle post-login redirect via 'next' param (safe)
+        try {
+          const params = new URL(window.location.href).searchParams;
+          const next = params.get("next");
+          if (next && typeof next === "string" && next.startsWith("/admin")) {
+            window.location.href = next;
+          } else {
+            window.location.href = "/admin/dashboard";
+          }
+        } catch (e) {
+          window.location.href = "/admin/dashboard";
+        }
       }
     } catch (err) {
-        console.log("Login error", err);
+        console.error("Login error", err);
         setError("Network error");
     } finally {
       setLoading(false);
