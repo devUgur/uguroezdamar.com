@@ -20,6 +20,12 @@ export const env = {
   R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID ?? "",
   R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY ?? "",
   R2_BUCKET: process.env.R2_BUCKET ?? "",
-  // Optional: public base URL for R2 assets (e.g. https://<bucket>.<accountId>.r2.cloudflarestorage.com)
-  R2_PUBLIC_BASE: process.env.R2_PUBLIC_BASE ?? "",
+  // Optional explicit endpoint; falls back to account-based endpoint when omitted
+  R2_ENDPOINT: process.env.R2_ENDPOINT ?? "",
+  // R2 should typically use region "auto"
+  R2_REGION: process.env.R2_REGION ?? "auto",
+  // Use path style URLs for highest compatibility with S3-compatible APIs
+  R2_FORCE_PATH_STYLE: process.env.R2_FORCE_PATH_STYLE ?? "true",
+  // Optional: public base URL for R2 assets (custom domain recommended)
+  R2_PUBLIC_BASE_URL: process.env.R2_PUBLIC_BASE_URL ?? process.env.R2_PUBLIC_BASE ?? "",
 };

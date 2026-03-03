@@ -1,4 +1,4 @@
-import type { ProjectRecord } from "@/features/projects/server/queries";
+import type { ProjectRecord } from "@/features/projects/types";
 import { ProjectHero } from "@/features/projects/ui/ProjectHero";
 import { ProjectCard } from "@/features/projects/ui/ProjectCard";
 

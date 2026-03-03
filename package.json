@@ -12,6 +12,7 @@
     "build": "next build",
     "start": "next start",
     "setup:indexes": "node ./scripts/setup-indexes.mjs",
+    "migrate:projects": "node ./scripts/migrate-projects.mjs",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

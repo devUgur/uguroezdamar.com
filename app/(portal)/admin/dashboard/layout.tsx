@@ -37,6 +37,12 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
           <Link href="/admin/dashboard/projects" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
             Projects
           </Link>
+          <Link href="/admin/dashboard/timeline" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
+            Timeline
+          </Link>
+          <Link href="/admin/dashboard/profile" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
+            Profile
+          </Link>
           <div className="pt-4 mt-4 border-t opacity-50 px-4 text-xs font-semibold uppercase tracking-wider">
             Settings
           </div>

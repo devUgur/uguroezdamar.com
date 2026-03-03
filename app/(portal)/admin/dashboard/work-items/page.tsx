@@ -11,9 +11,9 @@ export default async function AdminWorkItemsPage() {
           <h1 className="text-3xl font-bold tracking-tight mb-1">Work Items</h1>
           <p className="text-muted-foreground">Manage database-backed work items (preview generation, links).</p>
         </div>
-        <button className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50" disabled title="Coming soon: Create Work Item">
+        <Link href="/admin/dashboard/work-items/new" className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
           New Work Item
-        </button>
+        </Link>
       </div>
 
       <div className="border rounded-xl overflow-hidden bg-card shadow-sm">

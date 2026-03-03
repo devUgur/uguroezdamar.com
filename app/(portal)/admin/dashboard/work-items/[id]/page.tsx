@@ -1,8 +1,8 @@
 import AdminWorkForm from "@/features/work/ui/AdminWorkForm";
 import { getWorkItemBySlug } from "@/features/work/server/mongo";
 
-export default async function EditWorkItemPage({ params }: { params: { id: string } }) {
-  const id = params.id;
+export default async function EditWorkItemPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const work = await getWorkItemBySlug(id);
   if (!work) return <div className="p-8">Work item not found.</div>;
 

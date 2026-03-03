@@ -1,5 +1,6 @@
 import type { WorkItem } from "../types";
-import { getAllProjects, getProjectBySlug, type ProjectRecord } from "@/features/projects/server/queries";
+import { getAllProjects, getProjectBySlug } from "@/features/projects/server/queries";
+import type { ProjectRecord } from "@/features/projects/types";
 
 // Prefer Mongo backend when available, with MDX fallback
 let useMongo = false;

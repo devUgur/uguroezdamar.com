@@ -1,29 +1,8 @@
 import React from "react";
+import { getTimelineForEducation } from "@/features/timeline/server/queries";
 
-export function Education() {
-  const education = [
-    { 
-      year: "2027", 
-      title: "B.Sc. Informatik", 
-      institution: "FH Dortmund",
-      location: "Dortmund, DE",
-      status: "Starting soon (Partner placement phase)"
-    },
-    { 
-      year: "2026", 
-      title: "B.Sc. IT- & Softwaresysteme", 
-      institution: "IT-Center Dortmund",
-      location: "Dortmund, DE",
-      status: "Dual study program started"
-    },
-    { 
-      year: "2011–2015", 
-      title: "Fachoberschulreife", 
-      institution: "Kartal Anadolu Gymnasium",
-      location: "Istanbul, TR",
-      status: "Final Grade: 1.7"
-    },
-  ];
+export async function Education() {
+  const education = await getTimelineForEducation();
 
   return (
     <section className="py-24 md:py-32 lg:py-40 px-6 md:px-12 lg:px-24 border-t border-border/40">
@@ -41,7 +20,7 @@ export function Education() {
               <div>
                 <h3 className="font-serif text-xl md:text-2xl group-hover:text-foreground transition-colors duration-300">{item.title}</h3>
                 <p className="font-sans text-muted-foreground text-sm group-hover:text-secondary-foreground transition-colors duration-300">
-                  {item.institution} — {item.location}
+                  {item.location ? `${item.institution} — ${item.location}` : item.institution}
                 </p>
                 {item.status && (
                   <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-accent opacity-0 group-hover:opacity-100 translate-x-[-10px] group-hover:translate-x-0 transition-all duration-500 ease-out flex items-center gap-2">
