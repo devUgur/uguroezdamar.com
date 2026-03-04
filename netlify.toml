@@ -1,9 +1,10 @@
 [build]
-  command = "npm run build"
-  publish = ".next"
+  command = "pnpm --filter @ugur/site build"
+  publish = "apps/site/.next"
 
 [build.environment]
   NODE_VERSION = "22"
+  PNPM_VERSION = "10.15.1"
   NEXT_USE_NETLIFY_EDGE = "true"
   NETLIFY_NEXT_SKEW_PROTECTION = "true"
 
