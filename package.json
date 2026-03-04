@@ -10,8 +10,9 @@
   "scripts": {
     "dev": "turbo dev",
     "guard:legacy-imports": "node ./tooling/guards/legacy-imports.mjs",
+    "guard:no-feature-server-imports": "node ./tooling/guards/no-feature-server-imports.mjs",
     "guard:no-deep-imports": "node ./tooling/guards/no-deep-imports.mjs",
-    "guard": "pnpm guard:legacy-imports && pnpm guard:no-deep-imports",
+    "guard": "pnpm guard:legacy-imports && pnpm guard:no-feature-server-imports && pnpm guard:no-deep-imports",
     "check:no-legacy-ui": "pnpm guard:legacy-imports",
     "build": "pnpm guard && turbo build",
     "lint": "pnpm guard && turbo lint",
