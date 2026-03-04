@@ -1,1 +1,1 @@
-export { submitContact } from "@/src/features/contact/server/actions";
+export { submitContact } from "@/src/server/contact/actions";
