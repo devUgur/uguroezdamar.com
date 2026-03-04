@@ -1,8 +1,8 @@
 [build]
-  # Default: build the public site. Use a separate Netlify site
-  # for the portal (subdomain) with its own netlify.toml in apps/portal.
-  command = "pnpm --filter @ugur/site build"
-  publish = "apps/site/.next"
+  # When creating the Netlify site for the portal, set the site's
+  # "Base directory" to `apps/portal` and Netlify will use this file.
+  command = "pnpm --filter @ugur/portal build"
+  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "22"
