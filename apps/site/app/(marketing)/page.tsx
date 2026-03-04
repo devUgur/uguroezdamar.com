@@ -1,4 +1,4 @@
-import { Hero, About, Work, Education, Contact } from "@/features/home";
+import { Hero, About, Work, Education, Contact } from "@/src/features/home";
 
 export default function HomePage() {
   return (

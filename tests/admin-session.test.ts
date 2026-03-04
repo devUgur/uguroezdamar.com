@@ -33,13 +33,18 @@ describe("admin session flows (integration)", () => {
   }
 
   // Import helpers lazily so env is set
-  let admin: typeof import("@/shared/lib/admin");
+  let admin: typeof import("@ugur/server");
   beforeAll(async () => {
-    admin = await import("@/shared/lib/admin");
+    admin = await import("@ugur/server");
   });
 
   it("creates, reads and deletes a session", async () => {
-    const s = await admin.createAdminSession({ userAgent: "vitest", ip: "127.0.0.1" });
+    const s = await admin.createAdminSession({
+      adminId: "vitest-admin",
+      email: "vitest@example.com",
+      userAgent: "vitest",
+      ip: "127.0.0.1",
+    });
     expect(s).toBeTruthy();
     expect(s._id).toBeDefined();
 
