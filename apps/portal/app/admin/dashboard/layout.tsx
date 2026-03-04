@@ -1,12 +1,10 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
-import { readCookie } from "@/shared/lib/cookies";
-import { getAdminSession } from "@/features/admin";
+import { getCurrentAdminSession } from "@/src/server/auth";
 import Link from "next/link";
 
 export default async function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await readCookie("admin_session");
-  const session = cookieStore ? await getAdminSession(cookieStore) : null;
+  const session = await getCurrentAdminSession();
 
   if (!session) {
     redirect("/admin/login");

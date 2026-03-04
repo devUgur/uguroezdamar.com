@@ -14,6 +14,21 @@ const alwaysRestrictedPatterns = [
   },
 ];
 
+const portalRestrictedPatterns = [
+  {
+    group: ["features/*/server/*", "features/**/server/**", "@/features/*/server/*", "@/features/**/server/**"],
+    message: "Portal must not import legacy feature server modules. Use @ugur/server or apps/portal/src/server loaders.",
+  },
+  {
+    group: ["shared/lib/*", "shared/lib/**", "@/shared/lib/*", "@/shared/lib/**"],
+    message: "Portal must not import shared/lib directly. Use @ugur/server or apps/portal/src/server loaders.",
+  },
+  {
+    group: ["@ugur/ui/src/*", "@ugur/ui/dist/*", "@ugur/server/src/*", "@ugur/server/dist/*"],
+    message: "Deep imports are forbidden. Import from the package entrypoint only.",
+  },
+];
+
 export default tseslint.config(
   {
     ignores: [".next/**", "out/**", "node_modules/**", "**/dist/**"],
@@ -59,6 +74,49 @@ export default tseslint.config(
         "error",
         {
           patterns: alwaysRestrictedPatterns,
+        },
+      ],
+    },
+  },
+  {
+    files: ["apps/portal/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            ...alwaysRestrictedPatterns,
+            ...portalRestrictedPatterns,
+            {
+              group: ["@ugur/server/*"],
+              message:
+                "@ugur/server deep imports are server-only and must stay in server contexts.",
+            },
+          ],
+          paths: [
+            {
+              name: "@ugur/server",
+              message:
+                "@ugur/server is server-only. Use it only in route handlers, server actions, middleware, or src/server modules.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      "apps/portal/app/api/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "apps/portal/app/**/route.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "apps/portal/app/**/actions.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "apps/portal/src/server/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "apps/portal/middleware.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [...alwaysRestrictedPatterns, ...portalRestrictedPatterns],
         },
       ],
     },
