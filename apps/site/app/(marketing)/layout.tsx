@@ -1,4 +1,5 @@
-import { Footer, Header, ScrollProgress } from "@ugur/ui";
+import { Footer, ScrollProgress } from "@ugur/ui";
+import { SiteHeader } from "@/src/features/navigation";
 
 export default function MarketingLayout({
   children,
@@ -8,8 +9,8 @@ export default function MarketingLayout({
   return (
     <>
       <ScrollProgress />
-      <Header />
-      <main>{children}</main>
+      <SiteHeader />
+      <main className="pt-20 md:pt-24">{children}</main>
       <Footer />
     </>
   );

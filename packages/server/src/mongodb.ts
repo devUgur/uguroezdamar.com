@@ -4,14 +4,16 @@ import { env } from "./env";
 
 type GlobalWithMongo = typeof globalThis & {
   __mongo?: { client: MongoClient; promise?: Promise<MongoClient> };
+  __mongoMissingUriWarned?: boolean;
 };
 
 const g = globalThis as GlobalWithMongo;
 
 function initClient() {
   if (!env.MONGODB_URI) {
-    if (process.env.NODE_ENV !== "production") {
+    if (process.env.NODE_ENV !== "production" && !g.__mongoMissingUriWarned) {
       console.warn("MONGODB_URI is not set in environment");
+      g.__mongoMissingUriWarned = true;
     }
     return null;
   }
