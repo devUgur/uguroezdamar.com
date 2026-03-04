@@ -52,7 +52,7 @@ export function Header() {
                   aria-current={isActive ? "page" : undefined}
                   className="group inline-flex flex-col items-start"
                 >
-                  <span className="text-muted-foreground transition-colors duration-150 ease-in-out group-hover:text-foreground">
+                  <span className="text-foreground/80 transition-colors duration-150 ease-in-out group-hover:text-foreground">
                     {l.label}
                   </span>
                   <span
