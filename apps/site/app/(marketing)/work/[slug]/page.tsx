@@ -1,5 +1,5 @@
 import React from "react";
-import { getSiteWorkItemBySlug } from "@/apps/site/src/server/work";
+import { getSiteWorkItemBySlug } from "@/src/server/work";
 import { Container } from "@ugur/ui";
 import { notFound } from "next/navigation";
 
