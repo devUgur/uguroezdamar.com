@@ -1,4 +1,5 @@
-import { getAllPosts, PostCard } from "@/features/blog";
+import { PostCard } from "@/src/features/blog";
+import { getAllPosts } from "@/src/server/blog";
 import { Container, Section } from "@ugur/ui";
 
 export default async function BlogPage() {

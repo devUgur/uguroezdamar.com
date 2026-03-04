@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
-import { getAllPosts, getPostBySlug, MdxContent } from "@/features/blog";
+import { MdxContent } from "@/src/features/blog";
+import { getAllPosts, getPostBySlug } from "@/src/server/blog";
 import { Container, Section } from "@ugur/ui";
 
 export async function generateStaticParams() {
