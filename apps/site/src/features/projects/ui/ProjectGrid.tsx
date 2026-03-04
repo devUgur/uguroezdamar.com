@@ -1,6 +1,6 @@
-import type { ProjectRecord } from "@/features/projects/types";
-import { ProjectHero } from "@/features/projects/ui/ProjectHero";
-import { ProjectCard } from "@/features/projects/ui/ProjectCard";
+import type { ProjectRecord } from "../types";
+import { ProjectHero } from "./ProjectHero";
+import { ProjectCard } from "./ProjectCard";
 
 export function ProjectGrid({ projects }: { projects: ProjectRecord[] }) {
   return (

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import type { ProjectRecord } from "@/features/projects/types";
+import type { ProjectRecord } from "../types";
 import { Card } from "@ugur/ui";
 import { Tag } from "@ugur/ui";
 

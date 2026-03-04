@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
-import { getSiteProjectBySlug, getSiteProjects } from "@/apps/site/src/server/projects";
+import { getSiteProjectBySlug, getSiteProjects } from "@/src/server/projects";
 import { Container, Section } from "@ugur/ui";
 
 export async function generateStaticParams() {
