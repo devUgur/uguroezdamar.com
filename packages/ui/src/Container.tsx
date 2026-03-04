@@ -1,4 +1,4 @@
-import { cn } from "@/shared/lib/utils";
+import { cn } from "@ugur/core";
 
 export function Container({
   className,

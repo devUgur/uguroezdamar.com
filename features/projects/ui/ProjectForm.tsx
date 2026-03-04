@@ -22,7 +22,7 @@ import {
   Lock,
   EyeOff
 } from "lucide-react";
-import { cn } from "@/shared/lib/utils";
+import { cn } from "@ugur/core";
 
 type Props = {
   id?: string;

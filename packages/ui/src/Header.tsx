@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
-import { cn } from "@/shared/lib/utils";
+import { cn } from "@ugur/core";
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);

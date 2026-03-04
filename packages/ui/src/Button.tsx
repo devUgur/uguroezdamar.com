@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { isValidElement } from "react";
 
-import { cn } from "@/shared/lib/utils";
+import { cn } from "@ugur/core";
 
 type ButtonVariant = "primary" | "secondary";
 

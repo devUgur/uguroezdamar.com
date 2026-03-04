@@ -14,7 +14,7 @@ Connection Pooling
 
 Keine neue Connection pro Request
 
-Nur in shared/lib/mongodb.ts
+Nur in packages/server/src/mongodb.ts
 
 Nur server-side import
 

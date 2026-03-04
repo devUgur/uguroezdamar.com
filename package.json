@@ -18,8 +18,8 @@
     "typecheck": "pnpm guard && turbo typecheck",
     "test": "turbo test",
     "clean": "turbo clean",
-    "setup:indexes": "node ./scripts/setup-indexes.mjs",
-    "migrate:projects": "node ./scripts/migrate-projects.mjs",
+    "setup:indexes": "node ./tooling/scripts/setup-indexes.mjs",
+    "migrate:projects": "node ./tooling/scripts/migrate-projects.mjs",
     "start": "pnpm --filter @ugur/site start"
   },
   "repository": {

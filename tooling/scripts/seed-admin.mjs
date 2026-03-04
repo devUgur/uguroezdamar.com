@@ -1,6 +1,4 @@
-import { getDb } from "@/shared/lib/mongodb";
-import { hashPassword } from "@/features/admin";
-import { env } from "@/shared/lib/env";
+import { env, getDb, hashPassword } from "@ugur/server";
 
 export async function seedAdmins() {
   const db = await getDb();

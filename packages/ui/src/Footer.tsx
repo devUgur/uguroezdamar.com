@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { readCookie } from "@/shared/lib/cookies";
+import { readCookie } from "@ugur/server";
 
 export async function Footer() {
   const sessionId = await readCookie("admin_session");
