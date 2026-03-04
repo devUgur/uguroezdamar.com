@@ -21,7 +21,14 @@ Portfolio + Admin Portal monorepo powered by pnpm workspaces + Turborepo.
 
 - Prefer package entrypoints (`@ugur/server`, `@ugur/ui`, `@ugur/core`), not deep imports.
 - Keep app-level server imports behind loaders in `apps/*/src/server/*`.
-- Treat `features/*/server` as compatibility layer until fully removed.
+- Do not import legacy root `features/*` paths from app code.
+- Keep app boundaries strict: `apps/site` must not import from `apps/portal`, and `apps/portal` must not import from `apps/site`.
+- Put shared code in `packages/*`; keep app-specific code inside each app's `src/features/*`.
+
+## Guardrails
+
+- `pnpm guard` runs architecture guards (legacy imports, feature imports, deep imports).
+- `pnpm lint`, `pnpm typecheck`, and `pnpm build` all run `pnpm guard` first.
 
 ## Deployment
 
