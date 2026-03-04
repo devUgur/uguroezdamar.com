@@ -1,4 +1,4 @@
-import { ContactForm } from "@/features/contact";
+import { ContactForm } from "@/src/features/contact";
 import { Container, Section } from "@ugur/ui";
 
 export const runtime = "nodejs";

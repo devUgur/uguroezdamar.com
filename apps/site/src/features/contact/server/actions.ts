@@ -1,7 +1,7 @@
 "use server";
 
-import { contactSchema, type ContactInput } from "@/features/contact/server/validators";
-import { createLead } from "@/features/contact/server/repo";
+import { contactSchema, type ContactInput } from "./validators";
+import { createLead } from "./repo";
 
 export async function submitContact(_: unknown, formData: FormData) {
   const raw = {
