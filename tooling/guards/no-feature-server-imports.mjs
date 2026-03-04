@@ -7,8 +7,10 @@ const allowedExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
 const ignoredDirs = new Set([".git", "node_modules", ".next", ".turbo", "dist", "coverage", ".repoan"]);
 
 const forbiddenPatterns = [
-	/from\s+["']@\/features\/[^"']+\/server(?:\/[^"']*)?["']/g,
-	/require\(\s*["']@\/features\/[^"']+\/server(?:\/[^"']*)?["']\s*\)/g,
+	/from\s+["']@\/features\/(?:[^"']*)["']/g,
+	/from\s+["']features\/(?:[^"']*)["']/g,
+	/require\(\s*["']@\/features\/(?:[^"']*)["']\s*\)/g,
+	/require\(\s*["']features\/(?:[^"']*)["']\s*\)/g,
 ];
 
 const violations = [];
@@ -31,9 +33,6 @@ function walk(dirPath) {
 		if (!allowedExtensions.has(ext)) continue;
 
 		const relativePath = path.relative(rootDir, fullPath).replace(/\\/g, "/");
-		if (/^apps\/[^/]+\/src\/server\//.test(relativePath)) {
-			continue;
-		}
 
 		const content = fs.readFileSync(fullPath, "utf8");
 		for (const pattern of forbiddenPatterns) {
@@ -50,11 +49,11 @@ function walk(dirPath) {
 walk(appsDir);
 
 if (violations.length > 0) {
-	console.error("\n❌ App code must not import features/*/server directly. Use @ugur/server or app-local loaders.\n");
+	console.error("\n❌ App code must not import legacy root features/* paths. Use @ugur/server or app-local src/features.\n");
 	for (const violation of violations) {
 		console.error(`- ${violation}`);
 	}
-	console.error("\nFix: move server logic usage behind apps/*/src/server/* loaders or use @ugur/server entrypoints.\n");
+	console.error("\nFix: replace @/features/* imports with @ugur/server or @/src/features/* as appropriate.\n");
 	process.exit(1);
 }
 

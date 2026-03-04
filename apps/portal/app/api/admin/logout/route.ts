@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { deleteAdminSession } from "@/features/admin";
+import { deleteAdminSession } from "@ugur/server";
 
 export const runtime = "nodejs";
 

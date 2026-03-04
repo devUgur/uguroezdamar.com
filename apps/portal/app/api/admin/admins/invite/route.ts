@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAdmin, canInvite, createAdminInvite, type AdminRole } from "@/features/admin";
+import { requireAdmin, canInvite, createAdminInvite, type AdminRole } from "@ugur/server";
 
 export const runtime = "nodejs";
 

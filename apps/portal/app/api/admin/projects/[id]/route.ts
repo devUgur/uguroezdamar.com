@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { canDelete, requireAdmin } from "@/features/admin";
+import { canDelete, requireAdmin } from "@ugur/server";
 import {
   UpdateProjectSchema,
   collectProjectAssetUrls,

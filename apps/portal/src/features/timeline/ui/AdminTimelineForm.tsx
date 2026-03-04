@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { TimelineItem } from "@/features/timeline/types";
+import type { TimelineItem } from "@/src/features/timeline/types";
 
 type Props = {
   id?: string;

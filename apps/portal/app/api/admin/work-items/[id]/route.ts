@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAdmin, canDelete } from "@/features/admin";
+import { requireAdmin, canDelete } from "@ugur/server";
 import {
   UpdateWorkItemSchema,
   getWorkItemBySlug,

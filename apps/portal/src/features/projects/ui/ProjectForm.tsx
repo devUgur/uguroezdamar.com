@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { ProjectRecord, ProjectKind } from "@/features/projects/types";
+import type { ProjectRecord, ProjectKind } from "@/src/features/projects/types";
 import { 
   Plus, 
   Trash2, 

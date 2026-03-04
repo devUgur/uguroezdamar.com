@@ -1,4 +1,4 @@
-import { LoginForm } from "@/features/admin";
+import { LoginForm } from "@/src/features/admin/ui/LoginForm";
 
 export default function AdminLoginPage() {
   return (

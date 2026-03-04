@@ -1,7 +1,7 @@
 import "server-only";
 import { NextResponse, type NextRequest } from "next/server";
 import { listLeads } from "@ugur/server";
-import { requireAdmin } from "@/features/admin";
+import { requireAdmin } from "@ugur/server";
 
 export const runtime = "nodejs";
 

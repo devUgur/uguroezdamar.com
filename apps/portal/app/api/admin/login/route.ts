@@ -7,8 +7,8 @@ import {
   clearLoginAttempts,
   getAdminByEmail,
   hashPassword,
-  timingSafeEquals
-} from "@/features/admin";
+  timingSafeEqualsString
+} from "@ugur/server";
 import { getDb } from "@ugur/server";
 
 export const runtime = "nodejs";
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         await recordFailedLoginAttempt(ip);
         return NextResponse.json({ ok: false, error: "Account not activated. Contact system owner." }, { status: 401 });
      }
-  } else if (!timingSafeEquals(inputHash, admin.passwordHash)) {
+  } else if (!timingSafeEqualsString(inputHash, admin.passwordHash)) {
     await recordFailedLoginAttempt(ip);
     return NextResponse.json({ ok: false, error: "Invalid credentials" }, { status: 401 });
   }

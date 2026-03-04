@@ -1,4 +1,4 @@
-import { InviteAdminForm } from "@/features/admin";
+import { InviteAdminForm } from "@/src/features/admin/ui/InviteAdminForm";
 import { getAdminsSnapshot } from "@/apps/portal/src/server/dashboard";
 
 export default async function AdminManagementPage() {

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { readCookie } from "@ugur/server";
-import { getAdminSession } from "@/features/admin";
+import { getAdminSession } from "@ugur/server";
 
 export async function getCurrentAdminSession() {
 	const cookieStore = await readCookie("admin_session");

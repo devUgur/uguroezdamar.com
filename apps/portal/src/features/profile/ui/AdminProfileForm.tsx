@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Profile } from "@/features/profile/types";
+import type { Profile } from "@/src/features/profile/types";
 
 type Props = {
   initial?: Profile;

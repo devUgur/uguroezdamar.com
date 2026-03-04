@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { requireAdmin } from "@/features/admin";
+import { requireAdmin } from "@ugur/server";
 import { env, getWorkItemBySlug, type DbWork, updateWorkItem, uploadBuffer } from "@ugur/server";
 import { revalidatePath } from "next/cache";
 

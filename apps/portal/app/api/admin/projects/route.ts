@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAdmin } from "@/features/admin";
+import { requireAdmin } from "@ugur/server";
 import { CreateProjectSchema, createProject, getProjects } from "@ugur/server";
 
 export const runtime = "nodejs";

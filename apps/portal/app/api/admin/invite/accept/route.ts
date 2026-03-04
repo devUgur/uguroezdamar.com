@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { acceptAdminInvite } from "@/features/admin";
+import { acceptAdminInvite } from "@ugur/server";
 
 const BodySchema = z.object({ token: z.string().min(1), password: z.string().min(8) });
 
