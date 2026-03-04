@@ -3,7 +3,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["../../*"],
+      "@/*": ["./src/*"],
       "@ugur/ui": ["./src/index.ts"],
       "@ugur/core": ["../core/src/index.ts"],
       "@ugur/server": ["../server/src/index.ts"]

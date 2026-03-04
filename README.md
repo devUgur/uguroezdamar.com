@@ -16,6 +16,8 @@ Portfolio + Admin Portal monorepo powered by pnpm workspaces + Turborepo.
 - `pnpm typecheck`
 - `pnpm build`
 - `pnpm test`
+- `pnpm ui:add <component>` (adds shadcn/ui components into `packages/ui`)
+- `pnpm ui:diff` (shows local diff against shadcn registry for `packages/ui`)
 
 ## Conventions
 
@@ -29,6 +31,12 @@ Portfolio + Admin Portal monorepo powered by pnpm workspaces + Turborepo.
 
 - `pnpm guard` runs architecture guards (legacy imports, feature imports, deep imports).
 - `pnpm lint`, `pnpm typecheck`, and `pnpm build` all run `pnpm guard` first.
+
+## Shadcn in Monorepo
+
+- Source of truth: `packages/ui/components.json`.
+- New components are installed into `packages/ui/src/components`.
+- Shared utility alias is `@/lib/utils` inside `packages/ui` (`packages/ui/src/lib/utils.ts`).
 
 ## Deployment
 
