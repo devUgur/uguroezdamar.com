@@ -1,5 +1,5 @@
 import { getAdminProfileSnapshot } from "@/src/server/profile";
-import AdminProfileForm from "@/features/profile/ui/AdminProfileForm";
+import AdminProfileForm from "@/src/features/profile/ui/AdminProfileForm";
 
 export default async function AdminProfilePage() {
   const profile = await getAdminProfileSnapshot("main");

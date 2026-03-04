@@ -1,4 +1,4 @@
-import AdminTimelineForm from "@/features/timeline/ui/AdminTimelineForm";
+import AdminTimelineForm from "@/src/features/timeline/ui/AdminTimelineForm";
 
 export default function AdminTimelineNewPage() {
   return (

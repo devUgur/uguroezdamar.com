@@ -1,5 +1,5 @@
 import { getAdminTimelineItemSnapshotById } from "@/src/server/timeline";
-import AdminTimelineForm from "@/features/timeline/ui/AdminTimelineForm";
+import AdminTimelineForm from "@/src/features/timeline/ui/AdminTimelineForm";
 
 export default async function AdminTimelineEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

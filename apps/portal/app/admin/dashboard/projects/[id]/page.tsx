@@ -1,4 +1,4 @@
-import ProjectForm from "@/features/projects/ui/ProjectForm";
+import ProjectForm from "@/src/features/projects/ui/ProjectForm";
 import { getAdminProjectSnapshotById } from "@/src/server/projects";
 
 export default async function AdminProjectEditPage({ params }: { params: Promise<{ id: string }> }) {

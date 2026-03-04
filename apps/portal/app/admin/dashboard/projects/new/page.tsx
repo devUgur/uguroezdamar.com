@@ -1,4 +1,4 @@
-import ProjectForm from "@/features/projects/ui/ProjectForm";
+import ProjectForm from "@/src/features/projects/ui/ProjectForm";
 
 export default function AdminProjectNewPage() {
   return (

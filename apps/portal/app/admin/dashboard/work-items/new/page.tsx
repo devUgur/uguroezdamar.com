@@ -1,4 +1,4 @@
-import AdminWorkForm from "@/features/work/ui/AdminWorkForm";
+import AdminWorkForm from "@/src/features/work/ui/AdminWorkForm";
 
 export default function AdminWorkItemNewPage() {
   return (

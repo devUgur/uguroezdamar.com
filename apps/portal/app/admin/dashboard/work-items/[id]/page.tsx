@@ -1,4 +1,4 @@
-import AdminWorkForm from "@/features/work/ui/AdminWorkForm";
+import AdminWorkForm from "@/src/features/work/ui/AdminWorkForm";
 import { getAdminWorkItemSnapshotById } from "@/src/server/work";
 
 export default async function EditWorkItemPage({ params }: { params: Promise<{ id: string }> }) {
