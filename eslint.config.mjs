@@ -16,6 +16,10 @@ const alwaysRestrictedPatterns = [
 
 const portalRestrictedPatterns = [
   {
+    group: ["@/apps/site/**", "apps/site/**", "**/apps/site/**"],
+    message: "Portal must not import app-internal code from apps/site. Use shared packages instead.",
+  },
+  {
     group: ["features/*/server/*", "features/**/server/**", "@/features/*/server/*", "@/features/**/server/**"],
     message: "Portal must not import legacy feature server modules. Use @ugur/server or apps/portal/src/server loaders.",
   },
@@ -26,6 +30,13 @@ const portalRestrictedPatterns = [
   {
     group: ["@ugur/ui/src/*", "@ugur/ui/dist/*", "@ugur/server/src/*", "@ugur/server/dist/*"],
     message: "Deep imports are forbidden. Import from the package entrypoint only.",
+  },
+];
+
+const siteRestrictedPatterns = [
+  {
+    group: ["@/apps/portal/**", "apps/portal/**", "**/apps/portal/**"],
+    message: "Site must not import app-internal code from apps/portal. Use shared packages instead.",
   },
 ];
 
@@ -74,6 +85,32 @@ export default tseslint.config(
         "error",
         {
           patterns: alwaysRestrictedPatterns,
+        },
+      ],
+    },
+  },
+  {
+    files: ["apps/site/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            ...alwaysRestrictedPatterns,
+            ...siteRestrictedPatterns,
+            {
+              group: ["@ugur/server/*"],
+              message:
+                "@ugur/server deep imports are server-only and must stay in server contexts.",
+            },
+          ],
+          paths: [
+            {
+              name: "@ugur/server",
+              message:
+                "@ugur/server is server-only. Use it only in route handlers, server actions, middleware, or src/server modules.",
+            },
+          ],
         },
       ],
     },
