@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../../*"],
+      "@ugur/ui": ["./src/index.ts"],
+      "@ugur/core": ["../core/src/index.ts"],
+      "@ugur/server": ["../server/src/index.ts"]
+    },
+    "rootDir": "../..",
+    "outDir": "dist",
+    "incremental": false,
+    "noEmit": true,
+    "declaration": true,
+    "emitDeclarationOnly": false
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "../../shared/lib/**/*.ts"],
+  "exclude": ["dist", "node_modules"]
+}

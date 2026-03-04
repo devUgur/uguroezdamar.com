@@ -1,6 +1,6 @@
 import { ContactForm } from "@/features/contact";
-import { Container } from "@/shared/ui/Container";
-import { Section } from "@/shared/ui/Section";
+import { Container } from "@ugur/ui";
+import { Section } from "@ugur/ui";
 
 export const runtime = "nodejs";
 

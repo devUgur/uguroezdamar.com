@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-import { Button } from "@/shared/ui/Button";
-import { Container } from "@/shared/ui/Container";
+import { Button } from "@ugur/ui";
+import { Container } from "@ugur/ui";
 
 export default function NotFound() {
   return (

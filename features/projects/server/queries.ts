@@ -2,10 +2,18 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import matter from "gray-matter";
-import type { ProjectRecord } from "../types";
+import type { ProjectKind, ProjectRecord } from "../types";
 import { getProjectBySlugMongo, getProjects } from "./mongo";
 
 const contentDir = path.join(process.cwd(), "content", "projects");
+
+function toProjectKind(value: unknown): ProjectKind | null {
+  const v = String(value ?? "").toLowerCase();
+  if (v === "web" || v === "mobile" || v === "desktop" || v === "cli") return v;
+  if (v === "ios" || v === "android") return "mobile";
+  if (v === "terminal") return "cli";
+  return null;
+}
 
 function mapMdxProject(slug: string, parsed: matter.GrayMatterFile<string>): ProjectRecord {
   return {
@@ -14,6 +22,9 @@ function mapMdxProject(slug: string, parsed: matter.GrayMatterFile<string>): Pro
     summary: String(parsed.data.summary ?? ""),
     content: parsed.content,
     tags: Array.isArray(parsed.data.tags) ? parsed.data.tags.map(String) : [],
+    kinds: Array.isArray(parsed.data.kinds)
+      ? parsed.data.kinds.map(toProjectKind).filter((k): k is ProjectKind => Boolean(k))
+      : [],
     tech: Array.isArray(parsed.data.tech) ? parsed.data.tech.map(String) : [],
     links: Array.isArray(parsed.data.links)
       ? parsed.data.links
@@ -21,6 +32,7 @@ function mapMdxProject(slug: string, parsed: matter.GrayMatterFile<string>): Pro
             platform: String(item?.platform ?? item?.label ?? "link"),
             label: item?.label ? String(item.label) : null,
             url: item?.url ? String(item.url) : "",
+            kind: toProjectKind(item?.kind),
           }))
           .filter((item: any) => !!item.url)
       : [],
@@ -29,7 +41,7 @@ function mapMdxProject(slug: string, parsed: matter.GrayMatterFile<string>): Pro
           .map((img: any) => ({
             url: String(img?.url ?? ""),
             alt: img?.alt ? String(img.alt) : null,
-            kind: img?.kind ? String(img.kind) : null,
+            kind: img?.kind === "cover" || img?.kind === "gallery" ? img.kind : toProjectKind(img?.kind),
           }))
           .filter((img: any) => !!img.url)
       : [],

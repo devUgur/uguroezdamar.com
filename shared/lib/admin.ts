@@ -1,4 +1,15 @@
-import * as adminImpl from "@/features/admin";
+import {
+  clearLoginAttempts,
+  countRecentFailedLoginAttempts,
+  createAdminSession as createAdminSessionImpl,
+  deleteAdminSession,
+  getAdminByEmail,
+  getAdminSession,
+  hashPassword,
+  recordFailedLoginAttempt,
+  requireAdmin,
+  timingSafeEqualsString,
+} from "@ugur/server";
 
 export interface CreateSessionOptions {
   adminId?: string;
@@ -10,16 +21,9 @@ export interface CreateSessionOptions {
 export async function createAdminSession(opts: CreateSessionOptions) {
   const adminId = opts.adminId ?? String(opts.email ?? "test-admin");
   const email = opts.email ?? "test@example.com";
-  return adminImpl.createAdminSession({ adminId, email, userAgent: opts.userAgent, ip: opts.ip });
+  return createAdminSessionImpl({ adminId, email, userAgent: opts.userAgent, ip: opts.ip });
 }
 
-export const getAdminSession = adminImpl.getAdminSession;
-export const deleteAdminSession = adminImpl.deleteAdminSession;
-export const recordFailedLoginAttempt = adminImpl.recordFailedLoginAttempt;
-export const countRecentFailedLoginAttempts = adminImpl.countRecentFailedLoginAttempts;
-export const clearLoginAttempts = adminImpl.clearLoginAttempts;
-export const hashPassword = adminImpl.hashPassword;
-export const timingSafeEquals = adminImpl.timingSafeEquals;
-export const getAdminByEmail = adminImpl.getAdminByEmail;
-export const requireAdmin = adminImpl.requireAdmin;
+export { getAdminSession, deleteAdminSession, recordFailedLoginAttempt, countRecentFailedLoginAttempts, clearLoginAttempts, hashPassword, getAdminByEmail, requireAdmin };
+export const timingSafeEquals = timingSafeEqualsString;
 

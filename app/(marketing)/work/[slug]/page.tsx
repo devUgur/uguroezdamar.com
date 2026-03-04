@@ -1,6 +1,6 @@
 import React from "react";
 import { getWorkItemBySlug } from "@/features/work/server/repo";
-import { Container } from "@/shared/ui/Container";
+import { Container } from "@ugur/ui";
 import { notFound } from "next/navigation";
 
 export default async function WorkDetailPage({ params }: { params: { slug: string } }) {

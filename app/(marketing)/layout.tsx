@@ -1,6 +1,6 @@
-import { Header } from "@/shared/ui/Header";
-import { Footer } from "@/shared/ui/Footer";
-import { ScrollProgress } from "@/shared/ui/ScrollProgress";
+import { Header } from "@ugur/ui";
+import { Footer } from "@ugur/ui";
+import { ScrollProgress } from "@ugur/ui";
 
 export default function MarketingLayout({
   children,

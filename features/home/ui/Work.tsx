@@ -1,45 +1,52 @@
-import Link from "next/link";
 import { getAllProjects } from "@/features/projects/server/queries";
+import WorkClient, { type DeviceType, type SelectedWorkProject } from "./WorkClient";
+
+function toYearLabel(value?: string | null) {
+  if (!value) return String(new Date().getFullYear());
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(new Date().getFullYear());
+  return String(date.getUTCFullYear());
+}
+
+function toTypes(platforms: string[]): DeviceType[] {
+  const mapped = new Set<DeviceType>();
+  for (const platform of platforms) {
+    const p = platform.toLowerCase();
+    if (p.includes("ios") || p.includes("android") || p.includes("mobile")) mapped.add("mobile");
+    else if (p.includes("cli") || p.includes("terminal")) mapped.add("cli");
+    else mapped.add("web");
+  }
+  return mapped.size ? Array.from(mapped) : ["web"];
+}
 
 export async function Work() {
   const projects = await getAllProjects();
+  const mapped: SelectedWorkProject[] = projects.map((project) => {
+    // Determine the device type to show based on available images
+    // If we have a mobile image, we might want to show that by default if the project is mobile-first
+    const types = project.kinds && project.kinds.length > 0 
+      ? project.kinds as DeviceType[] 
+      : toTypes((project.links ?? []).map((link) => link.platform));
 
-  return (
-    <section id="work" className="py-24 md:py-32 lg:py-40 px-6 md:px-12 lg:px-24 hairline-t">
-      <div className="mb-16 md:mb-24">
-        <h2 className="font-mono text-sm uppercase tracking-widest text-muted-foreground">02 — Selected Work</h2>
-      </div>
+    return {
+      slug: project.slug,
+      name: project.title,
+      year: toYearLabel(project.publishedAt || project.createdAt),
+      role: project.kinds?.[0] || "Project",
+      stack: project.tech?.slice(0, 3).join(", ") || project.tags?.slice(0, 3).join(", ") || "Tech Stack",
+      types,
+      // Map images to their respective device types
+      deviceImages: {
+        web: project.images?.find(img => img.kind === 'web')?.url || project.previewImageUrl || project.coverImageUrl || "",
+        mobile: project.images?.find(img => img.kind === 'mobile')?.url || project.previewImageUrl || project.coverImageUrl || "",
+        cli: project.images?.find(img => img.kind === 'cli')?.url || project.previewImageUrl || project.coverImageUrl || "",
+      },
+      image: project.previewImageUrl || project.coverImageUrl || project.images?.[0]?.url || "/favicon.ico",
+      description: project.summary || "Project details coming soon.",
+    };
+  });
 
-      <div className="border-t border-border/40">
-        {projects.length === 0 ? (
-          <div className="py-12 text-sm text-muted-foreground">Selected Work is currently in progress. Coming soon.</div>
-        ) : (
-          projects.map((project) => (
-            <article key={project.slug} className="group grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 py-10 border-b border-border/40">
-              <div className="md:col-span-8">
-                <h3 className="font-serif text-3xl md:text-4xl mb-3 group-hover:text-accent transition-colors duration-300">
-                  <Link href={`/projects/${project.slug}`}>{project.title}</Link>
-                </h3>
-                {project.summary ? (
-                  <p className="text-secondary-foreground text-sm md:text-base leading-relaxed max-w-2xl">{project.summary}</p>
-                ) : null}
-              </div>
-
-              <div className="md:col-span-4 flex md:justify-end md:items-start">
-                <div className="flex flex-wrap gap-2 md:justify-end">
-                  {project.tags.map((tag) => (
-                    <span key={tag} className="font-mono text-[10px] uppercase tracking-wider px-2 py-1 border border-border rounded-sm text-muted-foreground">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </article>
-          ))
-        )}
-      </div>
-    </section>
-  );
+  return <WorkClient projects={mapped} />;
 }
 
 export default Work;

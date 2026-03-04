@@ -27,6 +27,8 @@ jobs:
         run: corepack enable
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Run legacy import guard
+        run: pnpm guard
       - name: Create indexes
         run: node scripts/setup-indexes.mjs
       - name: Run tests

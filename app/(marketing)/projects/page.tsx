@@ -1,5 +1,5 @@
 import { getAllProjects, ProjectGrid } from "@/features/projects";
-import { Container } from "@/shared/ui/Container";
+import { Container } from "@ugur/ui";
 
 export default async function ProjectsPage() {
   const projects = await getAllProjects();

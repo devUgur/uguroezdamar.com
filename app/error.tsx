@@ -2,8 +2,8 @@
 
 import { useEffect } from "react";
 
-import { Button } from "@/shared/ui/Button";
-import { Container } from "@/shared/ui/Container";
+import { Button } from "@ugur/ui";
+import { Container } from "@ugur/ui";
 
 export default function GlobalError({
   error,

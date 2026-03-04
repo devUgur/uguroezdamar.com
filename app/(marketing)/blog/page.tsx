@@ -1,6 +1,6 @@
 import { getAllPosts, PostCard } from "@/features/blog";
-import { Container } from "@/shared/ui/Container";
-import { Section } from "@/shared/ui/Section";
+import { Container } from "@ugur/ui";
+import { Section } from "@ugur/ui";
 
 export default async function BlogPage() {
   const posts = await getAllPosts();

@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 import type { ProjectRecord } from "@/features/projects/types";
-import { Card } from "@/shared/ui/Card";
-import { Tag } from "@/shared/ui/Tag";
+import { Card } from "@ugur/ui";
+import { Tag } from "@ugur/ui";
 
 export function ProjectCard({ project }: { project: ProjectRecord }) {
   return (

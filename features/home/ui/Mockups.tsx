@@ -3,17 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import { Terminal, Globe } from "lucide-react";
-
-type DeviceType = 'web' | 'mobile' | 'cli';
-
-interface ProjectProps {
-  name: string;
-  year: string;
-  role: string;
-  stack: string;
-  types: DeviceType[];
-  image: string;
-}
+import type { SelectedWorkProject, DeviceType } from "./WorkClient";
 
 export function MockupFrame({ type, image, name, zIndex = 0, scale = 1, xOffset = 0, yOffset = 0, opacity = 1 }: { type: DeviceType, image: string, name: string, zIndex?: number, scale?: number, xOffset?: number, yOffset?: number, opacity?: number }) {
   const style: React.CSSProperties = {
@@ -44,7 +34,7 @@ export function MockupFrame({ type, image, name, zIndex = 0, scale = 1, xOffset 
           <div className="mb-2">Developing high-performance CLI utilities...</div>
           <div className="animate-pulse">_</div>
           <div className="relative mt-4 h-32 w-full rounded overflow-hidden">
-            <Image src={image} alt="" fill className="object-cover opacity-20 grayscale filter blur-[1px]" />
+            <Image src={image} alt="" fill unoptimized className="object-cover opacity-20 grayscale filter blur-[1px]" />
           </div>
         </div>
       </div>
@@ -55,7 +45,7 @@ export function MockupFrame({ type, image, name, zIndex = 0, scale = 1, xOffset 
     return (
       <div className="relative border-gray-800 dark:border-gray-800 bg-gray-800 border-[8px] rounded-[2.5rem] h-[400px] w-[200px] shadow-2xl overflow-hidden transition-all duration-500" style={style}>
         <div className="relative rounded-[2rem] overflow-hidden w-full h-full bg-white dark:bg-gray-900">
-          <Image src={image} alt={name} fill className="w-full h-full object-cover grayscale opacity-80" />
+          <Image src={image} alt={name} fill unoptimized className="w-full h-full object-cover grayscale opacity-80" />
           <div className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-4 bg-gray-800 rounded-full" />
         </div>
       </div>
@@ -76,22 +66,27 @@ export function MockupFrame({ type, image, name, zIndex = 0, scale = 1, xOffset 
         <div className="w-10" />
       </div>
       <div className="flex-1 overflow-hidden relative">
-        <Image src={image} alt={name} fill className="object-cover grayscale opacity-80 group-hover:grayscale-[40%] transition-all duration-700" />
+        <Image src={image} alt={name} fill unoptimized className="object-cover grayscale opacity-80 group-hover:grayscale-[40%] transition-all duration-700" />
       </div>
     </div>
   );
 }
 
-export function ProjectDisplay({ project, activeType }: { project: ProjectProps, activeType?: DeviceType }) {
-  const { types, image, name } = project;
+export function ProjectDisplay({ project, activeType }: { project: SelectedWorkProject, activeType?: DeviceType }) {
+  const { types, image, deviceImages, name } = project;
   const displayType = activeType || types[0];
+  
+  // Choose the image based on the device type
+  const displayImage = deviceImages && deviceImages[displayType] 
+    ? deviceImages[displayType] 
+    : image;
 
   return (
     <div className="relative w-full h-full flex items-center justify-center p-4">
       <div className="w-full h-full transition-all duration-500 ease-out flex items-center justify-center">
         <MockupFrame
           type={displayType}
-          image={image}
+          image={displayImage}
           name={name}
           zIndex={10}
           scale={displayType === 'mobile' ? 0.9 : 1}

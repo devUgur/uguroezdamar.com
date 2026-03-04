@@ -1,9 +1,67 @@
 import nextPlugin from "@next/eslint-plugin-next";
 import tseslint from "typescript-eslint";
 
+const codeFiles = ["**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}"];
+
+const alwaysRestrictedPatterns = [
+  {
+    group: ["@/shared/ui/*", "**/shared/ui/*"],
+    message: "Legacy UI imports are forbidden. Use @ugur/ui entrypoint imports.",
+  },
+  {
+    group: ["@ugur/*/src/*", "@ugur/*/dist/*"],
+    message: "Deep imports are forbidden. Import from the package entrypoint only.",
+  },
+];
+
 export default tseslint.config(
   {
-    ignores: [".next/**", "out/**", "node_modules/**"],
+    ignores: [".next/**", "out/**", "node_modules/**", "**/dist/**"],
+  },
+  {
+    files: codeFiles,
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            ...alwaysRestrictedPatterns,
+            {
+              group: ["@ugur/server/*"],
+              message:
+                "@ugur/server deep imports are server-only and must stay in server contexts.",
+            },
+          ],
+          paths: [
+            {
+              name: "@ugur/server",
+              message:
+                "@ugur/server is server-only. Use it only in route handlers, server actions, middleware, or src/server modules.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      "app/api/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "apps/*/app/api/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "apps/*/app/**/route.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "apps/*/app/**/actions.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "apps/*/src/server/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "apps/*/middleware.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "middleware.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "packages/server/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: alwaysRestrictedPatterns,
+        },
+      ],
+    },
   },
   ...tseslint.configs.recommended,
   nextPlugin.configs["core-web-vitals"],

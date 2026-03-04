@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import type { PostRecord } from "@/features/blog/server/queries";
-import { Card } from "@/shared/ui/Card";
+import { Card } from "@ugur/ui";
 
 export function PostCard({ post }: { post: PostRecord }) {
   return (

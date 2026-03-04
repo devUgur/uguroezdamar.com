@@ -143,3 +143,8 @@ node_modules/
 .turbo/
 .env
 .DS_Store
+
+# Repoan metadata
+/.repoan/cache/
+/.repoan/logs/
+/.repoan/reports/

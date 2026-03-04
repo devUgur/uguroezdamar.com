@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 
 import { getAllPosts, getPostBySlug, MdxContent } from "@/features/blog";
-import { Container } from "@/shared/ui/Container";
-import { Section } from "@/shared/ui/Section";
+import { Container } from "@ugur/ui";
+import { Section } from "@ugur/ui";
 
 export async function generateStaticParams() {
   const posts = await getAllPosts();

@@ -3,8 +3,8 @@
 import { useActionState } from "react";
 
 import { submitContact } from "@/features/contact/server/actions";
-import { Button } from "@/shared/ui/Button";
-import { Card } from "@/shared/ui/Card";
+import { Button } from "@ugur/ui";
+import { Card } from "@ugur/ui";
 
 type State = { ok: true } | { ok: false; error: string } | null;
 
