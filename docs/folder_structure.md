@@ -1,103 +1,30 @@
+# Folder Structure (Target State)
 
-├─ root/
-│  ├─ app/
-│  │  ├─ layout.tsx
-│  │  ├─ globals.css
-│  │  ├─ (marketing)/
-│  │  │  ├─ page.tsx
-│  │  │  ├─ about/
-│  │  │  │  └─ page.tsx
-│  │  │  ├─ projects/
-│  │  │  │  ├─ page.tsx
-│  │  │  │  └─ [slug]/
-│  │  │  │     └─ page.tsx
-│  │  │  ├─ work/
-│  │  │  │  └─ page.tsx
-│  │  │  ├─ education/
-│  │  │  │  └─ page.tsx
-│  │  │  └─ blog/
-│  │  │     ├─ page.tsx
-│  │  │     └─ [slug]/
-│  │  │        └─ page.tsx
-│  │  ├─ (legal)/
-│  │  │  ├─ imprint/page.tsx
-│  │  │  └─ privacy/page.tsx
-│  │  ├─ api/
-│  │  │  ├─ health/route.ts
-│  │  │  └─ revalidate/route.ts
-│  │  ├─ error.tsx
-│  │  ├─ not-found.tsx
-│  │  └─ sitemap.ts
-│  │
-│  ├─ features/
-│  │  ├─ projects/
-│  │  │  ├─ ui/
-│  │  │  │  ├─ ProjectCard.tsx
-│  │  │  │  ├─ ProjectGrid.tsx
-│  │  │  │  └─ ProjectHero.tsx
-│  │  │  ├─ server/
-│  │  │  │  ├─ queries.ts
-│  │  │  │  └─ types.ts
-│  │  │  └─ index.ts
-│  │  │
-│  │  ├─ blog/
-│  │  │  ├─ ui/
-│  │  │  │  ├─ PostCard.tsx
-│  │  │  │  ├─ Toc.tsx
-│  │  │  │  └─ MdxContent.tsx
-│  │  │  ├─ server/
-│  │  │  │  ├─ queries.ts
-│  │  │  │  └─ mdx.ts
-│  │  │  └─ index.ts
-│  │  │
-│  │  ├─ contact/
-│  │  │  ├─ ui/
-│  │  │  │  └─ ContactForm.tsx        # "use client" (UX)
-│  │  │  ├─ server/
-│  │  │  │  ├─ actions.ts             # Server Actions (Form submit)
-│  │  │  │  ├─ validators.ts          # zod schema
-│  │  │  │  └─ repo.ts                # MongoDB write
-│  │  │  └─ index.ts
-│  │  │
-│  │  └─ analytics/
-│  │     ├─ server/
-│  │     │  └─ repo.ts                # optional: page views in Mongo
-│  │     └─ index.ts
-│  │
-│  ├─ shared/
-│  │  ├─ ui/
-│  │  │  ├─ Container.tsx
-│  │  │  ├─ Section.tsx
-│  │  │  ├─ Button.tsx
-│  │  │  ├─ Tag.tsx
-│  │  │  ├─ Card.tsx
-│  │  │  └─ Header.tsx
-│  │  ├─ lib/
-│  │  │  ├─ env.ts
-│  │  │  ├─ mongodb.ts                # MongoClient singleton (pool)
-│  │  │  ├─ dates.ts
-│  │  │  ├─ seo.ts
-│  │  │  └─ utils.ts
-│  │  └─ styles/
-│  │     └─ typography.css            # optional
-│  │
-│  ├─ content/
-│  │  ├─ projects/
-│  │  │  ├─ my-project.mdx
-│  │  │  └─ another-project.mdx
-│  │  └─ blog/
-│  │     ├─ first-post.mdx
-│  │     └─ second-post.mdx
-│  │
-│  └─ middleware.ts                   # optional
-│
-├─ public/
-│  ├─ images/
-│  ├─ og/
-│  └─ cv.pdf
-│
-├─ tailwind.config.ts
-├─ postcss.config.mjs
-├─ next.config.(js|mjs)
-├─ package.json
-└─ tsconfig.json
+## Runtime apps
+
+- `apps/site`: public website routes + site content.
+- `apps/portal`: admin dashboard + admin API routes.
+
+Both apps own their framework config (`next.config.mjs`, `postcss.config.mjs`, `next-env.d.ts`).
+
+## Shared packages
+
+- `packages/server`: canonical server logic (repo, validators, business services).
+- `packages/ui`: shared UI package.
+- `packages/core`: shared core helpers.
+
+Use package entrypoints only (`@ugur/server`, `@ugur/ui`, `@ugur/core`).
+
+## Migration leftovers
+
+- `features/*/server` and parts of `shared/*` still exist as compatibility layer.
+- New code should not add dependencies on those legacy server paths.
+
+## Guard rails
+
+- Root guards: `guard:legacy-imports`, `guard:no-deep-imports`.
+- ESLint restrictions in portal block legacy/deep server imports.
+
+## Practical rule
+
+If a server concern is reused or app-independent, move it to `packages/server` and consume through app-local loaders in `apps/*/src/server/*`.
