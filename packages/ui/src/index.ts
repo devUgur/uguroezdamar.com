@@ -10,5 +10,6 @@ export { Tag } from "./Tag";
 export { ThemeProvider } from "./ThemeProvider";
 export { ThemeToggle } from "./ThemeToggle";
 export { Topbar } from "./Topbar";
+export { fadeUp, makeFadeUp } from "./animations";
 export { default as GitHubIcon } from "./icons/GitHubIcon";
 export { default as LinkedInIcon } from "./icons/LinkedInIcon";
