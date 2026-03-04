@@ -1,13 +1,7 @@
-import { Container, Section } from "@ugur/ui";
+import { About } from "@/src/features/marketing/About";
 
-export default function AboutPage() {
+export default async function AboutPage() {
   return (
-    <Container>
-      <Section title="About" description="A short bio.">
-        <p className="text-sm text-zinc-700">
-          Replace this with your personal introduction.
-        </p>
-      </Section>
-    </Container>
+    <About />
   );
 }
