@@ -1,10 +1,20 @@
 import React from "react";
-import { getSiteWorkItemBySlug } from "@/src/adapters/work";
+import { getSiteWorkItemBySlug, getSiteWorkItems } from "@/src/adapters/work";
 import { Container } from "@ugur/ui";
 import { notFound } from "next/navigation";
 
-export default async function WorkDetailPage({ params }: { params: { slug: string } }) {
-  const item = await getSiteWorkItemBySlug(params.slug);
+export async function generateStaticParams() {
+  const items = await getSiteWorkItems();
+  return items.map((item) => ({ slug: item.slug }));
+}
+
+export default async function WorkDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const item = await getSiteWorkItemBySlug(slug);
   if (!item) return notFound();
 
   return (

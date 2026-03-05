@@ -1,25 +1,60 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState } from "react";
 
-import { submitContact } from "@/src/adapters/contact";
 import { Button } from "@ugur/ui";
 import { Card } from "@ugur/ui";
 
 type State = { ok: true } | { ok: false; error: string } | null;
 
+function getContactApiUrl(): string {
+  if (typeof window !== "undefined") {
+    return process.env.NEXT_PUBLIC_CONTACT_API_URL ?? `${window.location.origin}/api/contact`;
+  }
+  return process.env.NEXT_PUBLIC_CONTACT_API_URL ?? "/api/contact";
+}
+
 export function ContactForm() {
-  const [state, action, pending] = useActionState<State, FormData>(
-    async (prev, formData) => {
-      const res = await submitContact(prev, formData);
-      return res.ok ? { ok: true } : { ok: false, error: res.error };
-    },
-    null,
-  );
+  const [state, setState] = useState<State>(null);
+  const [pending, setPending] = useState(false);
+
+  async function handleSubmit(formData: FormData) {
+    setPending(true);
+    setState(null);
+    try {
+      const body = {
+        name: String(formData.get("name") ?? ""),
+        email: String(formData.get("email") ?? ""),
+        message: String(formData.get("message") ?? ""),
+        nickname: String(formData.get("nickname") ?? ""),
+      };
+      const res = await fetch(getContactApiUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setState({ ok: true });
+      } else {
+        setState({ ok: false, error: data.error ?? "Failed to send" });
+      }
+    } catch {
+      setState({ ok: false, error: "Failed to send" });
+    } finally {
+      setPending(false);
+    }
+  }
 
   return (
     <Card>
-      <form action={action} className="grid gap-3">
+      <form
+        className="grid gap-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmit(new FormData(e.currentTarget));
+        }}
+      >
         <div className="grid gap-1">
           <label className="text-sm font-medium" htmlFor="name">
             Name
