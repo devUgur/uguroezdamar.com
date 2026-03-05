@@ -3,9 +3,13 @@ import { getSiteWorkItemBySlug, getSiteWorkItems } from "@/src/adapters/work";
 import { Container } from "@ugur/ui";
 import { notFound } from "next/navigation";
 
-export async function generateStaticParams() {
-  const items = await getSiteWorkItems();
-  return items.map((item) => ({ slug: item.slug }));
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  try {
+    const items = await getSiteWorkItems();
+    return items.map((item) => ({ slug: item.slug }));
+  } catch {
+    return [];
+  }
 }
 
 export default async function WorkDetailPage({
