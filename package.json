@@ -16,6 +16,7 @@
     "guard": "pnpm guard:legacy-imports && pnpm guard:no-feature-server-imports && pnpm guard:no-deep-imports && pnpm guard:no-next-in-server",
     "check:no-legacy-ui": "pnpm guard:legacy-imports",
     "build": "pnpm guard && turbo build",
+    "build:site": "pnpm guard && turbo run build --filter=@ugur/site",
     "lint": "pnpm guard && turbo lint",
     "typecheck": "pnpm guard && turbo typecheck",
     "test": "turbo test",

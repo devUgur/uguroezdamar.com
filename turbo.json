@@ -6,7 +6,7 @@
     },
     "build": {
       "dependsOn": ["guard", "^build"],
-      "outputs": ["dist/**", ".next/**"]
+      "outputs": ["dist/**", ".next/**", "out/**"]
     },
     "dev": {
       "cache": false,
