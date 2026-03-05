@@ -14,17 +14,33 @@ import { getDb } from "@ugur/server";
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => ({} as Record<string, unknown>));
-  const email = typeof body.email === "string" ? body.email.toLowerCase().trim() : "";
-  const password = typeof body.password === "string" ? body.password : "";
-  
-  const ip = request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip") ?? "unknown";
+  try {
+    const body = await request.json().catch(() => ({} as Record<string, unknown>));
+    const email = typeof body.email === "string" ? body.email.toLowerCase().trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+
+    const ip = request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip") ?? "unknown";
+
+    // Debug: incoming request metadata (no secrets)
+    console.error("LOGIN request start", {
+      route: "/api/auth/login",
+      email: email || null,
+      hasPassword: !!password,
+      ip,
+      ua: request.headers.get("user-agent")?.slice(0, 120) ?? null,
+    });
+
+    console.error("LOGIN env", {
+      hasMongoUri: !!process.env.MONGODB_URI,
+      hasAdminKey: !!process.env.ADMIN_API_KEY,
+      nodeEnv: process.env.NODE_ENV,
+    });
 
   const maxAttempts = 5;
   const windowSec = 900; // 15 mins
 
-  // 1. Rate limit check
-  const attempts = await countRecentFailedLoginAttempts(ip, windowSec);
+    // 1. Rate limit check
+    const attempts = await countRecentFailedLoginAttempts(ip, windowSec);
   if (attempts >= maxAttempts) {
     return NextResponse.json({ ok: false, error: "Security Lock: Too many attempts. Try again later." }, { status: 429 });
   }
@@ -33,37 +49,41 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "Invalid credentials" }, { status: 401 });
   }
 
-  // 2. Find admin
-  const admin = await getAdminByEmail(email);
-  if (!admin) {
-    await recordFailedLoginAttempt(ip);
-    // Generic error to prevent email enumeration
-    return NextResponse.json({ ok: false, error: "Invalid credentials" }, { status: 401 });
-  }
+    // 2. Find admin
+    const admin = await getAdminByEmail(email);
+    console.error("LOGIN admin lookup", { found: !!admin, email: admin?.email ?? null, status: admin?.status ?? null });
+    if (!admin) {
+      await recordFailedLoginAttempt(ip);
+      // Generic error to prevent email enumeration
+      return NextResponse.json({ ok: false, error: "Invalid credentials" }, { status: 401 });
+    }
 
-  // 3. Verify password
-  const inputHash = hashPassword(password);
-  
-  // If it's an invited admin with no password yet, we set it on first login 
-  // ONLY if they provide the ADMIN_API_KEY as the initial password (or we can use a separate invite flow)
-  // For now, let's assume they must have a hash.
-  if (admin.status === "invited" && !admin.passwordHash) {
-     // Check if they are using the master key to set their initial password
-     const masterKey = process.env.ADMIN_API_KEY ?? "";
-     if (password === masterKey) {
-        // This is a one-time activation - they should probably set a real password next.
-        // But for this setup, we'll just allow it.
-     } else {
+    // 3. Verify password
+    const inputHash = hashPassword(password);
+
+    // Prefer explicit match variable for logging
+    const hasStoredHash = !!admin.passwordHash;
+    const isMatch = hasStoredHash ? timingSafeEqualsString(inputHash, admin.passwordHash) : false;
+    console.error("LOGIN verify", { hasStoredHash, isMatch });
+
+    // If it's an invited admin with no password yet, we set it on first login
+    // ONLY if they provide the ADMIN_API_KEY as the initial password
+    if (admin.status === "invited" && !admin.passwordHash) {
+      const masterKey = process.env.ADMIN_API_KEY ?? "";
+      if (password === masterKey) {
+        console.error("LOGIN activation via master key", { email: admin.email });
+        // allow activation flow (no-op here)
+      } else {
         await recordFailedLoginAttempt(ip);
         return NextResponse.json({ ok: false, error: "Account not activated. Contact system owner." }, { status: 401 });
-     }
-  } else if (!timingSafeEqualsString(inputHash, admin.passwordHash)) {
-    await recordFailedLoginAttempt(ip);
-    return NextResponse.json({ ok: false, error: "Invalid credentials" }, { status: 401 });
-  }
+      }
+    } else if (!isMatch) {
+      await recordFailedLoginAttempt(ip);
+      return NextResponse.json({ ok: false, error: "Invalid credentials" }, { status: 401 });
+    }
 
-  // 4. Success - Create session
-  await clearLoginAttempts(ip);
+    // 4. Success - Create session
+    await clearLoginAttempts(ip);
   const ua = request.headers.get("user-agent") ?? undefined;
   const session = await createAdminSession({ 
     adminId: String(admin._id), 
@@ -88,4 +108,9 @@ export async function POST(request: NextRequest) {
     secure,
   });
   return res;
+  } catch (err) {
+    // Log unexpected errors for Netlify runtime debugging
+    console.error("LOGIN unexpected error", err);
+    return NextResponse.json({ ok: false, error: "Internal server error" }, { status: 500 });
+  }
 }
