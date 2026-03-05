@@ -2,10 +2,10 @@ import "server-only";
 
 import { work } from "@ugur/server";
 
-export async function getAdminWorkItemsSnapshot() {
+export async function getWorkItemsSnapshot() {
 	return work.getWorkItems({ limit: 200 });
 }
 
-export async function getAdminWorkItemSnapshotById(id: string) {
+export async function getWorkItemById(id: string) {
 	return work.getWorkItemBySlug(id);
 }

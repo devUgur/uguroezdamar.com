@@ -13,7 +13,7 @@ export function LoginForm() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/login", {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -26,13 +26,13 @@ export function LoginForm() {
         try {
           const params = new URL(window.location.href).searchParams;
           const next = params.get("next");
-          if (next && typeof next === "string" && next.startsWith("/admin")) {
+          if (next && typeof next === "string" && (next.startsWith("/") || next.startsWith("/admin"))) {
             window.location.href = next;
           } else {
-            window.location.href = "/admin/dashboard";
+            window.location.href = "/";
           }
         } catch (e) {
-          window.location.href = "/admin/dashboard";
+          window.location.href = "/";
         }
       }
     } catch (err) {

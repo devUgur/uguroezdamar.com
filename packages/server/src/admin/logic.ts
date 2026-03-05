@@ -62,7 +62,7 @@ export async function createAdminInvite(email: string, invitedByEmail: string, r
 
   if ((env.NODE_ENV ?? process.env.NODE_ENV) === "development") {
     const appUrl = env.APP_URL ?? process.env.APP_URL ?? "http://localhost:3000";
-    return { ok: true, inviteUrl: `${appUrl}/portal/signup?token=${rawToken}` };
+    return { ok: true, inviteUrl: `${appUrl}/signup?token=${rawToken}` };
   }
 
   return { ok: true };

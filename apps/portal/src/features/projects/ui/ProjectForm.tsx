@@ -162,7 +162,7 @@ export default function ProjectForm({ id, initial }: Props) {
 
   async function deleteAssetByUrl(url: string) {
     if (!url) return;
-    const res = await fetch("/api/admin/projects/assets", {
+    const res = await fetch("/api/projects/assets", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ url }),
@@ -244,7 +244,7 @@ export default function ProjectForm({ id, initial }: Props) {
         form.append("file", file);
         form.append("slug", (isEdit ? id : state.slug) || state.title || "project");
 
-        const res = await fetch("/api/admin/projects/upload", {
+        const res = await fetch("/api/projects/uploads", {
           method: "POST",
           body: form,
         });
@@ -380,7 +380,7 @@ export default function ProjectForm({ id, initial }: Props) {
 
     setSaving(true);
     try {
-      const url = isEdit ? `/api/admin/projects/${id}` : "/api/admin/projects";
+      const url = isEdit ? `/api/projects/${id}` : "/api/projects";
       const method = isEdit ? "PATCH" : "POST";
       const res = await fetch(url, {
         method,
@@ -389,14 +389,14 @@ export default function ProjectForm({ id, initial }: Props) {
       });
       const data = await res.json().catch(() => null);
 
-      if (!res.ok || !data?.ok) {
+      if (!res.ok) {
         throw new Error(data?.error ? JSON.stringify(data.error) : "Failed to save project");
       }
 
       setMessage(isEdit ? "Project updated." : "Project created.");
       const savedSlug = data?.item?.slug;
       if (!isEdit && savedSlug) {
-        router.push(`/admin/dashboard/projects/${savedSlug}`);
+        router.push(`/admin/projects/${savedSlug}`);
       }
       router.refresh();
     } catch (err: unknown) {
@@ -414,12 +414,12 @@ export default function ProjectForm({ id, initial }: Props) {
     setMessage(null);
     setSaving(true);
     try {
-      const res = await fetch(`/api/admin/projects/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
       const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.ok) {
+      if (!res.ok) {
         throw new Error(data?.error ?? "Delete failed");
       }
-      router.push("/admin/dashboard/projects");
+      router.push("/admin/projects");
       router.refresh();
     } catch (err: unknown) {
       setError((err as Error)?.message ?? "Delete failed");

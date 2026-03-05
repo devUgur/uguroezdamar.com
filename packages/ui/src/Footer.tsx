@@ -12,8 +12,8 @@ export async function Footer() {
           © {new Date().getFullYear()} Ugur Özdamar — All Rights Reserved
         </span>
         {isAuthed && (
-          <Link href="/admin/dashboard" className="mt-4 md:mt-0 font-mono text-[10px] uppercase tracking-widest text-accent hover:underline opacity-50 hover:opacity-100 transition-all">
-            Dashboard
+          <Link href="/admin" className="mt-4 md:mt-0 font-mono text-[10px] uppercase tracking-widest text-accent hover:underline opacity-50 hover:opacity-100 transition-all">
+            Portal Admin
           </Link>
         )}
       </div>
