@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { ThemeToggle } from "@ugur/ui";
+import { ThemeToggle } from "@ugur/ui/client";
 import { cn } from "@ugur/core";
 import { SiteLogo } from "./SiteLogo";
 

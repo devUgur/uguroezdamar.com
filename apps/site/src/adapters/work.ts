@@ -14,6 +14,12 @@ export async function getSiteWorkItems(): Promise<ProjectRecord[]> {
   return projects.filter(p => p.featured);
 }
 
+/** Slugs for static export (work detail pages). */
+export async function getSiteWorkSlugs(): Promise<{ slug: string }[]> {
+  const items = await getSiteWorkItems();
+  return items.map((p) => ({ slug: p.slug }));
+}
+
 export async function getSiteWorkItemBySlug(slug: string): Promise<ProjectRecord | null> {
   if (process.env.MONGODB_URI) {
     try {

@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 
-import { Button } from "@ugur/ui";
-import { Card } from "@ugur/ui";
+import { Button, Card } from "@ugur/ui/client";
 
 type State = { ok: true } | { ok: false; error: string } | null;
 

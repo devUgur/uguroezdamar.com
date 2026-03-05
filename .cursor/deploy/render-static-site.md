@@ -2,6 +2,8 @@
 
 Damit der Publish-Ordner `apps/site/out` existiert, muss der **Build** die Site mit Static Export bauen.
 
+Der Site-Build nutzt **Webpack** (`next build --webpack`), damit Static Export mit dynamischen Routen (`/work/[slug]`, `/blog/[slug]`, `/projects/[slug]`) zuverlässig funktioniert. Client-Komponenten, die nur UI ohne Server-APIs brauchen, importieren aus `@ugur/ui/client`, damit kein Server-Only-Code (z. B. Footer mit `next/headers`) in den Client-Bundle gelangt.
+
 ## Empfohlene Einstellungen (Dashboard)
 
 - **Root Directory:** leer lassen (Repo-Root).

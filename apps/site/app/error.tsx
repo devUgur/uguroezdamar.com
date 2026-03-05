@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-import { Button, Container } from "@ugur/ui";
+import { Button, Container } from "@ugur/ui/client";
 
 export default function GlobalError({
   error,
