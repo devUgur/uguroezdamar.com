@@ -44,7 +44,10 @@ export async function PATCH(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const parsed = UpdateProjectSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: parsed.error.format() }, { status: 400 });
+    const msg = parsed.error.issues
+      .map((i) => (i.path.length ? i.path.join(".") : "field") + ": " + i.message)
+      .join("; ");
+    return NextResponse.json({ ok: false, error: msg }, { status: 400 });
   }
 
   try {
@@ -54,8 +57,8 @@ export async function PATCH(request: NextRequest) {
     const ok = await updateProject(id, parsed.data);
     if (!ok) return NextResponse.json({ ok: false, error: "Failed to update" }, { status: 500 });
 
-    // Handle asset cleanup if images changed
-    if (parsed.data.images || parsed.data.coverImageUrl) {
+    // Handle asset cleanup if images or apps changed
+    if (parsed.data.images || parsed.data.coverImageUrl || parsed.data.apps) {
        const updated = await getProjectById(id);
        if (updated) {
           const beforeUrls = collectProjectAssetUrls(existing as ProjectRecord);

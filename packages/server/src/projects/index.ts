@@ -6,6 +6,7 @@ export {
 	getProjectById,
 	getProjectBySlugMongo,
 	getProjects,
+	reorderProjects,
 	softDeleteProject,
 	updateProject,
 } from "./repo";
@@ -16,6 +17,7 @@ export {
 	ProjectKindSchema,
 	ProjectLinkSchema,
 	ProjectImageSchema,
+	ProjectAppSchema,
 } from "./validators";
 
 export { buildProjectAssetKey, collectProjectAssetUrls, sanitizeProjectSlug } from "./assets";
@@ -25,6 +27,7 @@ export type {
 	ProjectKind,
 	ProjectLink,
 	ProjectImage,
+	ProjectApp,
 	ProjectRecord,
 } from "./validators";
 

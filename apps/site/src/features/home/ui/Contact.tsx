@@ -9,12 +9,12 @@ export function Contact() {
       </h2>
 
       <div className="flex flex-col md:flex-row gap-8 md:gap-16 font-mono text-sm uppercase tracking-widest text-secondary-foreground">
-        <a href="mailto:hello@uguroezdamar.com" className="inline-flex items-center gap-2 group hover:text-accent hover:-translate-y-1 transition-all duration-300">
+        <a href="mailto:ugur.oezdamar@itc-studenten.de" className="inline-flex items-center gap-2 group hover:text-accent hover:-translate-y-1 transition-all duration-300">
           Email <ArrowUpRight className="w-3 h-3 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300" />
         </a>
-        <a href="https://www.linkedin.com/in/uguroezdamar" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 group hover:text-accent hover:-translate-y-1 transition-all duration-300">
-          LinkedIn <ArrowUpRight className="w-3 h-3 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300" />
-        </a>
+        <span className="inline-flex items-center gap-2 font-mono text-sm uppercase tracking-widest text-muted-foreground/60 cursor-default" aria-disabled="true" title="Profil in Kürze">
+          LinkedIn <ArrowUpRight className="w-3 h-3 opacity-40" />
+        </span>
         <a href="https://github.com/devUgur" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 group hover:text-accent hover:-translate-y-1 transition-all duration-300">
           GitHub <ArrowUpRight className="w-3 h-3 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300" />
         </a>

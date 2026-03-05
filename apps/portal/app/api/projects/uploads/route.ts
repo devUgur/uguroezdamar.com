@@ -16,12 +16,14 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get("file");
     const slug = String(formData.get("slug") ?? "project");
+    const kind = formData.get("kind"); // optional: "web" | "mobile" | "desktop" | "cli" for app-scoped assets
 
     if (!file || !(file instanceof File)) {
       return NextResponse.json({ ok: false, error: "Missing file" }, { status: 400 });
     }
 
-    const key = buildProjectAssetKey(slug || "project", file.name);
+    const subPath = typeof kind === "string" && kind.trim() ? kind.trim() : undefined;
+    const key = buildProjectAssetKey(slug || "project", file.name, subPath);
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);

@@ -94,6 +94,22 @@ export async function updateProject(id: string, input: UpdateProjectInput): Prom
 	return res.modifiedCount > 0;
 }
 
+/** Set sortIndex for each project by position in orderedIds. Keeps hierarchy stable. */
+export async function reorderProjects(orderedIds: string[]): Promise<void> {
+	if (orderedIds.length === 0) return;
+
+	const db = await getDb();
+	const col = db.collection(PROJECTS_COLLECTION);
+	const now = new Date();
+
+	for (let i = 0; i < orderedIds.length; i++) {
+		await col.updateOne(
+			{ _id: new ObjectId(orderedIds[i]), deletedAt: { $exists: false } },
+			{ $set: { sortIndex: i, updatedAt: now } }
+		);
+	}
+}
+
 export async function softDeleteProject(id: string): Promise<boolean> {
 	const db = await getDb();
 	const col = db.collection(PROJECTS_COLLECTION);

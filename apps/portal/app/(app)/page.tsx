@@ -1,14 +1,44 @@
+import Link from "next/link";
 import { getAdminOverview } from "@/apps/portal/src/adapters/admin";
 import { getCurrentSession } from "@/apps/portal/src/adapters/auth";
+import { Button, Container, Section } from "@ugur/ui";
 
-export default async function AuthedHome() {
+/**
+ * Root "/" – when logged in: Dashboard (sidebar from AppShell).
+ * When not logged in: Public landing (no sidebar, from PublicLayout).
+ */
+export default async function RootPage() {
   const session = await getCurrentSession();
+
+  if (!session) {
+    return (
+      <Container>
+        <Section title="" className="flex flex-col items-center justify-center min-h-[80vh] text-center space-y-8">
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
+            Welcome to Ugur&apos;s Portal
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-2xl">
+            The central hub for managing projects, timeline items, and more.
+          </p>
+          <div className="flex gap-4">
+            <Button asChild variant="primary">
+              <Link href="/login">Login to Portal</Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link href="/signup">Sign Up</Link>
+            </Button>
+          </div>
+        </Section>
+      </Container>
+    );
+  }
+
   const { recentInquiries, inquiriesCount } = await getAdminOverview();
 
   return (
     <div className="p-8 space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome back, {session?.email}</h1>
+        <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome back, {session.email}</h1>
         <p className="text-muted-foreground">Here is an overview of your portfolio activity.</p>
       </div>
 

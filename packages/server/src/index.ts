@@ -45,6 +45,7 @@ export {
 	getProjectById,
 	getProjectBySlugMongo,
 	getProjects,
+	reorderProjects,
 	softDeleteProject,
 	updateProject,
 	CreateProjectSchema,

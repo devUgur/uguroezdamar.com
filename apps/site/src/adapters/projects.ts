@@ -39,6 +39,7 @@ function mapMdxProject(slug: string, parsed: matter.GrayMatterFile<string>): Pro
           }))
           .filter((item: any) => !!item.url)
       : [],
+    apps: [],
     images: Array.isArray(parsed.data.images)
       ? parsed.data.images
           .map((image: any) => ({

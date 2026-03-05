@@ -58,6 +58,8 @@ function mapMdxProject(slug: string, parsed: matter.GrayMatterFile<string>): Pro
 					}))
 					.filter((item: any) => !!item.url)
 			: [],
+		repoUrl: parsed.data.repoUrl ? String(parsed.data.repoUrl) : null,
+		apps: [],
 		images: Array.isArray(parsed.data.images)
 			? parsed.data.images
 					.map((image: any) => ({
@@ -75,6 +77,9 @@ function mapMdxProject(slug: string, parsed: matter.GrayMatterFile<string>): Pro
 		isSecret: Boolean(parsed.data.isSecret ?? false),
 		sortIndex: Number(parsed.data.sortIndex ?? 0),
 		publishedAt: null,
+		yearFrom: null,
+		yearTo: null,
+		ongoing: false,
 		createdAt: now,
 		updatedAt: now,
 	};

@@ -1,24 +1,26 @@
 export const dynamic = "force-dynamic";
 
-import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/apps/portal/src/adapters/auth";
-import { Sidebar } from "@/src/features/admin/ui/Sidebar";
+import { AppShell } from "@/src/features/admin/ui/AppShell";
+import { PublicLayout } from "@/src/features/admin/ui/PublicLayout";
+import { RedirectIfNotHome } from "@/src/features/admin/ui/RedirectIfNotHome";
 
+/**
+ * Single layout for all (app) routes. Session is known here (server), so we keep
+ * PublicLayout (with Footer/Topbar server components) in the server tree.
+ * Redirect when not logged in and path !== "/" is done by client RedirectIfNotHome.
+ */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getCurrentSession();
 
-  if (!session) {
-    redirect("/login");
+  if (session) {
+    return <AppShell>{children}</AppShell>;
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        {children}
-      </main>
-    </div>
+    <>
+      <RedirectIfNotHome />
+      <PublicLayout>{children}</PublicLayout>
+    </>
   );
 }

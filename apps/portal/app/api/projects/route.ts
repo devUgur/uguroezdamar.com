@@ -28,7 +28,10 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const parsed = CreateProjectSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: parsed.error.format() }, { status: 400 });
+    const msg = parsed.error.issues
+      .map((i) => (i.path.length ? i.path.join(".") : "field") + ": " + i.message)
+      .join("; ");
+    return NextResponse.json({ ok: false, error: msg }, { status: 400 });
   }
 
   try {
