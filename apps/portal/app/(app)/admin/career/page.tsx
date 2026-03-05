@@ -21,7 +21,10 @@ export default async function CareerPage() {
           <h1 className="text-3xl font-bold tracking-tight mb-1">Career</h1>
           <p className="text-muted-foreground">Manage work, education, and other entries for your professional resume.</p>
         </div>
-        <Link href="/admin/career/new" className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
+        <Link
+          href="/admin/career/new"
+          className="portal-btn-primary"
+        >
           New Entry
         </Link>
       </div>

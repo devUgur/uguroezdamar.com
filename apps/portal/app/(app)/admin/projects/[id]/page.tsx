@@ -10,15 +10,8 @@ export default async function ProjectEditPage({ params }: { params: Promise<{ id
   }
 
   return (
-    <div className="p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight mb-1">Edit Project</h1>
-        <p className="text-muted-foreground">Update content, links, and assets for this project.</p>
-      </div>
-
-      <div className="bg-card border rounded-xl p-6 shadow-sm">
-        <ProjectForm id={project._id} initial={project} />
-      </div>
+    <div className="p-8">
+      <ProjectForm id={project._id} initial={project} />
     </div>
   );
 }

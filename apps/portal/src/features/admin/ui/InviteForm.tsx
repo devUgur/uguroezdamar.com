@@ -55,7 +55,7 @@ export function InviteForm() {
       )}
       <button 
         type="submit" 
-        className="w-full inline-flex justify-center items-center px-4 py-3 bg-foreground text-background rounded-xl font-semibold hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-50" 
+        className="w-full portal-btn-primary-lg active:scale-[0.98]" 
         disabled={loading}
       >
         {loading ? "Sending..." : "Send Invitation"}

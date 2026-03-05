@@ -172,7 +172,7 @@ export function CareerEntryForm({ id, initial }: Props) {
           <button
             onClick={handleSave}
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-2.5 bg-foreground text-background rounded-xl font-medium hover:opacity-90 transition-all disabled:opacity-50 shadow-sm"
+            className="portal-btn-primary-lg gap-2 px-6 py-2.5"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save Entry
@@ -202,7 +202,7 @@ export function CareerEntryForm({ id, initial }: Props) {
                   className={cn(
                     "flex flex-col items-center justify-center p-4 rounded-xl border transition-all gap-2",
                     state.type === type.value 
-                      ? "bg-foreground text-background border-foreground shadow-md scale-[1.02]" 
+                      ? "bg-zinc-900 text-white border-zinc-900 shadow-md scale-[1.02] dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100" 
                       : "hover:border-foreground/20 hover:bg-muted/50"
                   )}
                 >

@@ -11,7 +11,7 @@ export default async function AdminBlogPage() {
           <h1 className="text-3xl font-bold tracking-tight mb-1">Blog Posts</h1>
           <p className="text-muted-foreground">Manage your portfolio blog content (MDX files).</p>
         </div>
-        <button className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50" disabled title="Coming soon: MDX Editor">
+        <button className="portal-btn-primary" disabled title="Coming soon: MDX Editor">
           New Post
         </button>
       </div>

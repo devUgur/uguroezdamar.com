@@ -11,7 +11,7 @@ export default async function ProjectsPage() {
           <h1 className="text-3xl font-bold tracking-tight mb-1">Projects</h1>
           <p className="text-muted-foreground">Manage projects with structured links and image assets.</p>
         </div>
-        <Link href="/admin/projects/new" className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
+        <Link href="/admin/projects/new" className="portal-btn-primary">
           New Project
         </Link>
       </div>

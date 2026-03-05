@@ -208,7 +208,7 @@ export default function ProfileForm({ initial }: Props) {
         <button
           type="submit"
           disabled={busy || !canSubmit}
-          className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="portal-btn-primary"
         >
           {busy ? "Saving..." : "Save Profile"}
         </button>

@@ -1,6 +1,6 @@
 import { getAdminDetail } from "@/apps/portal/src/adapters/admin";
 import { notFound } from "next/navigation";
-import { Button, Card } from "@ugur/ui";
+import { Card } from "@ugur/ui";
 import Link from "next/link";
 
 export default async function AdminEditPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,9 +18,9 @@ export default async function AdminEditPage({ params }: { params: Promise<{ id: 
           <h1 className="text-3xl font-bold tracking-tight mb-1">Edit Admin</h1>
           <p className="text-muted-foreground">Manage role and permissions for {admin.email}.</p>
         </div>
-        <Button asChild variant="secondary">
-          <Link href="/admin/admins">Back to Admins</Link>
-        </Button>
+        <Link href="/admin/admins" className="portal-btn-secondary">
+          Back to Admins
+        </Link>
       </div>
 
       <Card className="p-6">

@@ -122,10 +122,32 @@
 	h1, h2, h3, h4, h5, h6 {
 		@apply font-serif tracking-tight;
 	}
+	/* keep links inheriting color by default; utilities (e.g. portal-btn-primary) override for buttons */
+	a { color: inherit; }
 }
 
 /* Custom Utilities for the Editorial Feel */
 @layer utilities {
+	.portal-btn-primary {
+		@apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors;
+		@apply bg-zinc-900 text-white hover:bg-zinc-800;
+		@apply dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200;
+		@apply disabled:pointer-events-none disabled:opacity-50;
+	}
+
+	.portal-btn-primary-lg {
+		@apply inline-flex items-center justify-center rounded-xl px-4 py-3 font-semibold transition-colors;
+		@apply bg-zinc-900 text-white hover:bg-zinc-800;
+		@apply dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200;
+		@apply disabled:pointer-events-none disabled:opacity-50;
+	}
+
+	.portal-btn-secondary {
+		@apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors border;
+		@apply border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-100;
+		@apply dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800;
+	}
+
 	.hairline-b {
 		@apply border-b border-border;
 	}
@@ -169,5 +191,3 @@ html, body {
 	color: var(--color-foreground);
 }
 
-/* keep links inheriting color by default */
-a { color: inherit; }

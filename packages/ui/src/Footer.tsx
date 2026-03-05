@@ -19,7 +19,7 @@ export async function Footer() {
         </span>
         {isAuthed && (
           <Link href="/admin" className="mt-4 md:mt-0 font-mono text-[10px] uppercase tracking-widest text-accent hover:underline opacity-50 hover:opacity-100 transition-all">
-            Portal Admin
+            Portal
           </Link>
         )}
       </div>

@@ -22,8 +22,8 @@
     "clean": "turbo clean",
     "setup:indexes": "node ./tooling/scripts/setup-indexes.mjs",
     "migrate:projects": "node ./tooling/scripts/migrate-projects.mjs",
-    "ui:add": "pnpm dlx shadcn@latest add -c packages/ui/components.json",
-    "ui:diff": "pnpm dlx shadcn@latest diff -c packages/ui/components.json",
+    "ui:add": "pnpm dlx shadcn@latest add -c packages/ui",
+    "ui:diff": "pnpm dlx shadcn@latest diff -c packages/ui",
     "start": "pnpm --filter @ugur/site start"
   },
   "repository": {

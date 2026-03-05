@@ -205,14 +205,16 @@ export default function ProjectForm({ id, initial }: Props) {
             <h1 className="text-3xl font-bold tracking-tight">
               {isEdit ? "Edit Project" : "New Project"}
             </h1>
-            <p className="text-muted-foreground">Portfolio item & Case Study unifier.</p>
+            <p className="text-muted-foreground text-sm">
+              {isEdit ? "Update content, links, and assets for this project." : "Create a project with structured links and images for multiple platforms."}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={handleSave}
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-2.5 bg-foreground text-background rounded-xl font-medium hover:opacity-90 transition-all disabled:opacity-50 shadow-sm"
+            className="portal-btn-primary-lg gap-2 px-6 py-2.5"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save Project
@@ -304,7 +306,7 @@ export default function ProjectForm({ id, initial }: Props) {
                       className={cn(
                         "flex flex-col items-center justify-center p-4 rounded-xl border transition-all gap-2",
                         state.kinds.includes(kind.value)
-                          ? "bg-foreground text-background border-foreground shadow-md"
+                          ? "bg-zinc-900 text-white border-zinc-900 shadow-md dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100"
                           : "hover:border-foreground/20 hover:bg-muted/50"
                       )}
                     >
