@@ -1,5 +1,5 @@
 
-import { getProfileForAbout, getTimelineForAbout } from "@/src/server/home";
+import { getProfileForAbout, getTimelineForAbout } from "@/src/adapters/home";
 
 export async function About() {
   const [profile, timelineItems] = await Promise.all([getProfileForAbout(), getTimelineForAbout()]);

@@ -1,5 +1,5 @@
 import { ProjectGrid } from "@/src/features/projects";
-import { getSiteProjects } from "@/src/server/projects";
+import { getSiteProjects } from "@/src/adapters/projects";
 import { Container } from "@ugur/ui";
 
 export default async function ProjectsPage() {

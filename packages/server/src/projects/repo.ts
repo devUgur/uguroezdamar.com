@@ -1,203 +1,115 @@
 import "server-only";
-import { ObjectId, type Filter, type FindOneAndUpdateOptions, type UpdateFilter } from "mongodb";
+import { ObjectId, type Filter } from "mongodb";
 import { getDb } from "../mongodb";
+import type { CreateProjectInput, ProjectRecord, UpdateProjectInput } from "./validators";
 
-export type ProjectStatus = "draft" | "published" | "archived";
+const PROJECTS_COLLECTION = "projects";
 
-export type ProjectKind = "web" | "mobile" | "desktop" | "cli";
-
-export type ProjectLink = {
-	platform: string;
-	label?: string | null;
-	url: string;
-	kind?: ProjectKind | null;
-};
-
-export type ProjectImage = {
-	url: string;
-	alt?: string | null;
-	kind?: ProjectKind | "cover" | "gallery" | null;
-};
-
-export type ProjectRecord = {
-	id?: string;
-	slug: string;
-	title: string;
-	summary: string;
-	content: string;
-	tags: string[];
-	tech: string[];
-	links: ProjectLink[];
-	kinds: ProjectKind[];
-	images: ProjectImage[];
-	coverImageUrl?: string | null;
-	previewImageUrl?: string | null;
-	status: ProjectStatus;
-	featured: boolean;
-	isSecret?: boolean;
-	sortIndex: number;
-	publishedAt?: string | null;
-	createdAt?: string | null;
-	updatedAt?: string | null;
-};
-
-export type DbProject = {
-	_id?: ObjectId;
-	slug: string;
-	title: string;
-	summary: string;
-	content: string;
-	tags: string[];
-	kinds: ProjectKind[];
-	tech: string[];
-	links: ProjectLink[];
-	images: ProjectImage[];
-	coverImageUrl?: string | null;
-	previewImageUrl?: string | null;
-	status: ProjectStatus;
-	featured: boolean;
-	isSecret?: boolean;
-	sortIndex: number;
-	publishedAt?: Date | null;
-	createdAt: Date;
-	updatedAt: Date;
-	deletedAt?: Date | null;
-};
-
-function toProjectRecord(doc: DbProject): ProjectRecord {
+function toProjectRecord(doc: any): ProjectRecord {
 	return {
-		id: doc._id?.toHexString(),
-		slug: doc.slug,
-		title: doc.title,
-		summary: doc.summary ?? "",
-		content: doc.content ?? "",
-		tags: doc.tags ?? [],
-		kinds: doc.kinds ?? [],
-		tech: doc.tech ?? [],
-		links: doc.links ?? [],
-		images: doc.images ?? [],
-		coverImageUrl: doc.coverImageUrl ?? null,
-		previewImageUrl: doc.previewImageUrl ?? null,
-		status: doc.status ?? "draft",
-		featured: !!doc.featured,
-		isSecret: !!doc.isSecret,
-		sortIndex: doc.sortIndex ?? 0,
-		publishedAt: doc.publishedAt ? doc.publishedAt.toISOString() : null,
-		createdAt: doc.createdAt?.toISOString?.() ?? null,
-		updatedAt: doc.updatedAt?.toISOString?.() ?? null,
+		...doc,
+		_id: doc._id.toString(),
+		createdAt: doc.createdAt?.toISOString?.() ?? doc.createdAt,
+		updatedAt: doc.updatedAt?.toISOString?.() ?? doc.updatedAt,
+		publishedAt: doc.publishedAt?.toISOString?.() ?? doc.publishedAt,
+		previewUpdatedAt: doc.previewUpdatedAt?.toISOString?.() ?? doc.previewUpdatedAt,
 	};
 }
 
 export async function getProjects(options?: {
-	status?: ProjectStatus;
-	includeDrafts?: boolean;
+	status?: string;
+	featured?: boolean;
 	limit?: number;
 }): Promise<ProjectRecord[]> {
 	const db = await getDb();
-	const col = db.collection<DbProject>("projects");
+	const col = db.collection(PROJECTS_COLLECTION);
 
-	const query: Filter<DbProject> = { deletedAt: { $exists: false } };
-	if (options?.status) {
-		query.status = options.status;
-	} else if (!options?.includeDrafts) {
-		query.status = "published";
-	}
+	const query: Filter<any> = { deletedAt: { $exists: false } };
+	if (options?.status) query.status = options.status;
+	if (options?.featured !== undefined) query.featured = options.featured;
 
 	const docs = await col
 		.find(query)
-		.sort({ featured: -1, sortIndex: 1, publishedAt: -1, updatedAt: -1 })
-		.limit(options?.limit ?? 200)
+		.sort({ featured: -1, sortIndex: 1, publishedAt: -1 })
+		.limit(options?.limit ?? 100)
 		.toArray();
 
 	return docs.map(toProjectRecord);
 }
 
-export async function getProjectBySlugMongo(
-	slug: string,
-	options?: { includeDrafts?: boolean },
-): Promise<ProjectRecord | null> {
+export async function getProjectBySlugMongo(slug: string): Promise<ProjectRecord | null> {
 	const db = await getDb();
-	const col = db.collection<DbProject>("projects");
+	const col = db.collection(PROJECTS_COLLECTION);
 
-	const query: Filter<DbProject> = {
-		slug,
-		deletedAt: { $exists: false },
-		...(options?.includeDrafts ? {} : { status: "published" }),
-	};
-
-	const doc = await col.findOne(query);
+	const doc = await col.findOne({ slug, deletedAt: { $exists: false } });
 	if (!doc) return null;
+
 	return toProjectRecord(doc);
 }
 
-export async function createProject(
-	input: Omit<DbProject, "_id" | "createdAt" | "updatedAt" | "deletedAt">,
-): Promise<ProjectRecord> {
-	const now = new Date();
+export async function getProjectById(id: string): Promise<ProjectRecord | null> {
 	const db = await getDb();
-	const col = db.collection<DbProject>("projects");
+	const col = db.collection(PROJECTS_COLLECTION);
 
-	const doc: DbProject = {
+	const doc = await col.findOne({ _id: new ObjectId(id), deletedAt: { $exists: false } });
+	if (!doc) return null;
+
+	return toProjectRecord(doc);
+}
+
+export async function createProject(input: CreateProjectInput): Promise<ProjectRecord> {
+	const db = await getDb();
+	const col = db.collection(PROJECTS_COLLECTION);
+
+	const now = new Date();
+	const doc = {
 		...input,
-		kinds: input.kinds ?? [],
-		summary: input.summary ?? "",
-		content: input.content ?? "",
-		tags: input.tags ?? [],
-		tech: input.tech ?? [],
-		links: input.links ?? [],
-		images: input.images ?? [],
-		coverImageUrl: input.coverImageUrl ?? null,
-		previewImageUrl: input.previewImageUrl ?? null,
-		status: input.status ?? "draft",
-		featured: !!input.featured,
-		sortIndex: input.sortIndex ?? 0,
-		publishedAt: input.publishedAt ?? null,
 		createdAt: now,
 		updatedAt: now,
+		publishedAt: input.publishedAt ? new Date(input.publishedAt) : null,
+		previewUpdatedAt: input.previewUpdatedAt ? new Date(input.previewUpdatedAt) : null,
 	};
 
 	const res = await col.insertOne(doc);
-	doc._id = res.insertedId;
-	return toProjectRecord(doc);
+	return toProjectRecord({ ...doc, _id: res.insertedId });
 }
 
-export async function updateProject(idOrSlug: string, input: Partial<DbProject>): Promise<ProjectRecord | null> {
+export async function updateProject(id: string, input: UpdateProjectInput): Promise<boolean> {
 	const db = await getDb();
-	const col = db.collection<DbProject>("projects");
-	const filter: Filter<DbProject> = ObjectId.isValid(idOrSlug) ? { _id: new ObjectId(idOrSlug) } : { slug: idOrSlug };
+	const col = db.collection(PROJECTS_COLLECTION);
 
-	const patch: Partial<DbProject> = {
+	const update: any = {
 		...input,
 		updatedAt: new Date(),
 	};
 
-	const res = await col.findOneAndUpdate(
-		filter,
-		{ $set: patch } as UpdateFilter<DbProject>,
-		{ returnDocument: "after" } as FindOneAndUpdateOptions,
-	);
+	if (input.publishedAt) {
+		update.publishedAt = new Date(input.publishedAt);
+	}
+	if (input.previewUpdatedAt) {
+		update.previewUpdatedAt = new Date(input.previewUpdatedAt);
+	}
 
-	if (!res.value) return null;
-	return toProjectRecord(res.value);
+	const res = await col.updateOne({ _id: new ObjectId(id) }, { $set: update });
+	return res.modifiedCount > 0;
 }
 
-export async function softDeleteProject(idOrSlug: string): Promise<boolean> {
+export async function softDeleteProject(id: string): Promise<boolean> {
 	const db = await getDb();
-	const col = db.collection<DbProject>("projects");
-	const filter: Filter<DbProject> = ObjectId.isValid(idOrSlug) ? { _id: new ObjectId(idOrSlug) } : { slug: idOrSlug };
+	const col = db.collection(PROJECTS_COLLECTION);
 
 	const res = await col.updateOne(
-		filter,
-		{ $set: { deletedAt: new Date(), updatedAt: new Date() } } as UpdateFilter<DbProject>,
+		{ _id: new ObjectId(id) },
+		{ $set: { deletedAt: new Date(), updatedAt: new Date() } }
 	);
 
-	return res.matchedCount > 0;
+	return res.modifiedCount > 0;
 }
 
 export async function ensureProjectIndexes() {
 	const db = await getDb();
-	const col = db.collection("projects");
+	const col = db.collection(PROJECTS_COLLECTION);
 	await col.createIndex({ slug: 1 }, { unique: true });
-	await col.createIndex({ status: 1, featured: -1, sortIndex: 1, publishedAt: -1 });
-	await col.createIndex({ updatedAt: -1 });
+	await col.createIndex({ status: 1 });
+	await col.createIndex({ featured: -1, sortIndex: 1, publishedAt: -1 });
 }

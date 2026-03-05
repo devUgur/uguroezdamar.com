@@ -1,8 +1,9 @@
 import "server-only";
 
-import {
+export {
 	createProject,
 	ensureProjectIndexes,
+	getProjectById,
 	getProjectBySlugMongo,
 	getProjects,
 	softDeleteProject,
@@ -10,31 +11,24 @@ import {
 } from "./repo";
 
 export {
-	createProject,
-	ensureProjectIndexes,
-	getProjectBySlugMongo,
-	getProjects,
-	softDeleteProject,
-	updateProject,
-} from "./repo";
-export { CreateProjectSchema, UpdateProjectSchema } from "./validators";
-export { buildProjectAssetKey, collectProjectAssetUrls, sanitizeProjectSlug } from "./assets";
+	CreateProjectSchema,
+	UpdateProjectSchema,
+	ProjectKindSchema,
+	ProjectLinkSchema,
+	ProjectImageSchema,
+} from "./validators";
 
-export const projects = {
-	getProjects,
-	getProjectBySlugMongo,
-	createProject,
-	updateProject,
-	softDeleteProject,
-	ensureProjectIndexes,
-};
+export { buildProjectAssetKey, collectProjectAssetUrls, sanitizeProjectSlug } from "./assets";
+export { getMdxProjectBySlug, getMdxProjects } from "./mdx";
 
 export type {
-	DbProject,
-	ProjectImage,
 	ProjectKind,
 	ProjectLink,
+	ProjectImage,
 	ProjectRecord,
-	ProjectStatus,
-} from "./repo";
+} from "./validators";
+
 export type { CreateProjectInput, UpdateProjectInput } from "./validators";
+
+// Re-export constants/types that might be needed
+export type ProjectStatus = "draft" | "published" | "archived";

@@ -1,15 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { canDelete, requireAdmin } from "@ugur/server";
-import {
+import { 
+  canDelete, 
+  getProjectById, 
+  softDeleteProject, 
+  updateProject, 
   UpdateProjectSchema,
   collectProjectAssetUrls,
-  deleteObjectsByPrefix,
   deleteObjectsByUrls,
-  getProjectBySlugMongo,
-  softDeleteProject,
-  updateProject,
-  type DbProject,
+  type ProjectRecord
 } from "@ugur/server";
+import { requireAdmin } from "@/apps/portal/src/adapters/auth/utils";
 
 export const runtime = "nodejs";
 
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
   if (!id) return NextResponse.json({ ok: false, error: "Missing id" }, { status: 400 });
 
   try {
-    const item = await getProjectBySlugMongo(id, { includeDrafts: true });
+    const item = await getProjectById(id);
     if (!item) return NextResponse.json({ ok: false, error: "Not Found" }, { status: 404 });
     return NextResponse.json({ ok: true, item });
   } catch (err: unknown) {
@@ -48,41 +48,28 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
-    const existing = await getProjectBySlugMongo(id, { includeDrafts: true });
+    const existing = await getProjectById(id);
     if (!existing) return NextResponse.json({ ok: false, error: "Not Found" }, { status: 404 });
 
-    const data = parsed.data;
-    const patch: Partial<DbProject> = {
-      ...(data.slug !== undefined ? { slug: data.slug } : {}),
-      ...(data.title !== undefined ? { title: data.title } : {}),
-      ...(data.summary !== undefined ? { summary: data.summary } : {}),
-      ...(data.content !== undefined ? { content: data.content } : {}),
-      ...(data.tags !== undefined ? { tags: data.tags } : {}),
-      ...(data.tech !== undefined ? { tech: data.tech } : {}),
-      ...(data.links !== undefined ? { links: data.links } : {}),
-      ...(data.images !== undefined ? { images: data.images } : {}),
-      ...(data.coverImageUrl !== undefined ? { coverImageUrl: data.coverImageUrl } : {}),
-      ...(data.previewImageUrl !== undefined ? { previewImageUrl: data.previewImageUrl } : {}),
-      ...(data.status !== undefined ? { status: data.status } : {}),
-      ...(data.featured !== undefined ? { featured: data.featured } : {}),
-      ...(data.isSecret !== undefined ? { isSecret: data.isSecret } : {}),
-      ...(data.sortIndex !== undefined ? { sortIndex: data.sortIndex } : {}),
-      ...(data.publishedAt !== undefined ? { publishedAt: new Date(data.publishedAt) } : {}),
-    };
+    const ok = await updateProject(id, parsed.data);
+    if (!ok) return NextResponse.json({ ok: false, error: "Failed to update" }, { status: 500 });
 
-    const item = await updateProject(id, patch);
-    if (!item) return NextResponse.json({ ok: false, error: "Not Found" }, { status: 404 });
+    // Handle asset cleanup if images changed
+    if (parsed.data.images || parsed.data.coverImageUrl) {
+       const updated = await getProjectById(id);
+       if (updated) {
+          const beforeUrls = collectProjectAssetUrls(existing as ProjectRecord);
+          const afterUrls = collectProjectAssetUrls(updated as ProjectRecord);
+          const afterSet = new Set(afterUrls);
+          const removedUrls = beforeUrls.filter((url) => !afterSet.has(url));
 
-    const beforeUrls = collectProjectAssetUrls(existing);
-    const afterUrls = collectProjectAssetUrls(item);
-    const afterSet = new Set(afterUrls);
-    const removedUrls = beforeUrls.filter((url) => !afterSet.has(url));
-
-    if (removedUrls.length) {
-      await deleteObjectsByUrls(removedUrls);
+          if (removedUrls.length) {
+            await deleteObjectsByUrls(removedUrls);
+          }
+       }
     }
 
-    return NextResponse.json({ ok: true, item });
+    return NextResponse.json({ ok: true });
   } catch (err: unknown) {
     return NextResponse.json({ ok: false, error: (err as Error)?.message ?? "Failed" }, { status: 500 });
   }
@@ -99,13 +86,6 @@ export async function DELETE(request: NextRequest) {
   if (!id) return NextResponse.json({ ok: false, error: "Missing id" }, { status: 400 });
 
   try {
-    const existing = await getProjectBySlugMongo(id, { includeDrafts: true });
-    if (!existing) return NextResponse.json({ ok: false, error: "Not Found" }, { status: 404 });
-
-    const urls = collectProjectAssetUrls(existing);
-    await deleteObjectsByUrls(urls);
-    await deleteObjectsByPrefix(`project-assets/${existing.slug}/`);
-
     const ok = await softDeleteProject(id);
     if (!ok) return NextResponse.json({ ok: false, error: "Not Found" }, { status: 404 });
     return NextResponse.json({ ok: true });

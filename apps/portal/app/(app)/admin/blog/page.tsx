@@ -1,4 +1,4 @@
-import { getBlogPosts } from "@/src/server/blog";
+import { getBlogPosts } from "@/apps/portal/src/adapters/blog";
 import Link from "next/link";
 
 export default async function AdminBlogPage() {

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAdmin } from "@ugur/server";
+import { requireAdmin } from "@/apps/portal/src/adapters/auth/utils";
 import { CreateProjectSchema, createProject, getProjects } from "@ugur/server";
 
 export const runtime = "nodejs";
@@ -9,11 +9,12 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(request.url);
-  const statusRaw = url.searchParams.get("status");
-  const status = statusRaw === "draft" || statusRaw === "published" || statusRaw === "archived" ? statusRaw : undefined;
+  const status = url.searchParams.get("status") || undefined;
+  const featuredRaw = url.searchParams.get("featured");
+  const featured = featuredRaw === "true" ? true : featuredRaw === "false" ? false : undefined;
 
   try {
-    const items = await getProjects({ status, includeDrafts: true, limit: 500 });
+    const items = await getProjects({ status, featured, limit: 500 });
     return NextResponse.json({ ok: true, items });
   } catch (err: unknown) {
     return NextResponse.json({ ok: false, error: (err as Error)?.message ?? "Failed" }, { status: 500 });
@@ -31,26 +32,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const data = parsed.data;
-    const project = await createProject({
-      slug: data.slug,
-      title: data.title,
-      summary: data.summary ?? "",
-      content: data.content ?? "",
-      tags: data.tags ?? [],
-      kinds: data.kinds ?? [],
-      tech: data.tech ?? [],
-      links: data.links ?? [],
-      images: data.images ?? [],
-      coverImageUrl: data.coverImageUrl ?? null,
-      previewImageUrl: data.previewImageUrl ?? null,
-      status: data.status ?? "draft",
-      featured: !!data.featured,
-      isSecret: !!data.isSecret,
-      sortIndex: data.sortIndex ?? 0,
-      publishedAt: data.publishedAt ? new Date(data.publishedAt) : null,
-    });
-
+    const project = await createProject(parsed.data);
     return NextResponse.json({ ok: true, item: project });
   } catch (err: unknown) {
     return NextResponse.json({ ok: false, error: (err as Error)?.message ?? "Failed" }, { status: 500 });

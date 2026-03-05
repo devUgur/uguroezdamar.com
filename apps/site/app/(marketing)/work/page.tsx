@@ -1,5 +1,5 @@
 import React from "react";
-import { getSiteWorkItems } from "@/src/server/work";
+import { getSiteWorkItems } from "@/src/adapters/work";
 import { WorkGrid, WorkHero } from "@/src/features/work-items";
 import { Container } from "@ugur/ui";
 

@@ -34,10 +34,11 @@ async function main() {
   try {
     await client.connect();
     const db = client.db();
-    const col = db.collection("leads");
 
-    console.log("Creating index: createdAt -1");
-    await col.createIndex({ createdAt: -1 });
+    // Ensure contact_requests index on createdAt -1
+    const contactCol = db.collection("contact_requests");
+    console.log("Creating contact_requests index: createdAt -1");
+    await contactCol.createIndex({ createdAt: -1 });
 
     // Ensure admin_sessions TTL index on `expiresAt`
     const sessionsCol = db.collection("admin_sessions");
@@ -57,27 +58,28 @@ async function main() {
     console.log("Creating unique index on admins email");
     await adminsCol.createIndex({ email: 1 }, { unique: true });
     
-    // Ensure work_items indexes
-    const workCol = db.collection("work_items");
-    console.log("Creating work_items indexes (slug unique, status, featured/sort/publishedAt)");
-    await workCol.createIndex({ slug: 1 }, { unique: true });
-    await workCol.createIndex({ status: 1 });
-    await workCol.createIndex({ featured: -1, sortIndex: 1, publishedAt: -1 });
-    // admin_invites indexes
+    // Ensure projects indexes
+    const projectsCol = db.collection("projects");
+    console.log("Creating projects indexes (slug unique, status, featured/publishedAt)");
+    await projectsCol.createIndex({ slug: 1 }, { unique: true });
+    await projectsCol.createIndex({ status: 1 });
+    await projectsCol.createIndex({ featured: -1, publishedAt: -1 });
+
+    // Ensure careerEntries indexes
+    const careerCol = db.collection("careerEntries");
+    console.log("Creating careerEntries indexes (slug unique, status/type, visibility, dates)");
+    await careerCol.createIndex({ slug: 1 }, { unique: true });
+    await careerCol.createIndex({ status: 1, type: 1 });
+    await careerCol.createIndex({ "visibility.about": 1, status: 1 });
+    await careerCol.createIndex({ "visibility.education": 1, status: 1 });
+    await careerCol.createIndex({ "date.start": -1, "date.end": -1, sortKey: 1 });
+
+    // Ensure admin_invites indexes
     const invitesCol = db.collection("admin_invites");
     console.log("Creating admin_invites indexes (tokenHash unique, expiresAt TTL)");
     await invitesCol.createIndex({ tokenHash: 1 }, { unique: true });
     await invitesCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
     
-    const retention = process.env.LEADS_RETENTION_DAYS;
-    if (retention) {
-      const days = Number(retention);
-      if (!Number.isNaN(days) && days > 0) {
-        console.log(`Creating TTL index (expireAfterSeconds=${days * 24 * 60 * 60})`);
-        await col.createIndex({ createdAt: 1 }, { expireAfterSeconds: days * 24 * 60 * 60 });
-      }
-    }
-
     console.log("Indexes created");
   } finally {
     await client.close();

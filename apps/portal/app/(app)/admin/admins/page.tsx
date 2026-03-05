@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { InviteForm } from "@/src/features/admin/ui/InviteForm";
-import { getAdminsSnapshot } from "@/src/server/admin";
+import { getAdminsSnapshot } from "@/apps/portal/src/adapters/admin";
 
 export default async function AdminsPage() {
   const { admins } = await getAdminsSnapshot();

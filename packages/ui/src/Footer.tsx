@@ -1,9 +1,15 @@
 import Link from "next/link";
-import { readCookie } from "@ugur/server";
+import { cookies } from "next/headers";
 
 export async function Footer() {
-  const sessionId = await readCookie("admin_session");
-  const isAuthed = !!sessionId;
+  let isAuthed = false;
+  try {
+    const store = await cookies();
+    isAuthed = !!store.get("admin_session")?.value;
+  } catch (error) {
+    // In environments where `cookies()` is not available (e.g., during build), this will throw.
+    // We can safely ignore this error and assume the user is not authenticated.
+  }
 
   return (
     <footer className="border-t border-border/40 py-10 mt-auto bg-background transition-colors duration-300">

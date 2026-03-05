@@ -1,4 +1,4 @@
-import { getProjectsSnapshot } from "@/src/server/projects";
+import { getProjectsSnapshot } from "@/apps/portal/src/adapters/projects";
 import Link from "next/link";
 
 export default async function ProjectsPage() {
@@ -34,19 +34,31 @@ export default async function ProjectsPage() {
               </tr>
             ) : (
               projects.map((project) => (
-                <tr key={project.slug} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                <tr key={project._id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                   <td className="p-4 font-medium">{project.title}</td>
                   <td className="p-4 text-muted-foreground font-mono text-xs">{project.slug}</td>
                   <td className="p-4">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      project.status === "published"
-                        ? "bg-green-100 text-green-700"
-                        : project.status === "archived"
-                          ? "bg-zinc-200 text-zinc-700"
-                          : "bg-yellow-100 text-yellow-700"
-                    }`}>
-                      {project.status}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        project.status === "published"
+                          ? "bg-green-100 text-green-700"
+                          : project.status === "archived"
+                            ? "bg-zinc-200 text-zinc-700"
+                            : "bg-yellow-100 text-yellow-700"
+                      }`}>
+                        {project.status}
+                      </span>
+                      {project.featured && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-yellow-400 text-yellow-900">
+                          Featured
+                        </span>
+                      )}
+                      {project.content && project.content.length > 100 && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700">
+                          Case Study
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="p-4">
                     <div className="flex gap-1 flex-wrap">
@@ -61,7 +73,7 @@ export default async function ProjectsPage() {
                     <Link href={`/projects/${project.slug}`} target="_blank" className="text-xs text-blue-500 hover:underline mr-4">
                       View
                     </Link>
-                    <Link href={`/admin/projects/${project.slug}`} className="text-xs text-blue-500 hover:underline">
+                    <Link href={`/admin/projects/${project._id}`} className="text-xs text-blue-500 hover:underline">
                       Edit
                     </Link>
                   </td>

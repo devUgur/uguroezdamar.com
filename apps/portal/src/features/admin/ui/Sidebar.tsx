@@ -12,9 +12,6 @@ export function Sidebar() {
         <Link href="/" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Dashboard
         </Link>
-        <Link href="/admin/leads" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
-          Leads
-        </Link>
         <div className="pt-4 mt-4 border-t opacity-50 px-4 text-xs font-semibold uppercase tracking-wider">
           Content
         </div>
@@ -22,13 +19,10 @@ export function Sidebar() {
           Blog Posts
         </Link>
         <Link href="/admin/projects" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
-          Projects
+          Portfolio & Projects
         </Link>
-        <Link href="/admin/timeline" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
-          Timeline
-        </Link>
-        <Link href="/admin/work-items" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
-          Work Items
+        <Link href="/admin/career" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
+          Career (CV)
         </Link>
         <Link href="/profile" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Profile

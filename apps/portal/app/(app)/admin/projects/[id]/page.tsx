@@ -1,9 +1,9 @@
 import ProjectForm from "@/src/features/projects/ui/ProjectForm";
-import { getProjectById } from "@/src/server/projects";
+import { getProjectByIdAdapter } from "@/apps/portal/src/adapters/projects";
 
 export default async function ProjectEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const project = await getProjectById(id);
+  const project = await getProjectByIdAdapter(id);
 
   if (!project) {
     return <div className="p-8">Project not found.</div>;
@@ -17,7 +17,7 @@ export default async function ProjectEditPage({ params }: { params: Promise<{ id
       </div>
 
       <div className="bg-card border rounded-xl p-6 shadow-sm">
-        <ProjectForm id={project.slug} initial={project} />
+        <ProjectForm id={project._id} initial={project} />
       </div>
     </div>
   );

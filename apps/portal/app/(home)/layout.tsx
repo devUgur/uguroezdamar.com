@@ -1,4 +1,4 @@
-import { getCurrentSession } from "@/src/server/auth";
+import { getCurrentSession } from "@/apps/portal/src/adapters/auth";
 
 export default async function HomeLayout({
   public: publicSlot,

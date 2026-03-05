@@ -6,7 +6,7 @@ export default function WorkGrid({ items }: { items: WorkItem[] }) {
   return (
     <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {items.map((it) => (
-        <WorkItemCard key={it.id} item={it} />
+        <WorkItemCard key={it._id} item={it} />
       ))}
     </section>
   );

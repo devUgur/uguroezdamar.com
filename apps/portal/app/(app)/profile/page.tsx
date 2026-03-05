@@ -1,4 +1,4 @@
-import { getProfileSnapshot } from "@/src/server/profile";
+import { getProfileSnapshot } from "@/apps/portal/src/adapters/profile";
 import ProfileForm from "@/src/features/profile/ui/ProfileForm";
 
 export default async function ProfilePage() {

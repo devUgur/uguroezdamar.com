@@ -7,8 +7,9 @@ import {
   clearLoginAttempts,
   getAdminByEmail,
   hashPassword,
-  timingSafeEqualsString
-} from "@ugur/server";
+  timingSafeEqualsString,
+  AdminLoginSchema
+} from "@ugur/server/admin";
 import { getDb } from "@ugur/server";
 
 export const runtime = "nodejs";
@@ -16,9 +17,12 @@ export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({} as Record<string, unknown>));
-    const email = typeof body.email === "string" ? body.email.toLowerCase().trim() : "";
-    const password = typeof body.password === "string" ? body.password : "";
+    const parsed = AdminLoginSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: "Invalid credentials" }, { status: 400 });
+    }
 
+    const { email, password } = parsed.data;
     const ip = request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip") ?? "unknown";
 
     // Debug: incoming request metadata (no secrets)
@@ -43,10 +47,6 @@ export async function POST(request: NextRequest) {
     const attempts = await countRecentFailedLoginAttempts(ip, windowSec);
   if (attempts >= maxAttempts) {
     return NextResponse.json({ ok: false, error: "Security Lock: Too many attempts. Try again later." }, { status: 429 });
-  }
-
-  if (!email || !password) {
-    return NextResponse.json({ ok: false, error: "Invalid credentials" }, { status: 401 });
   }
 
     // 2. Find admin

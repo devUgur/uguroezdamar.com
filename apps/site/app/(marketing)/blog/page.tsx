@@ -1,5 +1,5 @@
 import { PostCard } from "@/src/features/blog";
-import { getAllPosts } from "@/src/server/blog";
+import { getAllPosts } from "@/src/adapters/blog";
 import { Container, Section } from "@ugur/ui";
 
 export default async function BlogPage() {

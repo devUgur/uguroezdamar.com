@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 
-import { submitContact } from "@/src/server/contact";
+import { submitContact } from "@/src/adapters/contact";
 import { Button } from "@ugur/ui";
 import { Card } from "@ugur/ui";
 

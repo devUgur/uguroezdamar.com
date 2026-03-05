@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAdmin, canInvite, createAdminInvite, type AdminRole } from "@ugur/server";
+import { canInvite, createAdminInvite, type AdminRole } from "@ugur/server";
+import { requireAdmin } from "@/apps/portal/src/adapters/auth/utils";
 
 export const runtime = "nodejs";
 

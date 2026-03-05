@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAdmin } from "@ugur/server";
 import { getProfile, UpsertProfileSchema, upsertProfile } from "@ugur/server";
+import { requireAdmin } from "@/apps/portal/src/adapters/auth/utils";
 
 export const runtime = "nodejs";
 

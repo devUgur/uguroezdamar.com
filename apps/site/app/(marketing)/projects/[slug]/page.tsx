@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
-import { getSiteProjectBySlug, getSiteProjects } from "@/src/server/projects";
+import { getSiteProjectBySlug, getSiteProjects } from "@/src/adapters/projects";
 import { Container, Section } from "@ugur/ui";
 
 export async function generateStaticParams() {
@@ -21,7 +21,7 @@ export default async function ProjectDetailPage({
 
   return (
     <Container>
-      <Section title={project.title} description={project.summary}>
+      <Section title={project.title} description={project.summary || undefined}>
         {project.images.length ? (
           <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-3">
             {project.images.map((image) => (

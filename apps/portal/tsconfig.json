@@ -6,7 +6,8 @@
       "@/*": ["../../*", "./*"],
       "@ugur/ui": ["../../packages/ui/src/index.ts"],
       "@ugur/core": ["../../packages/core/src/index.ts"],
-      "@ugur/server": ["../../packages/server/src/index.ts"]
+      "@ugur/server": ["../../packages/server/src/index.ts"],
+      "@ugur/server/*": ["../../packages/server/src/*"]
     }
   },
   "include": [

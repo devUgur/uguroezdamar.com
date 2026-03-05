@@ -6,8 +6,8 @@ const allowedExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
 const ignoredDirs = new Set([".git", "node_modules", ".next", ".turbo", "dist", "coverage", ".repoan"]);
 
 const forbiddenPatterns = [
-  /from\s+["']@ugur\/ui\/(?:src|dist)(?:\/[^"']*)?["']/g,
-  /require\(\s*["']@ugur\/ui\/(?:src|dist)(?:\/[^"']*)?["']\s*\)/g,
+  /from\s+["']@ugur\/(?:ui|server|core)\/(?:src|dist)(?:\/[^"']*)?["']/g,
+  /require\(\s*["']@ugur\/(?:ui|server|core)\/(?:src|dist)(?:\/[^"']*)?["']\s*\)/g,
 ];
 
 const violations = [];

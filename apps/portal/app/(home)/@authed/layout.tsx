@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
-import { getCurrentSession } from "@/src/server/auth";
+import { getCurrentSession } from "@/apps/portal/src/adapters/auth";
 import { Sidebar } from "@/src/features/admin/ui/Sidebar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {

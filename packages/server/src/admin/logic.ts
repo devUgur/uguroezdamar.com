@@ -1,7 +1,6 @@
 import "server-only";
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { ObjectId, type Filter } from "mongodb";
-import type { NextRequest } from "next/server";
 import { env } from "../env";
 import { getDb } from "../mongodb";
 
@@ -208,24 +207,6 @@ export function timingSafeEqualsString(a: string, b: string) {
   }
 }
 
-export async function requireAdmin(request: NextRequest): Promise<RequireAdminResult> {
-  const header = request.headers.get("authorization") ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-  const key = env.ADMIN_API_KEY ?? "";
-  if (token && key) {
-    if (timingSafeEqualsString(token, key)) {
-      return { ok: true, method: "bearer" };
-    }
-  }
-
-  const sessionId = request.cookies.get("admin_session")?.value ?? null;
-  if (!sessionId) return { ok: false, reason: "no_session" };
-  const session = await getAdminSession(sessionId);
-  if (!session) return { ok: false, reason: "invalid_session" };
-  const admin = await getAdminByEmail(session.email);
-  return { ok: true, method: "session", session, admin: admin ?? null };
-}
-
 export function canDelete(admin?: Admin | null) {
   if (!admin) return false;
   return admin.role === "owner" || admin.role === "admin";
@@ -247,6 +228,16 @@ export async function clearLoginAttempts(ip?: string | null) {
   const db = await getDb();
   const col = db.collection(LOGIN_ATTEMPTS_COLL);
   await col.deleteMany({ ip });
+}
+
+export async function countContactRequests() {
+  const db = await getDb();
+  return db.collection("contact_requests").countDocuments();
+}
+
+export async function listAdmins() {
+  const db = await getDb();
+  return db.collection<Admin>(ADMINS_COLL).find().sort({ createdAt: -1 }).toArray();
 }
 
 export async function countRecentFailedLoginAttempts(ip?: string | null, windowSeconds = 900) {

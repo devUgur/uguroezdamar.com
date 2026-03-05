@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAdmin } from "@ugur/server";
+import { requireAdmin } from "@/apps/portal/src/adapters/auth/utils";
 import { deleteObjectByUrl } from "@ugur/server";
 
 export const runtime = "nodejs";

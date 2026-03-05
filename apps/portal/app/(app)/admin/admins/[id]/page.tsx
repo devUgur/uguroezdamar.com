@@ -1,11 +1,11 @@
-import { getAdminById } from "@ugur/server";
+import { getAdminDetail } from "@/apps/portal/src/adapters/admin";
 import { notFound } from "next/navigation";
 import { Button, Card } from "@ugur/ui";
 import Link from "next/link";
 
 export default async function AdminEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const admin = await getAdminById(id);
+  const admin = await getAdminDetail(id);
 
   if (!admin) {
     notFound();

@@ -19,23 +19,33 @@ export const ProjectImageSchema = z.object({
 export const CreateProjectSchema = z.object({
 	slug: z.string().min(1),
 	title: z.string().min(1),
-	summary: z.string().optional(),
-	content: z.string().optional(),
-	tags: z.array(z.string()).optional(),
-	tech: z.array(z.string()).optional(),
-	links: z.array(ProjectLinkSchema).optional(),
-	kinds: z.array(ProjectKindSchema).optional(),
-	images: z.array(ProjectImageSchema).optional(),
+	summary: z.string().optional().nullable(),
+	content: z.string().optional().nullable(), // MDX or long-form content
+	tags: z.array(z.string()).optional().default([]),
+	tech: z.array(z.string()).optional().default([]),
+	links: z.array(ProjectLinkSchema).optional().default([]),
+	kinds: z.array(ProjectKindSchema).optional().default([]),
+	images: z.array(ProjectImageSchema).optional().default([]),
 	coverImageUrl: z.string().url().optional().nullable(),
 	previewImageUrl: z.string().url().optional().nullable(),
-	status: z.enum(["draft", "published", "archived"]).optional(),
-	featured: z.boolean().optional(),
-	isSecret: z.boolean().optional(),
-	sortIndex: z.number().int().optional(),
-	publishedAt: z.string().datetime().optional(),
+	previewUpdatedAt: z.string().datetime().optional().nullable(),
+	status: z.enum(["draft", "published", "archived"]).default("draft"),
+	featured: z.boolean().default(false),
+	isSecret: z.boolean().default(false),
+	sortIndex: z.number().int().optional().default(0),
+	publishedAt: z.string().datetime().optional().nullable(),
 });
 
 export const UpdateProjectSchema = CreateProjectSchema.partial();
 
+export type ProjectKind = z.infer<typeof ProjectKindSchema>;
+export type ProjectLink = z.infer<typeof ProjectLinkSchema>;
+export type ProjectImage = z.infer<typeof ProjectImageSchema>;
 export type CreateProjectInput = z.infer<typeof CreateProjectSchema>;
 export type UpdateProjectInput = z.infer<typeof UpdateProjectSchema>;
+
+export type ProjectRecord = CreateProjectInput & {
+	_id: string;
+	createdAt: string;
+	updatedAt: string;
+};
