@@ -1,0 +1,11 @@
+# Render Blueprint – Static Site (@ugur/site)
+# Build must run from repo root so apps/site/out is created.
+# Dashboard: Static Site → Connect repo → use Build command below.
+
+services:
+  - type: web
+    name: ugur-site
+    runtime: static
+    # Build from repo root so monorepo deps resolve and out/ is under apps/site/
+    buildCommand: pnpm install && pnpm run build:site
+    staticPublishPath: apps/site/out
