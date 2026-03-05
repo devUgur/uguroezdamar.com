@@ -57,6 +57,9 @@ function mapMdxProject(slug: string, parsed: matter.GrayMatterFile<string>): Pro
     isSecret: Boolean(parsed.data.isSecret ?? false),
     sortIndex: Number(parsed.data.sortIndex ?? 0),
     publishedAt: null,
+    yearFrom: typeof parsed.data.yearFrom === "number" ? parsed.data.yearFrom : null,
+    yearTo: typeof parsed.data.yearTo === "number" ? parsed.data.yearTo : null,
+    ongoing: Boolean(parsed.data.ongoing ?? false),
     createdAt: now,
     updatedAt: now,
   };

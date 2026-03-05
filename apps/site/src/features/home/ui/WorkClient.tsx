@@ -60,13 +60,12 @@ export default function WorkClient({ projects }: { projects: SelectedWorkProject
   }, []);
 
   const projectCards = projects.map((project, i) => {
-    const isEven = i % 2 === 0;
     const indexLabel = String(i + 1).padStart(2, "0");
 
     return (
       <div key={project.slug} className="group relative grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-8 items-center">
         {/* Device Image Area */}
-        <div className={`flex flex-col gap-6 ${isEven ? "lg:col-span-7" : "lg:col-span-7 lg:col-start-6 lg:row-start-1"}`}>
+        <div className="flex flex-col gap-6 order-2 lg:order-1 lg:col-span-7">
           <div className="relative w-full min-h-[220px] sm:min-h-[280px] md:min-h-[320px] lg:min-h-[380px] xl:min-h-[440px] aspect-video max-h-[260px] sm:max-h-[360px] md:max-h-[420px] lg:max-h-[500px] xl:max-h-[580px] flex items-center justify-center overflow-visible bg-muted/20 rounded-2xl group-hover:bg-muted/40 transition-colors duration-700">
             <ProjectDisplay
               project={project}
@@ -106,9 +105,8 @@ export default function WorkClient({ projects }: { projects: SelectedWorkProject
                       aria-selected={idx === current}
                       aria-label={`Image ${idx + 1} of ${images.length}`}
                       onClick={() => setSlide(i, type, idx)}
-                      className={`h-[2px] rounded-full transition-all duration-300 ${
-                        idx === current ? "w-6 bg-foreground" : "w-3 bg-border hover:bg-muted-foreground/50"
-                      }`}
+                      className={`h-[2px] rounded-full transition-all duration-300 ${idx === current ? "w-6 bg-foreground" : "w-3 bg-border hover:bg-muted-foreground/50"
+                        }`}
                     />
                   ))}
                 </div>
@@ -126,7 +124,7 @@ export default function WorkClient({ projects }: { projects: SelectedWorkProject
         </div>
 
         {/* Project Meta Information Area */}
-        <div className={`flex flex-col ${isEven ? "lg:col-span-4 lg:col-start-9" : "lg:col-span-4 lg:row-start-1"}`}>
+        <div className="flex flex-col order-1 lg:order-2 lg:col-span-4 lg:col-start-9">
           <div className="flex items-baseline gap-4 mb-5">
             <span className="font-mono text-sm text-muted-foreground/50">{indexLabel}</span>
             <h3 className="font-serif text-3xl md:text-4xl text-foreground">
@@ -159,11 +157,10 @@ export default function WorkClient({ projects }: { projects: SelectedWorkProject
                       <button
                         key={t}
                         type="button"
-                        className={`font-mono text-[10px] uppercase tracking-widest pb-1 border-b transition-all duration-300 ${
-                          isActive
-                            ? "border-foreground text-foreground"
-                            : "border-transparent text-muted-foreground hover:text-foreground/80 hover:border-foreground/30"
-                        }`}
+                        className={`font-mono text-[10px] uppercase tracking-widest pb-1 border-b transition-all duration-300 ${isActive
+                          ? "border-foreground text-foreground"
+                          : "border-transparent text-muted-foreground hover:text-foreground/80 hover:border-foreground/30"
+                          }`}
                         onMouseEnter={() => setActiveDevices((prev) => ({ ...prev, [i]: t }))}
                         onClick={() => setActiveDevices((prev) => ({ ...prev, [i]: t }))}
                       >
