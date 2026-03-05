@@ -14,7 +14,7 @@ export type ProjectRow = {
   status: string;
   featured?: boolean;
   tags: string[];
-  content?: string;
+  content?: string | null;
 };
 
 type Props = {
