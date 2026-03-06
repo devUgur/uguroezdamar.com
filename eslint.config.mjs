@@ -116,6 +116,23 @@ export default tseslint.config(
     },
   },
   {
+    files: [
+      "apps/site/app/api/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "apps/site/app/**/route.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "apps/site/app/**/actions.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "apps/site/src/server/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "apps/site/middleware.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [...alwaysRestrictedPatterns, ...siteRestrictedPatterns],
+        },
+      ],
+    },
+  },
+  {
     files: ["apps/portal/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}"],
     rules: {
       "no-restricted-imports": [
