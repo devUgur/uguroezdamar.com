@@ -4,7 +4,24 @@ import path from "node:path";
 import matter from "gray-matter";
 import { getProjectBySlugMongo, getProjects, type ProjectKind, type ProjectRecord } from "@ugur/server";
 
-const contentDir = path.join(process.cwd(), "content", "projects");
+async function resolveContentDir() {
+  const cwd = process.cwd();
+  const candidates = [
+    path.join(cwd, "content", "projects"),
+    path.join(cwd, "apps", "site", "content", "projects"),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {
+      continue;
+    }
+  }
+
+  return candidates[0];
+}
 
 function toProjectKind(value: unknown): ProjectKind | null {
   const kindValue = String(value ?? "").toLowerCase();
@@ -66,6 +83,7 @@ function mapMdxProject(slug: string, parsed: matter.GrayMatterFile<string>): Pro
 }
 
 export async function getSiteProjects(): Promise<ProjectRecord[]> {
+  const contentDir = await resolveContentDir();
   if (process.env.MONGODB_URI) {
     try {
       const dbProjects = await getProjects({ status: "published", limit: 500 });
@@ -91,6 +109,7 @@ export async function getSiteProjects(): Promise<ProjectRecord[]> {
 }
 
 export async function getSiteProjectBySlug(slug: string): Promise<ProjectRecord | null> {
+  const contentDir = await resolveContentDir();
   if (process.env.MONGODB_URI) {
     try {
       const dbProject = await getProjectBySlugMongo(slug);

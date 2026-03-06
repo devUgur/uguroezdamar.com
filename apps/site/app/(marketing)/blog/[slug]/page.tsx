@@ -5,8 +5,17 @@ import { getAllPosts, getPostBySlug } from "@/src/adapters/blog";
 import { Container, Section } from "@ugur/ui";
 
 export async function generateStaticParams() {
-  const posts = await getAllPosts();
-  return posts.map((p) => ({ slug: p.slug }));
+  try {
+    const posts = await getAllPosts();
+    if (posts.length > 0) {
+      return posts.map((p) => ({ slug: p.slug }));
+    }
+  } catch (error) {
+    console.error("Failed to generate static params for blog:", error);
+  }
+
+  // Fallback to avoid build error in Next.js 16 if no posts found
+  return [{ slug: "__placeholder__" }];
 }
 
 export const dynamicParams = false;

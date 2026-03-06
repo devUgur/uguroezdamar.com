@@ -5,8 +5,17 @@ import { getSiteProjectBySlug, getSiteProjects } from "@/src/adapters/projects";
 import { Container, Section } from "@ugur/ui";
 
 export async function generateStaticParams() {
-  const projects = await getSiteProjects();
-  return projects.map((p) => ({ slug: p.slug }));
+  try {
+    const projects = await getSiteProjects();
+    if (projects.length > 0) {
+      return projects.map((p) => ({ slug: p.slug }));
+    }
+  } catch (error) {
+    console.error("Failed to generate static params for projects:", error);
+  }
+
+  // Fallback to avoid build error in Next.js 16 if no projects found
+  return [{ slug: "__placeholder__" }];
 }
 
 export const dynamicParams = false;

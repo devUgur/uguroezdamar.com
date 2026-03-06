@@ -3,8 +3,17 @@ import { notFound } from "next/navigation";
 import { getSiteWorkItemBySlug, getSiteWorkItems } from "@/src/adapters/work";
 
 export async function generateStaticParams() {
-  const items = await getSiteWorkItems();
-  return items.map((p) => ({ slug: p.slug }));
+  try {
+    const items = await getSiteWorkItems();
+    if (items.length > 0) {
+      return items.map((p) => ({ slug: p.slug }));
+    }
+  } catch (error) {
+    console.error("Failed to generate static params for work:", error);
+  }
+
+  // Fallback to avoid build error in Next.js 16 if no items found
+  return [{ slug: "__placeholder__" }];
 }
 
 export const dynamicParams = false;
