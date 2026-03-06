@@ -1,6 +1,6 @@
 /** Client-safe exports only (no Server Components like Footer that use next/headers). */
-export { Button } from "./Button";
-export { Card } from "./Card";
-export { Container } from "./Container";
-export { Tag } from "./Tag";
-export { ThemeToggle } from "./ThemeToggle";
+export { Button } from "./primitives/Button";
+export { Card } from "./primitives/Card";
+export { Container } from "./primitives/Container";
+export { Tag } from "./primitives/Tag";
+export { ThemeToggle } from "./theme/ThemeToggle";

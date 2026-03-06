@@ -31,8 +31,8 @@ export function Sidebar() {
         <div className="pt-4 mt-4 border-t opacity-50 px-4 text-xs font-semibold uppercase tracking-wider">
           Settings
         </div>
-        <Link href="/admin/admins" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
-          Manage Admins
+        <Link href="/admin/team" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
+          Team
         </Link>
       </nav>
       <div className="p-4 border-t space-y-3">

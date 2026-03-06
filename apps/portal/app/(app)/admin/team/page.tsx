@@ -1,15 +1,15 @@
 import Link from "next/link";
-import { InviteForm } from "@/src/features/admin/ui/InviteForm";
+import { InviteForm } from "@/src/features/team";
 import { getAdminsSnapshot } from "@/apps/portal/src/adapters/admin";
 
-export default async function AdminsPage() {
+export default async function TeamPage() {
   const { admins } = await getAdminsSnapshot();
 
   return (
     <div className="p-8 space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-1">Admin Management</h1>
+          <h1 className="text-3xl font-bold tracking-tight mb-1">Team</h1>
           <p className="text-muted-foreground">Invite other admins to manage the portfolio.</p>
         </div>
       </div>
@@ -55,7 +55,7 @@ export default async function AdminsPage() {
                         {admin.lastLogin ? new Date(admin.lastLogin).toLocaleString() : "Never"}
                       </td>
                       <td className="p-4 text-right">
-                        <Link href={`/admin/admins/${admin._id?.toString() || admin.email}`} className="text-xs text-blue-500 hover:underline">
+                        <Link href={`/admin/team/${admin._id?.toString() || admin.email}`} className="text-xs text-blue-500 hover:underline">
                           Edit
                         </Link>
                       </td>
@@ -67,7 +67,7 @@ export default async function AdminsPage() {
           </div>
         </div>
       </div>
-      
+
       <div className="bg-muted/50 border rounded-lg p-4 text-sm text-muted-foreground">
         <strong>How invitations work:</strong> Once invited, the new admin can log in using their email. On the first login, they must use the <code>ADMIN_API_KEY</code> as their password to activate their account.
       </div>

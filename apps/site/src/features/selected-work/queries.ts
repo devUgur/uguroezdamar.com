@@ -1,5 +1,5 @@
 import { getProjects, getProjectBySlugMongo, type ProjectRecord } from "@ugur/server";
-import { getSiteProjects, getSiteProjectBySlug } from "./projects";
+import { getSiteProjects, getSiteProjectBySlug } from "../projects/queries";
 
 export async function getSiteWorkItems(): Promise<ProjectRecord[]> {
   if (process.env.MONGODB_URI) {
@@ -11,7 +11,7 @@ export async function getSiteWorkItems(): Promise<ProjectRecord[]> {
   }
 
   const projects = await getSiteProjects();
-  return projects.filter(p => p.featured);
+  return projects.filter((p) => p.featured);
 }
 
 /** Slugs for static export (work detail pages). */

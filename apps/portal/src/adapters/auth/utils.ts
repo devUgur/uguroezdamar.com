@@ -1,6 +1,12 @@
 import { cookies, headers } from "next/headers";
-import { env } from "@ugur/server";
-import { getAdminByEmail, getAdminSession, timingSafeEqualsString, type Admin, type AdminSession } from "@ugur/server/admin";
+import {
+  env,
+  getAdminByEmail,
+  getAdminSession,
+  timingSafeEqualsString,
+  type Admin,
+  type AdminSession,
+} from "@ugur/server";
 
 export type RequireAdminResult =
   | { ok: true; method: "bearer"; session?: never; admin?: never }

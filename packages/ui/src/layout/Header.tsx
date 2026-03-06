@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Logo } from "./Logo";
-import { ThemeToggle } from "./ThemeToggle";
+import { Logo } from "../branding/Logo";
+import { ThemeToggle } from "../theme/ThemeToggle";
 import { cn } from "@ugur/core";
 
 export function Header() {

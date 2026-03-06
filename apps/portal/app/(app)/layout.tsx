@@ -1,9 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { getCurrentSession } from "@/apps/portal/src/adapters/auth";
-import { AppShell } from "@/src/features/admin/ui/AppShell";
-import { PublicLayout } from "@/src/features/admin/ui/PublicLayout";
-import { RedirectIfNotHome } from "@/src/features/admin/ui/RedirectIfNotHome";
+import { AppShell, PublicLayout, RedirectIfNotHome } from "@/src/features/shell";
 
 /**
  * Single layout for all (app) routes. Session is known here (server), so we keep

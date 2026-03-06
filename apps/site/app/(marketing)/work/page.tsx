@@ -1,6 +1,6 @@
 import React from "react";
-import { getSiteWorkItems } from "@/src/adapters/work";
-import { WorkGrid, WorkHero } from "@/src/features/work-items";
+import { getSiteWorkItems } from "@/src/features/selected-work/queries";
+import { WorkGrid, WorkHero } from "@/src/features/selected-work";
 import { Container } from "@ugur/ui";
 
 export default async function WorkPage() {

@@ -19,7 +19,7 @@
     "build:site": "pnpm guard && turbo run build --filter=@ugur/site",
     "lint": "pnpm guard && turbo lint",
     "typecheck": "pnpm guard && turbo typecheck",
-    "test": "turbo test",
+    "test": "pnpm guard && turbo run build --filter=@ugur/server --filter=@ugur/core && vitest run",
     "clean": "turbo clean",
     "setup:indexes": "node ./tooling/scripts/setup-indexes.mjs",
     "migrate:projects": "node ./tooling/scripts/migrate-projects.mjs",

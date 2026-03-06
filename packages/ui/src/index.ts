@@ -1,5 +1,5 @@
-export { Button } from "./Button";
-export { Card } from "./Card";
+export { Button } from "./primitives/Button";
+export { Card } from "./primitives/Card";
 export {
   Select,
   SelectGroup,
@@ -9,7 +9,7 @@ export {
   SelectLabel,
   SelectItem,
   SelectSeparator,
-} from "./Select";
+} from "./primitives/Select";
 export {
   Avatar,
   AvatarImage,
@@ -17,19 +17,19 @@ export {
   AvatarBadge,
   AvatarGroup,
   AvatarGroupCount,
-} from "./ui/avatar";
-export { Container } from "./Container";
-export { Footer } from "./Footer";
-export { Header } from "./Header";
-export { Logo } from "./Logo";
-export { ScrollProgress } from "./ScrollProgress";
-export { Section } from "./Section";
-export { Tag } from "./Tag";
-export { ThemeProvider } from "./ThemeProvider";
-export { ThemeToggle } from "./ThemeToggle";
-export { Toaster } from "./ui/sonner";
+} from "./primitives/avatar";
+export { Container } from "./primitives/Container";
+export { Footer } from "./layout/Footer";
+export { Header } from "./layout/Header";
+export { Logo } from "./branding/Logo";
+export { ScrollProgress } from "./layout/ScrollProgress";
+export { Section } from "./primitives/Section";
+export { Tag } from "./primitives/Tag";
+export { ThemeProvider } from "./theme/ThemeProvider";
+export { ThemeToggle } from "./theme/ThemeToggle";
+export { Toaster } from "./feedback/sonner";
 export { toast } from "sonner";
-export { Topbar } from "./Topbar";
-export { fadeUp, makeFadeUp } from "./animations";
+export { Topbar } from "./layout/Topbar";
+export { fadeUp, makeFadeUp } from "./primitives/animations";
 export { default as GitHubIcon } from "./icons/GitHubIcon";
 export { default as LinkedInIcon } from "./icons/LinkedInIcon";

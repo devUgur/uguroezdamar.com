@@ -1,5 +1,5 @@
 import React from "react";
-import { getTimelineForEducation } from "@/src/adapters/home";
+import { getTimelineForEducation } from "@/src/features/home/queries";
 
 export async function Education() {
   const education = await getTimelineForEducation();

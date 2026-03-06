@@ -1,5 +1,5 @@
 import type { ProjectRecord } from "@ugur/server";
-import { getSiteWorkItems } from "@/src/adapters/work";
+import { getSiteWorkItems } from "@/src/features/selected-work/queries";
 import WorkClient, { type DeviceType, type SelectedWorkProject, type WorkImage, type WorkApp } from "./WorkClient";
 
 function toYearLabel(project: ProjectRecord): string {

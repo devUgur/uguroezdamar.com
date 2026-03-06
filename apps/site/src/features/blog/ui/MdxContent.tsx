@@ -1,4 +1,4 @@
-import { compileMdx } from "@/src/adapters/blog";
+import { compileMdx } from "@/src/features/blog/queries";
 
 export async function MdxContent({ source }: { source: string }) {
   const content = await compileMdx(source);

@@ -10,6 +10,8 @@ export default defineConfig({
     alias: {
       '@': resolve(__dirname),
       'server-only': resolve(__dirname, 'tests', '_stubs', 'server-only.js'),
+      '@ugur/server': resolve(__dirname, 'packages/server/dist/index.js'),
+      '@ugur/core': resolve(__dirname, 'packages/core/dist/index.js'),
     },
   },
 });

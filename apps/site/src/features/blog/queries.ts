@@ -7,13 +7,7 @@ import matter from "gray-matter";
 import { compileMDX } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
 
-export type PostRecord = {
-  slug: string;
-  title: string;
-  summary: string;
-  date?: string;
-  source: string;
-};
+import type { PostRecord } from "./types";
 
 async function resolveContentDir() {
   const cwd = process.cwd();

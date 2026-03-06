@@ -20,11 +20,19 @@ Portfolio + Admin Portal monorepo powered by pnpm workspaces + Turborepo.
   [ packages/core ] <--- (Shared Utils)
 ```
 
+**Package roles in a nutshell:** `apps/site` = public portfolio; `apps/portal` = internal content and admin; `packages/server` = domain logic, validation, persistence; `packages/ui` = shared presentation primitives; `packages/core` = low-level shared utilities.
+
+### System overview (60 seconds)
+
+- **What is what:** `site` = public portfolio (marketing, blog, projects, work, contact). `portal` = internal CMS and admin (projects, career, blog, profile, team). Both use `packages/server` for domain logic and `packages/ui` for shared components.
+- **Where content lives:** File-based content: MDX in `apps/site/content/` (projects, blog) for static export and fallback. Database: MongoDB for projects (optional), career, profile, contact requests, admins/team. See [ADR 0006](.cursor/adr/0006-domain-glossary-and-boundaries.md) for the full content source-of-truth table.
+- **What is canonical:** Architecture and coding rules = ESLint (`eslint.config.mjs`) + ADRs (`.cursor/adr/`). Domain terms and boundaries = [ADR 0006](.cursor/adr/0006-domain-glossary-and-boundaries.md). Rename rationale = [ADR 0007](.cursor/adr/0007-renames-selected-work-and-admin-team.md). Tooling and AI context = `.cursor/`, `.github/instructions` (do not override the rules above).
+
 ### Layer Responsibilities
 
 | Layer | Responsibility | Contents |
 | :--- | :--- | :--- |
-| **Apps** (`apps/*`) | Routing, Adapters, Caching | Next.js Pages, API Routes, Server Actions, Site-specific mappings |
+| **Apps** (`apps/*`) | Routing, Page Data, Caching | Next.js Pages, API Routes, Server Actions. **Feature queries/actions** (`apps/*/src/features/*/queries.ts`, `actions.ts`) = page data loaders / BFF: they compose data for pages from `@ugur/server` and/or file-based content (e.g. MDX). In `apps/portal`, `src/adapters` is still used; see [ADR 0009](.cursor/adr/0009-feature-local-queries-and-actions.md). |
 | **Features** (`src/features/*`) | Domain UI & Local Logic | React Components, local types, local state |
 | **Shared UI** (`packages/ui`) | UI Primitives (Design System) | Buttons, Inputs, Cards (Shadcn), Layout |
 | **Domain Layer** (`packages/server`) | **Single Source of Truth** | Repositories, Validators, Use-cases, DB logic |
@@ -58,6 +66,13 @@ Portfolio + Admin Portal monorepo powered by pnpm workspaces + Turborepo.
 
 - `pnpm guard` runs architecture guards (legacy imports, feature imports, deep imports).
 - `pnpm lint`, `pnpm typecheck`, and `pnpm build` all run `pnpm guard` first.
+
+## Governance and rules (documentation compass)
+
+- **Read first:** This README and [ADR 0006](.cursor/adr/0006-domain-glossary-and-boundaries.md) (domain glossary, boundaries, content source-of-truth).
+- **Binding:** ESLint (`eslint.config.mjs`) and ADRs (`.cursor/adr/`) define architecture and coding rules.
+- **Tool-/AI-specific:** `.cursor/`, `.github/instructions` = editor and CI prompts; they do not override the binding rules.
+- **Historical/context:** [optimization review](.cursor/optimization-review.md) and other `.cursor/` docs = context for decisions, not operative requirements.
 
 ## Shadcn in Monorepo
 
