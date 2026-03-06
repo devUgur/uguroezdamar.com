@@ -11,7 +11,9 @@ export async function getSiteWorkItems(): Promise<ProjectRecord[]> {
   }
 
   const projects = await getSiteProjects();
-  return projects.filter((p) => p.featured);
+  const featured = projects.filter((p) => p.featured);
+  // Exclude the known fallback project so it never appears as "selected work" in production
+  return featured.filter((p) => p.slug !== "my-project");
 }
 
 /** Slugs for static export (work detail pages). */
