@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev -p 3000",
-    "build": "next build --webpack",
-    "start": "next start -p 3000",
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
     "lint": "eslint app --ext .ts,.tsx",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node -e \"console.log('No tests configured for @ugur/site yet')\"",

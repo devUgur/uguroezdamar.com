@@ -5,6 +5,7 @@
     "paths": {
       "@/*": ["../../*", "./*"],
       "@ugur/ui": ["../../packages/ui/src/index.ts"],
+      "@ugur/ui/client": ["../../packages/ui/src/client.ts"],
       "@ugur/core": ["../../packages/core/src/index.ts"],
       "@ugur/server": ["../../packages/server/src/index.ts"]
     }

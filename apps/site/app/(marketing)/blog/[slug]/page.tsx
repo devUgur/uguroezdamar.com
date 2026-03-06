@@ -9,6 +9,8 @@ export async function generateStaticParams() {
   return posts.map((p) => ({ slug: p.slug }));
 }
 
+export const dynamicParams = false;
+
 export default async function BlogDetailPage({
   params,
 }: {

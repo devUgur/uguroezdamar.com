@@ -1,9 +1,10 @@
 import { Container } from "@ugur/ui";
 import { notFound } from "next/navigation";
-import { getSiteWorkSlugs, getSiteWorkItemBySlug } from "@/src/adapters/work";
+import { getSiteWorkItemBySlug, getSiteWorkItems } from "@/src/adapters/work";
 
 export async function generateStaticParams() {
-  return getSiteWorkSlugs();
+  const items = await getSiteWorkItems();
+  return items.map((p) => ({ slug: p.slug }));
 }
 
 export const dynamicParams = false;
