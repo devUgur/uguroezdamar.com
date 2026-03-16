@@ -1,6 +1,6 @@
 import { Container } from "@ugur/ui";
 import { notFound } from "next/navigation";
-import { getSiteWorkItemBySlug, getSiteWorkItems } from "@/src/adapters/work";
+import { getSiteWorkItemBySlug, getSiteWorkItems } from "@/src/features/selected-work/queries";
 
 export async function generateStaticParams() {
   try {
