@@ -203,12 +203,12 @@ export default function WorkClient({ projects }: { projects: SelectedWorkProject
   return (
     <section id="work" className="py-24 md:py-32 lg:py-40 px-6 md:px-12 lg:px-24 hairline-t">
       <h2 className="font-mono text-sm uppercase tracking-widest text-muted-foreground mb-16 md:mb-24">
-        02 — Selected Work
+        02 — Work
       </h2>
 
       {projects.length === 0 ? (
         <div className="text-sm text-muted-foreground">
-          Selected Work is currently in progress. Coming soon.
+          Work is currently in progress. Coming soon.
         </div>
       ) : (
         <div className="flex flex-col gap-32 md:gap-40 lg:gap-56">

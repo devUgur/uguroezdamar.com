@@ -6,10 +6,15 @@ export async function Education() {
 
   return (
     <section className="py-24 md:py-32 lg:py-40 px-6 md:px-12 lg:px-24 border-t border-border/40">
-      <div className="mb-16 md:mb-24">
-        <h2 className="font-mono text-sm uppercase tracking-widest text-muted-foreground">03 — Education</h2>
-      </div>
+      <h2 className="font-mono text-sm uppercase tracking-widest text-muted-foreground mb-16 md:mb-24">
+        03 — Education
+      </h2>
 
+      {education.length === 0 ? (
+        <div className="text-sm text-muted-foreground">
+          Education is currently in progress. Coming soon.
+        </div>
+      ) : (
       <div className="max-w-4xl relative">
         <div className="absolute left-0 top-0 w-full h-[1px] bg-border/40"></div>
         {education.map((item, i) => (
@@ -33,6 +38,7 @@ export async function Education() {
           </div>
         ))}
       </div>
+      )}
     </section>
   );
 }
