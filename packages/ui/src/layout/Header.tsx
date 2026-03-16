@@ -7,6 +7,16 @@ import { Logo } from "../branding/Logo";
 import { ThemeToggle } from "../theme/ThemeToggle";
 import { cn } from "@ugur/core";
 
+const NAV_LINKS = [
+  { href: "/about", label: "About" },
+  { href: "/work", label: "Work" },
+  { href: "/projects", label: "Projects" },
+  { href: "/contact", label: "Contact" },
+] as const;
+
+/** In production, nav links are disabled so users stay on the homepage only. */
+const navLinksEnabled = process.env.NODE_ENV !== "production";
+
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
@@ -36,31 +46,38 @@ export function Header() {
 
         {/* Navigation and Actions right aligned */}
         <div className="flex items-center justify-end gap-6 md:gap-8 flex-1">
-          <nav className="hidden md:flex items-center justify-end gap-8 font-mono text-sm uppercase tracking-widest mr-2">
-            {[
-              { href: "/about", label: "About" },
-              { href: "/work", label: "Work" },
-              { href: "/projects", label: "Projects" },
-              { href: "/contact", label: "Contact" },
-            ].map((l) => {
+          <nav className="hidden md:flex items-center justify-end gap-8 font-mono text-sm uppercase tracking-widest mr-2" aria-label="Main navigation">
+            {NAV_LINKS.map((l) => {
               const isActive = pathname?.startsWith(l.href);
+              const itemClass = "group inline-flex flex-col items-start";
+              const labelClass = "text-foreground/80 transition-colors duration-150 ease-in-out group-hover:text-foreground";
+              const lineClass = cn(
+                "block h-[1px] bg-foreground mt-1 transition-all duration-150",
+                isActive ? "w-full" : "w-0 group-hover:w-full"
+              );
+              if (navLinksEnabled) {
+                return (
+                  <Link
+                    key={l.href}
+                    href={l.href}
+                    aria-current={isActive ? "page" : undefined}
+                    className={itemClass}
+                  >
+                    <span className={labelClass}>{l.label}</span>
+                    <span className={lineClass} />
+                  </Link>
+                );
+              }
               return (
-                <Link
+                <span
                   key={l.href}
-                  href={l.href}
-                  aria-current={isActive ? "page" : undefined}
-                  className="group inline-flex flex-col items-start"
+                  className={cn(itemClass, "cursor-default")}
+                  aria-disabled="true"
+                  title="Coming soon"
                 >
-                  <span className="text-foreground/80 transition-colors duration-150 ease-in-out group-hover:text-foreground">
-                    {l.label}
-                  </span>
-                  <span
-                    className={cn(
-                      "block h-[1px] bg-foreground mt-1 transition-all duration-150",
-                      isActive ? "w-full" : "w-0 group-hover:w-full"
-                    )}
-                  />
-                </Link>
+                  <span className={labelClass}>{l.label}</span>
+                  <span className={lineClass} />
+                </span>
               );
             })}
           </nav>
