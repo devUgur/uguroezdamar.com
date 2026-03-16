@@ -11,9 +11,11 @@ export async function About() {
           <p className="font-sans text-xl md:text-2xl leading-[1.6] md:leading-[1.8] text-foreground max-w-[680px]">
             {profile.primaryText}
           </p>
-          <p className="mt-8 font-sans text-lg md:text-xl leading-relaxed text-muted-foreground max-w-[680px]">
-            {profile.secondaryText}
-          </p>
+          {profile.secondaryText ? (
+            <p className="mt-8 font-sans text-lg md:text-xl leading-relaxed text-muted-foreground max-w-[680px]">
+              {profile.secondaryText}
+            </p>
+          ) : null}
         </div>
 
         <div className="lg:col-span-4 lg:col-start-9 relative">
