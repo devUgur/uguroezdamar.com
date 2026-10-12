@@ -1,38 +1,32 @@
-import React from "react";
+import Link from "next/link";
 
 export function Hero() {
-  const currentYear = new Date().getFullYear();
-
   return (
-    <section className="h-screen flex flex-col justify-center px-6 md:px-12 lg:px-24">
-      <div className="max-w-5xl animate-in fade-in slide-in-from-bottom-3 duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]">
-        <h1 className="font-serif text-[3rem] md:text-[5rem] lg:text-[7.5rem] leading-[1.1] tracking-tighter mb-8 group">
-          <span className="block transition-colors duration-200 hover:text-accent cursor-default">I build</span>
-          <span className="block transition-colors duration-200 hover:text-accent cursor-default">structured</span>
-          <span className="block transition-colors duration-200 hover:text-accent cursor-default">digital systems.</span>
+    <section className="site-container grid min-h-[min(760px,calc(100svh-5rem))] grid-cols-1 items-end gap-12 pb-20 pt-36 md:min-h-[min(820px,calc(100svh-5rem))] md:grid-cols-12 md:gap-8 md:pb-28 md:pt-44">
+      <div className="md:col-span-9">
+        <p className="mb-8 font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground md:text-sm">
+          01 <span className="mx-2 text-border">/</span> Software development · Dortmund
+        </p>
+        <h1 className="max-w-[1000px] text-[clamp(3rem,8.3vw,7.5rem)] leading-[0.98] tracking-[-0.055em]">
+          From interface to infrastructure.
         </h1>
-        <div className="flex items-center gap-4 text-secondary-foreground font-mono text-sm tracking-wide">
-          <p>Fullstack Developer</p>
-          <span className="w-4 h-[1px] bg-border"></span>
-          <p>Dortmund — {currentYear}</p>
+        <p className="mt-8 max-w-2xl text-base leading-7 text-muted-foreground md:mt-10 md:text-xl md:leading-8">
+          Full-stack software development across user-facing interfaces and the systems behind them.
+        </p>
+        <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4 font-mono text-xs uppercase tracking-[0.14em] md:mt-12 md:text-sm">
+          <Link href="#work" className="link-underline inline-flex min-h-11 items-center gap-3 text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
+            Selected work <span aria-hidden="true">↘</span>
+          </Link>
+          <Link href="/contact" className="link-underline inline-flex min-h-11 items-center gap-3 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
+            Get in touch <span aria-hidden="true">↗</span>
+          </Link>
         </div>
       </div>
-
-      <div className="absolute bottom-10 left-6 md:left-12 lg:left-24 font-mono text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-4">
-        <span>Scroll to explore</span>
-        <div className="w-12 h-[1px] bg-border relative overflow-hidden">
-          <div className="absolute top-0 left-0 h-full w-full bg-foreground animate-[slide-right_2s_ease-in-out_infinite]" style={{
-            animation: 'slideRight 2s ease-in-out infinite'
-          }}></div>
-        </div>
-      </div>
-      <style>{`
-        @keyframes slideRight {
-          0% { transform: translateX(-100%); }
-          50% { transform: translateX(0); }
-          100% { transform: translateX(100%); }
-        }
-      `}</style>
+      <p className="border-t border-border pt-4 font-mono text-[11px] uppercase leading-6 tracking-[0.12em] text-muted-foreground md:col-span-3 md:col-start-10 md:justify-self-end md:border-l md:border-t-0 md:pl-5 md:pt-0">
+        Ugur Özdamar<br />
+        Software developer<br />
+        Dortmund, Germany
+      </p>
     </section>
   );
 }

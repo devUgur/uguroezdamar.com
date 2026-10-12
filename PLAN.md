@@ -139,7 +139,7 @@ Ein öffentlicher Relaunch erfolgt erst, wenn Phase 1 und 2 abgenommen sind, kri
 | 0 — Verifizieren & stabilisieren | lokale Gates, Mobile-Smoke und Axe-Prüfung grün | Hosting-Preview, Kontaktzustellung und Live-Deploy bleiben zu verifizieren |
 | 1 — Security & CI-Fundament | umgesetzt; lokale und GitHub-CI-Nachweise grün | unabhängige Prüfung offen |
 | 2 — Content & Deployment | SSR/CMS lokal umgesetzt; CMS- und Rate-Limit-Integration ergänzt; Preview und Betreiberangaben offen | Netlify-Dashboard für beide Sites verifizieren; Preview-Commit-SHAs, isolierte DB/Accounts, Slug-Datenmigration, Kontaktaufbewahrung/-benachrichtigung sowie bestätigte Impressums-/Datenschutzangaben bleiben Release-Blocker |
-| 3 — Portfolio-Erlebnis | geplant | Content-Freigaben und Case-Study-Material zusammentragen |
+| 3 — Portfolio-Erlebnis | R2-A umgesetzt; Draft-PR #7 gegen `feat/portfolio-release-hardening` offen; lokale Gates und GitHub-CI grün; Browser-, Responsive-, Axe- und Tastaturprüfungen dokumentiert | Inhaltsabnahme mit echten CMS-Daten; danach R2-B (freigegebene Case Studies im CMS) |
 | 4 — Production Quality | geplant | nach stabiler Kernfunktion Messwerte und E2E-Scope festlegen |
 
 ## Weiterführende Dokumentation

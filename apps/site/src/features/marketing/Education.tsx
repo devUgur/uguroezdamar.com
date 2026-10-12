@@ -1,44 +1,51 @@
-import React from "react";
+import Link from "next/link";
 import { getTimelineForEducation } from "@/src/features/home/queries";
 
 export async function Education() {
   const education = await getTimelineForEducation();
 
   return (
-    <section className="py-24 md:py-32 lg:py-40 px-6 md:px-12 lg:px-24 border-t border-border/40">
-      <h2 className="font-mono text-sm uppercase tracking-widest text-muted-foreground mb-16 md:mb-24">
-        03 — Education
-      </h2>
-
-      {education.length === 0 ? (
-        <div className="text-sm text-muted-foreground">
-          No education entries have been published yet.
-        </div>
-      ) : (
-      <div className="max-w-4xl relative">
-        <div className="absolute left-0 top-0 w-full h-[1px] bg-border/40"></div>
-        {education.map((item, i) => (
-          <div key={i} className="group relative grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-8 py-10 border-b border-border/40 transition-colors duration-500 hover:bg-surface/30 cursor-default px-6 md:px-8 -mx-6 md:-mx-8">
-            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-accent scale-y-0 group-hover:scale-y-100 origin-top transition-transform duration-500 ease-out"></div>
-            <div className="font-mono text-sm text-secondary-foreground md:pt-1 group-hover:text-accent transition-colors duration-300">{item.year}</div>
-            <div className="md:col-span-3 flex flex-col md:flex-row md:items-baseline justify-between gap-2">
-              <div>
-                <h3 className="font-serif text-xl md:text-2xl group-hover:text-foreground transition-colors duration-300">{item.title}</h3>
-                <p className="font-sans text-muted-foreground text-sm group-hover:text-secondary-foreground transition-colors duration-300">
-                  {item.location ? `${item.institution} — ${item.location}` : item.institution}
-                </p>
-                {item.status && (
-                  <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-accent opacity-0 group-hover:opacity-100 translate-x-[-10px] group-hover:translate-x-0 transition-all duration-500 ease-out flex items-center gap-2">
-                    <span className="w-2 h-[1px] bg-accent"></span>
-                    {item.status}
-                  </p>
-                )}
-              </div>
-            </div>
+    <section id="education" aria-labelledby="education-heading" className="site-section">
+      <div className="site-container">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-12 md:gap-8">
+          <div className="md:col-span-4">
+            <p className="mb-5 font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground md:text-sm">
+              04 <span className="mx-2 text-border">/</span> Education
+            </p>
+            <h2 id="education-heading" className="max-w-sm text-3xl leading-tight md:text-4xl">
+              Learning and study
+            </h2>
+            <Link href="/education" className="link-underline mt-7 inline-flex min-h-11 items-center gap-3 font-mono text-xs uppercase tracking-[0.13em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
+              Education details <span aria-hidden="true">↗</span>
+            </Link>
           </div>
-        ))}
+
+          <div className="md:col-span-7 md:col-start-6">
+            {education.length === 0 ? (
+              <p className="border-y border-border py-6 text-sm leading-6 text-muted-foreground">
+                No education entries have been published yet.
+              </p>
+            ) : (
+              <ol className="border-t border-border">
+                {education.map((item, index) => (
+                  <li key={`${item.year}-${item.title}-${index}`} className="grid grid-cols-1 gap-2 border-b border-border py-6 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-6 md:py-7">
+                    <span className="font-mono text-xs text-muted-foreground">{item.year}</span>
+                    <div>
+                      <h3 className="text-xl md:text-2xl">{item.title}</h3>
+                      {item.institution || item.location ? (
+                        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                          {[item.institution, item.location].filter(Boolean).join(" · ")}
+                        </p>
+                      ) : null}
+                      {item.status ? <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.status}</p> : null}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        </div>
       </div>
-      )}
     </section>
   );
 }

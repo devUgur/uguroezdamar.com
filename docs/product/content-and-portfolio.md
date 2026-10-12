@@ -9,9 +9,9 @@ Die Website soll anhand echter Arbeit zeigen, wie Ugur Özdamar Software konzipi
 | Route | Aufgabe |
 | --- | --- |
 | `/` | klare Positionierung, ausgewählte Projekte, Profil und Kontakt |
-| `/projects` | vollständige, kuratierte Projektübersicht |
+| `/projects` | kanonische, kuratierte Projektübersicht und Case Studies (ADR 0015) |
 | `/projects/[slug]` | technische Case Study mit Problem, Rolle, Architektur, Entscheidungen und Ergebnis |
-| `/work` (falls beibehalten) | entweder klare alternative Übersicht oder gezielte Weiterleitung; kein konkurrierendes Inhaltsmodell |
+| `/work` | Weiterleitung (308/Redirect) auf `/projects`; kein konkurrierendes Inhaltsmodell |
 | `/about`, `/education` | konsistente Biografie und Laufbahn |
 | `/blog` | echte technische Artikel; leere Zustände statt Hello-World-Platzhalter |
 | `/contact` | zugängliche Kontaktoption mit nachweisbarer Zustellung |
@@ -21,7 +21,17 @@ Die Website soll anhand echter Arbeit zeigen, wie Ugur Özdamar Software konzipi
 
 Der Kontaktendpunkt speichert aktuell Name, E-Mail-Adresse, Nachricht und Zeitstempel in MongoDB ohne automatische Löschfrist. Für das Rate-Limit wird ein HMAC-basierter, zeitlich begrenzter IP-Schlüssel verwendet, der nach ungefähr 70 Minuten per TTL entfernt wird. Beide Datenflüsse sowie die bestätigte Aufbewahrungsregel müssen in der Datenschutzerklärung zutreffend abgebildet werden.
 
-Ob alle vorhandenen Routen erhalten bleiben, wird anhand Analytics/Links und Redirect-Bedarf entschieden. Es dürfen keine zwei konkurrierenden Projektwahrheiten entstehen.
+Die kanonische URL für alle Projekte ist `/projects`. Die Route `/work` leitet auf `/projects` weiter, um bestehende Links bruchlos aufzunehmen (ADR 0015). Es gibt keine zwei konkurrierenden Projektwahrheiten.
+
+## R2-A: Startseite und redaktionelle Darstellung
+
+Der aktuelle Homepage-Fluss lautet: bestätigte Positionierung und Standort → bis zu drei veröffentlichte Featured-Projekte → veröffentlichte Profil-/Karrieredaten → veröffentlichte Bildungseinträge → Kontaktseite. Die verwendete Positionierung ist „From interface to infrastructure.“; die erklärende Copy bleibt auf Full-Stack-Softwareentwicklung bezogen. Zielgruppen wie Recruiter oder Auftraggeber sind Designannahmen und keine Aussage über vorhandene Kunden, Angebote oder Verfügbarkeit.
+
+`/projects` ist die einzige öffentliche Projektübersicht. Die Startseite verlinkt auf diesen Katalog und zeigt nur veröffentlichte Featured-Datensätze. Sie gibt vorhandene Titel, Kurzbeschreibungen, Jahreswerte und Technologien aus. Das aktuelle Projektschema enthält kein persönliches Rollenfeld; Tags dürfen nicht als persönliche Rolle umetikettiert werden. Nicht freigegebene Screenshots, synthetische Browser-/Terminal-Mockups und Favicon-Fallbacks werden nicht gezeigt. Ohne Featured-Datensatz zeigt die Startseite einen klaren leeren Zustand.
+
+Die Startseitenabschnitte sind Server Components. App-spezifische Navigation und Branding liegen in `apps/site/src/features/navigation`, generische UI- und Theme-Primitives in `packages/ui`. Das Styling bewahrt die bestehenden warmen neutralen Themes und Fonts und nutzt Fluid-Typografie, responsive 12-Spalten-Komposition, sichtbare Fokuszustände und Reduced-Motion-Regeln. Die Nav führt zu Projects, About, Education, Blog und Contact; Imprint und Privacy sind im Footer erreichbar. Die englische Copy dieser Iteration ist keine Zusage einer Übersetzung.
+
+R2-A-Lint, Typecheck und Produktionsbuild sind lokal grün. Browser-Smoke lieferte 200 für `/`, `/projects`, `/about`, `/education`, `/blog` und `/contact`; `/work` antwortet mit 308 auf `/projects`. Die horizontale Dokumentbreite entsprach bei 320, 375, 768, 1024, 1440 und 1920 px jeweils dem Viewport. Das mobile Menü öffnet per Tastatur und schließt mit Escape. Axe meldete auf Startseite, Projektübersicht und Kontaktseite keine Verstöße. Screenshots für hell/dunkel bei 375, 768 und 1440 px sowie vollständige helle Seitenansichten liegen unter [R2-A-Visuelle Nachweise](evidence/r2-a/README.md). Die lokale Vorschau nutzte eine leere, isolierte lokale Datenbank; veröffentlichte CMS-Inhalte müssen in einer separaten Inhaltsabnahme geprüft werden. Die Produktions- und Rechtsfreigabe bleibt in Phase 0/2 separat.
 
 ## Inhaltsschema und Publish-Zustände
 

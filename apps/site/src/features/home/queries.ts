@@ -81,7 +81,7 @@ export async function getTimelineForEducation(): Promise<EducationTimelineEntry[
       .map((item) => ({
         year: toYearRange(item.date.start, item.date.end, item.date.isCurrent),
         title: item.title,
-        institution: item.organization || "N/A",
+        institution: item.organization || "",
         location: item.location ?? "",
         status: item.summary ?? undefined,
       }))

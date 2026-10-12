@@ -8,7 +8,8 @@ export const metadata: Metadata = {
     default: "Ugur Özdamar",
     template: "%s | Ugur Özdamar",
   },
-  description: "Personal website and portfolio.",
+  description:
+    "Software Engineering · Digital Products. Full-stack development, scalable applications, and thoughtful engineering by Ugur Özdamar.",
 };
 
 export default function RootLayout({

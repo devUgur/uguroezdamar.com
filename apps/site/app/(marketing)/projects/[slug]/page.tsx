@@ -25,7 +25,7 @@ export default async function ProjectDetailPage({
               <div key={`${image.url}-${image.kind ?? "img"}`} className="overflow-hidden rounded-md border bg-muted/20">
                 <Image
                   src={image.url}
-                  alt={image.alt || project.title}
+                  alt={image.alt ?? ""}
                   width={1200}
                   height={560}
                   unoptimized

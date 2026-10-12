@@ -170,5 +170,31 @@ html, body {
 	color: var(--color-foreground);
 }
 
+html {
+	scroll-padding-top: 5rem;
+}
+
+/* Shared editorial layout primitives for the public site. */
+.site-container {
+	width: min(calc(100% - clamp(2.5rem, 10vw, 12rem)), 88rem);
+	margin-inline: auto;
+}
+
+.site-section {
+	padding-block: clamp(5rem, 10vw, 9rem);
+	border-top: 1px solid hsl(var(--border));
+}
+
 /* keep links inheriting color by default */
 a { color: inherit; }
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		scroll-behavior: auto !important;
+		transition-duration: 0.01ms !important;
+	}
+}

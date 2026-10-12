@@ -1,90 +1,49 @@
-import type { ProjectRecord } from "@ugur/server";
+import Link from "next/link";
 import { getSiteWorkItems } from "@/src/features/selected-work/queries";
-import WorkClient, { type DeviceType, type SelectedWorkProject, type WorkImage, type WorkApp } from "./WorkClient";
-
-function toYearLabel(project: ProjectRecord): string {
-  if (project.ongoing) return "Ongoing";
-  if (project.yearTo != null) return String(project.yearTo);
-  if (project.yearFrom != null) return String(project.yearFrom);
-  const value = project.publishedAt || project.createdAt;
-  if (!value) return String(new Date().getFullYear());
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(new Date().getFullYear());
-  return String(date.getUTCFullYear());
-}
-
-function buildImagesByKind(project: ProjectRecord): Partial<Record<DeviceType, WorkImage[]>> {
-  const fallbackUrl = project.previewImageUrl || project.coverImageUrl;
-  const fallbackImg = fallbackUrl ? [{ url: fallbackUrl, alt: project.title }] : [];
-  const kinds: DeviceType[] = ["web", "mobile", "desktop", "cli"];
-  const result: Partial<Record<DeviceType, WorkImage[]>> = {};
-
-  for (const kind of kinds) {
-    const fromProject = (project.images ?? []).filter((i) => i.kind === kind).map((img) => ({ url: img.url, alt: img.alt ?? undefined, kind: img.kind ?? undefined }));
-    const fromApp = (project.apps ?? []).find((a) => a.kind === kind);
-    const appImgs = (fromApp?.images ?? []).map((img) => ({ url: img.url, alt: img.alt ?? undefined, kind: img.kind ?? undefined }));
-    const combined = fromProject.length ? fromProject : appImgs;
-    if (combined.length > 0) result[kind] = combined;
-    else if (fallbackImg.length) result[kind] = fallbackImg;
-  }
-  return result;
-}
-
-function buildDeviceImages(project: ProjectRecord): Record<DeviceType, string> {
-  const fallback = project.previewImageUrl || project.coverImageUrl || "";
-  const byKind = (kind: string) => {
-    const fromProject = (project.images ?? []).find((i) => i.kind === kind);
-    if (fromProject?.url) return fromProject.url;
-    const fromApp = (project.apps ?? []).find((a) => a.kind === kind);
-    const img = fromApp?.images?.[0];
-    if (img?.url) return img.url;
-    return fallback;
-  };
-  return {
-    web: byKind("web") || fallback,
-    mobile: byKind("mobile") || fallback,
-    desktop: byKind("desktop") || fallback,
-    cli: byKind("cli") || fallback,
-  };
-}
+import { SelectedProjectCard } from "./SelectedProjectCard";
 
 export async function Work() {
-  const projects = await getSiteWorkItems();
-  const mapped: SelectedWorkProject[] = projects.map((project) => {
-    const types: DeviceType[] =
-      project.kinds && project.kinds.length > 0
-        ? (project.kinds as DeviceType[])
-        : (project.apps ?? []).length > 0
-          ? (project.apps!.map((a) => a.kind) as DeviceType[])
-          : ["web"];
+  const projects = (await getSiteWorkItems()).slice(0, 3);
 
-    const apps: WorkApp[] = (project.apps ?? []).map((app) => ({
-      kind: app.kind as DeviceType,
-      repoUrl: app.repoUrl ?? undefined,
-      images: (app.images ?? []).map((img) => ({ url: img.url, alt: img.alt ?? undefined, kind: img.kind ?? undefined })),
-      tags: app.tags ?? undefined,
-      tech: app.tech ?? undefined,
-    }));
+  return (
+    <section id="work" aria-labelledby="selected-work-heading" className="site-section">
+      <div className="site-container">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-12 md:gap-8">
+          <div className="md:col-span-4">
+            <p className="mb-5 font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground md:text-sm">
+              02 <span className="mx-2 text-border">/</span> Selected work
+            </p>
+            <h2 id="selected-work-heading" className="max-w-sm text-3xl leading-tight md:text-4xl">
+              Published projects, selected from the portfolio.
+            </h2>
+            <Link href="/projects" className="link-underline mt-7 inline-flex min-h-11 items-center gap-3 font-mono text-xs uppercase tracking-[0.13em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
+              Browse all projects <span aria-hidden="true">↗</span>
+            </Link>
+          </div>
 
-    return {
-      slug: project.slug,
-      name: project.title,
-      year: toYearLabel(project),
-      role: project.tags?.[0] || "",
-      stack: (project.tech ?? project.tags ?? []).slice(0, 3).join(", "),
-      types,
-      deviceImages: buildDeviceImages(project),
-      image: project.previewImageUrl || project.coverImageUrl || "/favicon.ico",
-      description: project.summary || "",
-      imagesByKind: buildImagesByKind(project),
-      apps,
-      links: project.links ?? undefined,
-      tech: project.tech ?? undefined,
-      tags: project.tags ?? undefined,
-    };
-  });
-
-  return <WorkClient projects={mapped} />;
+          <div className="md:col-span-7 md:col-start-6">
+            {projects.length === 0 ? (
+              <div className="border-y border-border py-8 md:py-10">
+                <p className="text-lg">No featured projects have been published yet.</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Published project entries will appear here when available.
+                </p>
+                <Link href="/projects" className="link-underline mt-5 inline-flex min-h-11 items-center font-mono text-xs uppercase tracking-[0.13em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
+                  View published projects <span className="ml-3" aria-hidden="true">↗</span>
+                </Link>
+              </div>
+            ) : (
+              <ol className="border-t border-border">
+                {projects.map((project, index) => (
+                  <SelectedProjectCard key={project.slug} project={project} index={index} />
+                ))}
+              </ol>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export default Work;
