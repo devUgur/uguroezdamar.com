@@ -1,7 +1,7 @@
 import { run } from "./exec.ts";
 
 /** One Neon project for this product; its branches are the stages. */
-export const NEON_PROJECT_NAME = "uguroezdamar.com";
+export const NEON_PROJECT_NAME = "uguroezdamar";
 export const NEON_REGION = "aws-eu-central-1";
 
 const neon = (args: string[]) => run("neon", args, { capture: true });

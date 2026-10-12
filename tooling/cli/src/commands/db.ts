@@ -55,7 +55,8 @@ function check(): number {
  * from Neon to Infisical in memory and are never printed.
  */
 function provision(apply: boolean, overwrite: boolean): number {
-  if (!infisicalConfig()) {
+  const linked = infisicalConfig() !== null;
+  if (!linked && apply) {
     console.error(accessHint());
     return 1;
   }
@@ -70,8 +71,8 @@ function provision(apply: boolean, overwrite: boolean): number {
     return 1;
   }
   const stages = Object.keys(STAGES) as Stage[];
-  const secrets = Object.fromEntries(stages.map((stage) => [stage, listSecretNames(stage)]));
-  if (stages.some((stage) => !secrets[stage])) {
+  const secrets = Object.fromEntries(stages.map((stage) => [stage, linked ? listSecretNames(stage) : null]));
+  if (linked && stages.some((stage) => !secrets[stage])) {
     console.error(accessHint());
     return 1;
   }
@@ -84,12 +85,19 @@ function provision(apply: boolean, overwrite: boolean): number {
         ? `Neon project "${NEON_PROJECT_NAME}" exists (${existing.id}).`
         : `Would create Neon project "${NEON_PROJECT_NAME}" in ${NEON_REGION}.`,
     );
-    const branches = existing ? (listBranches(existing.id) ?? []).map((branch) => branch.name) : [];
+    const branches = existing ? (listBranches(existing.id) ?? []) : [];
+    const root = branches.find((branch) => branch.default || branch.primary) ?? branches[0];
     for (const stage of stages) {
       const branch = STAGES[stage].neon;
-      console.log(`  ${stage}: branch "${branch}" ${branches.includes(branch) ? "exists" : "would be created"}; ` +
+      const plan = branches.some((entry) => entry.name === branch)
+        ? "exists"
+        : stage === "prod" && root
+          ? `would be the default branch "${root.name}", renamed`
+          : "would be created";
+      console.log(`  ${stage}: branch "${branch}" ${plan}; ` +
         `connection strings ${needsUrls(stage) ? "would be written to Infisical" : "already in Infisical (kept)"}`);
     }
+    if (!linked) console.log(`\n${accessHint()}`);
     console.log("\nDry run. Re-run with --apply.");
     return 0;
   }

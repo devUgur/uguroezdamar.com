@@ -14,7 +14,7 @@
 
 ## Entscheidung
 
-1. **Datenbank:** PostgreSQL auf Neon, Region `aws-eu-central-1`, ein Projekt `uguroezdamar.com` mit den Branches `prod` und `dev`.
+1. **Datenbank:** PostgreSQL auf Neon, Region `aws-eu-central-1`, ein Projekt `uguroezdamar` mit den Branches `prod` und `dev`.
 2. **Zugriff:** Drizzle ORM mit `postgres.js`. Das Schema liegt in `packages/server/src/db/schema.ts`, Migrationen als SQL in `packages/server/drizzle/`. Zur Laufzeit wird die gepoolte Verbindung (`DATABASE_URL`, `prepare: false`) genutzt, für Migrationen die direkte (`DATABASE_URL_DIRECT`).
 3. **Schema:** relationale Spalten für alles, wonach gefiltert oder sortiert wird; `jsonb` nur für eingebettete Listen (Links, Bilder, Apps, Tags). IDs sind UUIDs, öffentlich als `id` (nicht mehr `_id`). Kontaktanfragen haben eine fortlaufende ID für die Cursor-Paginierung.
 4. **Secrets:** Infisical (eu) ist die einzige Quelle. `tooling/cli/src/secrets-manifest.ts` ist die einzige Liste der Variablen. Es gibt keine `.env`- und keine `.env.example`-Dateien mehr.
