@@ -8,7 +8,7 @@ import { cn } from "@ugur/core";
 import { toast } from "@ugur/ui";
 
 export type ProjectRow = {
-  _id: string;
+  id: string;
   title: string;
   slug: string;
   status: string;
@@ -37,7 +37,7 @@ export function ProjectsTable({ initialProjects, siteUrl }: Props) {
         const res = await fetch("/api/projects/reorder", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectIds: ordered.map((p) => p._id) }),
+          body: JSON.stringify({ projectIds: ordered.map((p) => p.id) }),
         });
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data.error ?? "Reorder failed");
@@ -113,7 +113,7 @@ export function ProjectsTable({ initialProjects, siteUrl }: Props) {
           ) : (
             projects.map((project, index) => (
               <tr
-                key={project._id}
+                key={project.id}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, index)}
@@ -182,7 +182,7 @@ export function ProjectsTable({ initialProjects, siteUrl }: Props) {
                     View
                   </Link>
                   <Link
-                    href={`/admin/projects/${project._id}`}
+                    href={`/admin/projects/${project.id}`}
                     className="text-xs text-blue-500 hover:underline"
                   >
                     Edit

@@ -1,93 +1,86 @@
 import "server-only";
-import { ObjectId } from "mongodb";
-import { getDb } from "../mongodb";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { getDb, isUuid } from "../db/client";
+import { careerEntries } from "../db/schema";
 import type { CareerEntryInput, CareerEntry, UpdateCareerEntryInput } from "./validators";
 
-const CAREER_COLLECTION = "careerEntries";
+type CareerRow = typeof careerEntries.$inferSelect;
+type CareerInsert = typeof careerEntries.$inferInsert;
 
-export async function createCareerEntry(data: CareerEntryInput): Promise<CareerEntry> {
-  const db = await getDb();
-  const col = db.collection(CAREER_COLLECTION);
-  const now = new Date().toISOString();
-
-  const doc = {
-    ...data,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  const res = await col.insertOne(doc);
+function toCareerEntry(row: CareerRow): CareerEntry {
+  const { dateStart, dateEnd, isCurrent, visibility, ...rest } = row;
   return {
-    ...doc,
-    _id: res.insertedId.toString(),
+    ...rest,
+    date: { start: dateStart.toISOString(), end: dateEnd?.toISOString() ?? null, isCurrent },
+    visibility: visibility ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   } as CareerEntry;
 }
 
-export async function getCareerEntries(filter: { type?: string; status?: string; visibility?: string } = {}): Promise<CareerEntry[]> {
-  const db = await getDb();
-  const col = db.collection(CAREER_COLLECTION);
+/** Maps the nested API `date` object onto its columns; absent fields stay untouched. */
+function toColumns(data: UpdateCareerEntryInput): Partial<CareerInsert> {
+  const { date, ...fields } = data;
+  return {
+    ...fields,
+    ...(date
+      ? {
+          dateStart: new Date(date.start),
+          dateEnd: date.end ? new Date(date.end) : null,
+          isCurrent: date.isCurrent ?? false,
+        }
+      : {}),
+  };
+}
 
-  const query: any = {};
-  if (filter.type) query.type = filter.type;
-  if (filter.status) query.status = filter.status;
-  if (filter.visibility) {
-    query[`visibility.${filter.visibility}`] = true;
-  }
+export async function createCareerEntry(data: CareerEntryInput): Promise<CareerEntry> {
+  const [row] = await getDb()
+    .insert(careerEntries)
+    .values(toColumns(data) as CareerInsert)
+    .returning();
+  return toCareerEntry(row);
+}
 
-  const items = await col.find(query).sort({ "date.start": -1, sortKey: 1 }).toArray();
-  return items.map((item) => ({
-    ...item,
-    _id: item._id.toString(),
-  })) as CareerEntry[];
+export async function getCareerEntries(
+  filter: { type?: string; status?: string; visibility?: string } = {},
+): Promise<CareerEntry[]> {
+  const rows = await getDb()
+    .select()
+    .from(careerEntries)
+    .where(
+      and(
+        filter.type ? eq(careerEntries.type, filter.type) : undefined,
+        filter.status ? eq(careerEntries.status, filter.status as CareerRow["status"]) : undefined,
+        filter.visibility ? sql`${careerEntries.visibility} ->> ${filter.visibility} = 'true'` : undefined,
+      ),
+    )
+    .orderBy(desc(careerEntries.dateStart), asc(careerEntries.sortKey));
+  return rows.map(toCareerEntry);
 }
 
 export async function getCareerEntryById(id: string): Promise<CareerEntry | null> {
-  const db = await getDb();
-  const col = db.collection(CAREER_COLLECTION);
-
-  const item = await col.findOne({ _id: new ObjectId(id) });
-  if (!item) return null;
-
-  return {
-    ...item,
-    _id: item._id.toString(),
-  } as CareerEntry;
+  if (!isUuid(id)) return null;
+  const [row] = await getDb().select().from(careerEntries).where(eq(careerEntries.id, id)).limit(1);
+  return row ? toCareerEntry(row) : null;
 }
 
 export async function getCareerEntryBySlug(slug: string): Promise<CareerEntry | null> {
-  const db = await getDb();
-  const col = db.collection(CAREER_COLLECTION);
-
-  const item = await col.findOne({ slug });
-  if (!item) return null;
-
-  return {
-    ...item,
-    _id: item._id.toString(),
-  } as CareerEntry;
+  const [row] = await getDb().select().from(careerEntries).where(eq(careerEntries.slug, slug)).limit(1);
+  return row ? toCareerEntry(row) : null;
 }
 
 export async function updateCareerEntry(id: string, data: UpdateCareerEntryInput): Promise<boolean> {
-  const db = await getDb();
-  const col = db.collection(CAREER_COLLECTION);
-
-  const res = await col.updateOne(
-    { _id: new ObjectId(id) },
-    {
-      $set: {
-        ...data,
-        updatedAt: new Date().toISOString(),
-      },
-    }
-  );
-
-  return res.modifiedCount > 0;
+  if (!isUuid(id)) return false;
+  const rows = await getDb()
+    .update(careerEntries)
+    .set({ ...toColumns(data), updatedAt: new Date() })
+    .where(eq(careerEntries.id, id))
+    .returning({ id: careerEntries.id });
+  return rows.length > 0;
 }
 
 export async function deleteCareerEntry(id: string): Promise<boolean> {
-  const db = await getDb();
-  const col = db.collection(CAREER_COLLECTION);
-
-  const res = await col.deleteOne({ _id: new ObjectId(id) });
-  return res.deletedCount > 0;
+  if (!isUuid(id)) return false;
+  const rows = await getDb().delete(careerEntries).where(eq(careerEntries.id, id)).returning({ id: careerEntries.id });
+  return rows.length > 0;
 }

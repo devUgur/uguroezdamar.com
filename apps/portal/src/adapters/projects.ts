@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getProjects, getProjectById, getProjectBySlugMongo } from "@ugur/server";
+import { getProjects, getProjectById, getProjectBySlug } from "@ugur/server";
 
 export async function getProjectsSnapshot() {
 	return getProjects({ limit: 500 });
@@ -11,5 +11,5 @@ export async function getProjectByIdAdapter(id: string) {
 }
 
 export async function getProjectBySlugAdapter(slug: string) {
-	return getProjectBySlugMongo(slug);
+	return getProjectBySlug(slug);
 }

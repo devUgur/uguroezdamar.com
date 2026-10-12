@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAdmin } from "@/apps/portal/src/adapters/auth/utils";
-import { type Admin } from "@ugur/server";
-import { getDb } from "@ugur/server";
+import { listAdmins } from "@ugur/server";
 
 export const runtime = "nodejs";
 
@@ -10,12 +9,10 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // list admins: allowed for any authenticated admin (owner/admin/editor)
-  const db = await getDb();
-  const col = db.collection<Admin>("admins");
-  const docs = await col.find({}, { projection: { passwordHash: 0 } }).toArray();
-  
+  const docs = await listAdmins();
+
   const list = docs.map((d) => ({ 
-    id: d._id?.toString() ?? d.email, 
+    id: d.id, 
     email: d.email, 
     role: d.role, 
     status: d.status, 

@@ -1,20 +1,26 @@
 import "server-only";
-import { ObjectId, type Filter } from "mongodb";
-import { getDb } from "../mongodb";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { getDb, isUuid, omit } from "../db/client";
+import { projects } from "../db/schema";
 import type { CreateProjectInput, ProjectRecord, UpdateProjectInput } from "./validators";
 
-const PROJECTS_COLLECTION = "projects";
+type ProjectRow = typeof projects.$inferSelect;
 
-function toProjectRecord(doc: any): ProjectRecord {
+const iso = (value: Date | null) => value?.toISOString() ?? null;
+const date = (value: string | null | undefined) => (value ? new Date(value) : null);
+
+function toProjectRecord(row: ProjectRow): ProjectRecord {
 	return {
-		...doc,
-		_id: doc._id.toString(),
-		createdAt: doc.createdAt?.toISOString?.() ?? doc.createdAt,
-		updatedAt: doc.updatedAt?.toISOString?.() ?? doc.updatedAt,
-		publishedAt: doc.publishedAt?.toISOString?.() ?? doc.publishedAt,
-		previewUpdatedAt: doc.previewUpdatedAt?.toISOString?.() ?? doc.previewUpdatedAt,
-	};
+		...omit(row, "deletedAt"),
+		createdAt: row.createdAt.toISOString(),
+		updatedAt: row.updatedAt.toISOString(),
+		publishedAt: iso(row.publishedAt),
+		previewUpdatedAt: iso(row.previewUpdatedAt),
+	} as ProjectRecord;
 }
+
+const notDeleted = isNull(projects.deletedAt);
+const isPublic = and(eq(projects.status, "published"), eq(projects.isSecret, false));
 
 export async function getProjects(options?: {
 	status?: string;
@@ -22,122 +28,93 @@ export async function getProjects(options?: {
 	publicOnly?: boolean;
 	limit?: number;
 }): Promise<ProjectRecord[]> {
-	const db = await getDb();
-	const col = db.collection(PROJECTS_COLLECTION);
+	const rows = await getDb()
+		.select()
+		.from(projects)
+		.where(
+			and(
+				notDeleted,
+				options?.publicOnly ? isPublic : options?.status ? eq(projects.status, options.status as ProjectRow["status"]) : undefined,
+				options?.featured === undefined ? undefined : eq(projects.featured, options.featured),
+			),
+		)
+		.orderBy(desc(projects.featured), asc(projects.sortIndex), sql`${projects.publishedAt} desc nulls last`)
+		.limit(options?.limit ?? 100);
 
-	const query: Filter<any> = { deletedAt: { $exists: false } };
-	if (options?.status) query.status = options.status;
-	if (options?.featured !== undefined) query.featured = options.featured;
-	if (options?.publicOnly) {
-		query.status = "published";
-		query.isSecret = { $ne: true };
-	}
-
-	const docs = await col
-		.find(query)
-		.sort({ featured: -1, sortIndex: 1, publishedAt: -1 })
-		.limit(options?.limit ?? 100)
-		.toArray();
-
-	return docs.map(toProjectRecord);
+	return rows.map(toProjectRecord);
 }
 
-export async function getProjectBySlugMongo(slug: string, options?: { publicOnly?: boolean }): Promise<ProjectRecord | null> {
-	const db = await getDb();
-	const col = db.collection(PROJECTS_COLLECTION);
-
-	const query: Filter<any> = { slug, deletedAt: { $exists: false } };
-	if (options?.publicOnly) {
-		query.status = "published";
-		query.isSecret = { $ne: true };
-	}
-	const doc = await col.findOne(query);
-	if (!doc) return null;
-
-	return toProjectRecord(doc);
+export async function getProjectBySlug(slug: string, options?: { publicOnly?: boolean }): Promise<ProjectRecord | null> {
+	const [row] = await getDb()
+		.select()
+		.from(projects)
+		.where(and(eq(projects.slug, slug), notDeleted, options?.publicOnly ? isPublic : undefined))
+		.limit(1);
+	return row ? toProjectRecord(row) : null;
 }
 
 export async function getProjectById(id: string): Promise<ProjectRecord | null> {
-	const db = await getDb();
-	const col = db.collection(PROJECTS_COLLECTION);
-
-	const doc = await col.findOne({ _id: new ObjectId(id), deletedAt: { $exists: false } });
-	if (!doc) return null;
-
-	return toProjectRecord(doc);
+	if (!isUuid(id)) return null;
+	const [row] = await getDb().select().from(projects).where(and(eq(projects.id, id), notDeleted)).limit(1);
+	return row ? toProjectRecord(row) : null;
 }
 
 export async function createProject(input: CreateProjectInput): Promise<ProjectRecord> {
-	const db = await getDb();
-	const col = db.collection(PROJECTS_COLLECTION);
-
 	const now = new Date();
-	const doc = {
-		...input,
-		createdAt: now,
-		updatedAt: now,
-		publishedAt: input.status === "published" ? (input.publishedAt ? new Date(input.publishedAt) : now) : null,
-		previewUpdatedAt: input.previewUpdatedAt ? new Date(input.previewUpdatedAt) : null,
-	};
-
-	const res = await col.insertOne(doc);
-	return toProjectRecord({ ...doc, _id: res.insertedId });
+	const [row] = await getDb()
+		.insert(projects)
+		.values({
+			...input,
+			createdAt: now,
+			updatedAt: now,
+			publishedAt: input.status === "published" ? (date(input.publishedAt) ?? now) : null,
+			previewUpdatedAt: date(input.previewUpdatedAt),
+		})
+		.returning();
+	return toProjectRecord(row);
 }
 
 export async function updateProject(id: string, input: UpdateProjectInput): Promise<boolean> {
-	const db = await getDb();
-	const col = db.collection(PROJECTS_COLLECTION);
+	if (!isUuid(id)) return false;
+	const { publishedAt, previewUpdatedAt, ...fields } = input;
+	const update: Partial<typeof projects.$inferInsert> = { ...fields, updatedAt: new Date() };
 
-	const update: any = {
-		...input,
-		updatedAt: new Date(),
-	};
-
-	if (input.status === "published" && !input.publishedAt) {
+	if (input.status === "published" && !publishedAt) {
 		update.publishedAt = new Date();
-	} else if (input.publishedAt) {
-		update.publishedAt = new Date(input.publishedAt);
+	} else if (publishedAt) {
+		update.publishedAt = new Date(publishedAt);
 	}
-	if (input.previewUpdatedAt) {
-		update.previewUpdatedAt = new Date(input.previewUpdatedAt);
+	if (previewUpdatedAt) {
+		update.previewUpdatedAt = new Date(previewUpdatedAt);
 	}
 
-	const res = await col.updateOne({ _id: new ObjectId(id) }, { $set: update });
-	return res.modifiedCount > 0;
+	const rows = await getDb().update(projects).set(update).where(eq(projects.id, id)).returning({ id: projects.id });
+	return rows.length > 0;
 }
 
-/** Set sortIndex for each project by position in orderedIds. Keeps hierarchy stable. */
+/** Set sortIndex for each project by position in orderedIds, atomically. */
 export async function reorderProjects(orderedIds: string[]): Promise<void> {
-	if (orderedIds.length === 0) return;
+	const ids = orderedIds.filter(isUuid);
+	if (ids.length === 0) return;
 
-	const db = await getDb();
-	const col = db.collection(PROJECTS_COLLECTION);
 	const now = new Date();
-
-	for (let i = 0; i < orderedIds.length; i++) {
-		await col.updateOne(
-			{ _id: new ObjectId(orderedIds[i]), deletedAt: { $exists: false } },
-			{ $set: { sortIndex: i, updatedAt: now } }
-		);
-	}
+	await getDb().transaction(async (tx) => {
+		for (const [index, id] of ids.entries()) {
+			await tx
+				.update(projects)
+				.set({ sortIndex: index, updatedAt: now })
+				.where(and(eq(projects.id, id), notDeleted));
+		}
+	});
 }
 
 export async function softDeleteProject(id: string): Promise<boolean> {
-	const db = await getDb();
-	const col = db.collection(PROJECTS_COLLECTION);
-
-	const res = await col.updateOne(
-		{ _id: new ObjectId(id) },
-		{ $set: { deletedAt: new Date(), updatedAt: new Date() } }
-	);
-
-	return res.modifiedCount > 0;
-}
-
-export async function ensureProjectIndexes() {
-	const db = await getDb();
-	const col = db.collection(PROJECTS_COLLECTION);
-	await col.createIndex({ slug: 1 }, { unique: true });
-	await col.createIndex({ status: 1 });
-	await col.createIndex({ featured: -1, sortIndex: 1, publishedAt: -1 });
+	if (!isUuid(id)) return false;
+	const now = new Date();
+	const rows = await getDb()
+		.update(projects)
+		.set({ deletedAt: now, updatedAt: now })
+		.where(eq(projects.id, id))
+		.returning({ id: projects.id });
+	return rows.length > 0;
 }

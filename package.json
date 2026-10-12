@@ -11,7 +11,9 @@
     "doc": "docs"
   },
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "pnpm ugur dev",
+    "dev:site": "pnpm ugur dev --filter site",
+    "dev:portal": "pnpm ugur dev --filter portal",
     "guard:legacy-imports": "node ./tooling/guards/legacy-imports.mjs",
     "guard:no-feature-server-imports": "node ./tooling/guards/no-feature-server-imports.mjs",
     "guard:no-deep-imports": "node ./tooling/guards/no-deep-imports.mjs",
@@ -23,12 +25,16 @@
     "lint": "pnpm guard && turbo lint && eslint tooling --ext .mjs",
     "typecheck": "pnpm guard && turbo typecheck",
     "test": "pnpm guard && turbo run build --filter=@ugur/server --filter=@ugur/core && vitest run",
+    "check": "pnpm lint && pnpm db:check && pnpm typecheck && pnpm test",
     "clean": "turbo clean",
-    "setup:indexes": "node ./tooling/scripts/setup-indexes.mjs",
-    "migrate:projects": "node ./tooling/scripts/migrate-projects.mjs",
     "ui:add": "pnpm dlx shadcn@latest add -c packages/ui",
     "ui:diff": "pnpm dlx shadcn@latest diff -c packages/ui",
-    "start": "pnpm --filter @ugur/site start"
+    "start": "pnpm --filter @ugur/site start",
+    "db:generate": "pnpm ugur db generate",
+    "db:check": "pnpm ugur db check",
+    "db:migrate": "pnpm ugur db migrate",
+    "db:studio": "pnpm ugur db studio",
+    "ugur": "node tooling/cli/src/main.ts"
   },
   "repository": {
     "type": "git",
@@ -48,7 +54,6 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.43.0",
     "lucide-react": "^0.575.0",
-    "mongodb": "^5.9.2",
     "next": "^16.4.0",
     "next-mdx-remote": "^6.0.0",
     "next-themes": "^0.4.6",
@@ -60,6 +65,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.9",
     "@eslint/eslintrc": "^3.3.7",
     "@eslint/js": "^9.39.5",
     "@fontsource/inter": "^5.3.0",
@@ -74,6 +80,7 @@
     "@typescript-eslint/parser": "^8.71.1",
     "autoprefixer": "^10.6.1",
     "cross-env": "^10.1.0",
+    "drizzle-orm": "^0.45.4",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.0",
     "eslint-plugin-import": "^2.32.0",

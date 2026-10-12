@@ -1,22 +1,14 @@
 import "server-only";
 import { createHmac } from "node:crypto";
-import { ObjectId } from "mongodb";
-import type { Collection } from "mongodb";
+import { and, desc, ilike, lt, or, sql } from "drizzle-orm";
+import { getDb } from "../db/client";
+import { contactRateLimits, contactRequests } from "../db/schema";
 import { env } from "../env";
-import { getDb } from "../mongodb";
 import type { ContactInput } from "./validators";
 
 const CONTACT_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const CONTACT_RATE_LIMIT_MAX_REQUESTS = 5;
 const CONTACT_RATE_LIMIT_RETENTION_MS = 60 * 60 * 1000;
-
-type ContactRateLimitRecord = {
-	_id: string;
-	count: number;
-	expiresAt: Date;
-};
-
-let contactRateLimitIndexPromise: Promise<string> | undefined;
 
 export type ContactRateLimitResult = {
 	allowed: boolean;
@@ -24,29 +16,9 @@ export type ContactRateLimitResult = {
 	retryAfterSeconds: number;
 };
 
-async function incrementRateLimitRecord(
-	col: Collection<ContactRateLimitRecord>,
-	key: string,
-	expiresAt: Date,
-) {
-	try {
-		const result = await col.findOneAndUpdate(
-			{ _id: key },
-			{ $inc: { count: 1 }, $setOnInsert: { expiresAt } },
-			{ upsert: true, returnDocument: "after" },
-		);
-		return result.value;
-	} catch (error) {
-		// Concurrent first requests can race to upsert the same deterministic bucket.
-		if ((error as { code?: number })?.code !== 11000) throw error;
-		await col.updateOne({ _id: key }, { $inc: { count: 1 } });
-		return col.findOne({ _id: key });
-	}
-}
-
 /**
- * Shared per-IP limit for the public form. Only an HMAC is stored; TTL cleanup
- * removes each bucket after the configured short retention window.
+ * Shared per-IP limit for the public form. Only an HMAC is stored; buckets past their short
+ * retention window are removed whenever a new request is counted.
  */
 export async function consumeContactRateLimit(clientAddress: string, now = new Date()): Promise<ContactRateLimitResult> {
 	if (env.CONTACT_RATE_LIMIT_SECRET.length < 32) {
@@ -59,17 +31,20 @@ export async function consumeContactRateLimit(clientAddress: string, now = new D
 	const addressHash = createHmac("sha256", env.CONTACT_RATE_LIMIT_SECRET).update(clientAddress.trim()).digest("hex");
 	const key = `${bucket}:${addressHash}`;
 	const expiresAt = new Date(windowEnd + CONTACT_RATE_LIMIT_RETENTION_MS);
-	const db = await getDb();
-	const col = db.collection<ContactRateLimitRecord>("contact_rate_limits");
-	if (!contactRateLimitIndexPromise) {
-		contactRateLimitIndexPromise = col.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch((error) => {
-			contactRateLimitIndexPromise = undefined;
-			throw error;
-		});
-	}
-	await contactRateLimitIndexPromise;
-	const record = await incrementRateLimitRecord(col, key, expiresAt);
+	const db = getDb();
+
+	// One atomic statement, so simultaneous first requests cannot both count as "1".
+	const [record] = await db
+		.insert(contactRateLimits)
+		.values({ key, count: 1, expiresAt })
+		.onConflictDoUpdate({
+			target: contactRateLimits.key,
+			set: { count: sql`${contactRateLimits.count} + 1` },
+		})
+		.returning({ count: contactRateLimits.count });
 	if (!record) throw new Error("Failed to update contact rate limit.");
+
+	await db.delete(contactRateLimits).where(lt(contactRateLimits.expiresAt, new Date()));
 
 	return {
 		allowed: record.count <= CONTACT_RATE_LIMIT_MAX_REQUESTS,
@@ -78,55 +53,51 @@ export async function consumeContactRateLimit(clientAddress: string, now = new D
 	};
 }
 
-export type ContactRequest = ContactInput & {
-	_id: ObjectId;
-	createdAt: Date;
-	source?: string;
+export type ContactRequest = {
+	id: string;
+	name: string;
+	email: string;
+	message: string;
+	createdAt: string;
+	source: string;
 };
 
 export async function createContactRequest(payload: ContactInput) {
-	const db = await getDb();
-	const col = db.collection<Omit<ContactRequest, "_id">>("contact_requests");
-
-	const res = await col.insertOne({
-		...payload,
-		createdAt: new Date(),
-		source: "website",
-	});
-
-	return res.insertedId.toString();
+	const [row] = await getDb()
+		.insert(contactRequests)
+		.values({ name: payload.name, email: payload.email, message: payload.message, source: "website" })
+		.returning({ id: contactRequests.id });
+	return String(row.id);
 }
+
+const escapeLike = (value: string) => value.replace(/[\\%_]/g, (char) => `\\${char}`);
 
 export async function listContactRequests(opts: { limit?: number; cursor?: string; q?: string } = {}) {
 	const limit = Math.min(opts.limit ?? 50, 200);
-	const db = await getDb();
-	const col = db.collection<ContactRequest>("contact_requests");
+	const cursor = opts.cursor && /^\d+$/.test(opts.cursor) ? Number(opts.cursor) : null;
+	const q = typeof opts.q === "string" ? opts.q.trim() : "";
+	const pattern = `%${escapeLike(q)}%`;
 
-	const query: Record<string, unknown> = {};
-	if (opts.cursor) {
-		query._id = { $lt: new ObjectId(opts.cursor) };
-	}
+	const rows = await getDb()
+		.select()
+		.from(contactRequests)
+		.where(
+			and(
+				cursor === null ? undefined : lt(contactRequests.id, cursor),
+				q ? or(ilike(contactRequests.name, pattern), ilike(contactRequests.email, pattern)) : undefined,
+			),
+		)
+		.orderBy(desc(contactRequests.id))
+		.limit(limit);
 
-	if (opts.q && typeof opts.q === "string" && opts.q.trim().length > 0) {
-		const q = opts.q.trim();
-		query.$or = [
-			{ name: { $regex: q, $options: "i" } },
-			{ email: { $regex: q, $options: "i" } },
-		];
-	}
-
-	const docs = await col.find(query).sort({ _id: -1 }).limit(limit).toArray();
-
-	const items = docs.map((doc) => ({
-		id: doc._id.toString(),
-		name: doc.name,
-		email: doc.email,
-		message: doc.message,
-		createdAt: doc.createdAt.toISOString(),
-		source: doc.source,
+	const items: ContactRequest[] = rows.map((row) => ({
+		id: String(row.id),
+		name: row.name,
+		email: row.email,
+		message: row.message,
+		createdAt: row.createdAt.toISOString(),
+		source: row.source,
 	}));
 
-	const nextCursor = docs.length ? docs[docs.length - 1]._id.toString() : null;
-
-	return { items, nextCursor };
+	return { items, nextCursor: items.length ? items[items.length - 1].id : null };
 }

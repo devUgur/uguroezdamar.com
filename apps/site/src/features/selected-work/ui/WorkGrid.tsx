@@ -14,7 +14,7 @@ export default function WorkGrid({ items }: { items: WorkItem[] }) {
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((it) => (
-            <WorkItemCard key={it._id} item={it} />
+            <WorkItemCard key={it.id} item={it} />
           ))}
         </div>
       )}

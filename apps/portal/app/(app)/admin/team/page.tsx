@@ -55,7 +55,7 @@ export default async function TeamPage() {
                         {admin.lastLogin ? new Date(admin.lastLogin).toLocaleString() : "Never"}
                       </td>
                       <td className="p-4 text-right">
-                        <Link href={`/admin/team/${admin._id?.toString() || admin.email}`} className="text-xs text-blue-500 hover:underline">
+                        <Link href={`/admin/team/${admin.id}`} className="text-xs text-blue-500 hover:underline">
                           Edit
                         </Link>
                       </td>

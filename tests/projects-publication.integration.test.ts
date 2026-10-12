@@ -1,69 +1,79 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { useTestDatabase } from "./_helpers/test-db";
 
-const testMongoUri = process.env.TEST_MONGODB_URI;
-process.env.CONTACT_RATE_LIMIT_SECRET ??= "test-only-contact-rate-limit-secret-32";
-if (testMongoUri) {
-  const parsed = new URL(testMongoUri);
-  if (!new Set(["localhost", "127.0.0.1", "[::1]"]).has(parsed.hostname)) {
-    throw new Error("TEST_MONGODB_URI must point to a local MongoDB instance.");
-  }
-  process.env.MONGODB_URI = testMongoUri;
-}
-
-describe("CMS project publication (MongoDB integration)", () => {
+describe("CMS project publication (Postgres integration)", () => {
   let server: typeof import("@ugur/server");
-  beforeAll(async () => { server = await import("@ugur/server"); });
-  const integrationTest = testMongoUri ? it : it.skip;
+  let close: () => Promise<void>;
+  beforeAll(async () => {
+    ({ server, close } = await useTestDatabase());
+  });
+  afterAll(() => close());
 
-  integrationTest("keeps drafts and secret projects private through publish and unpublish", async () => {
-    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const draftSlug = `publication-draft-${suffix}`;
-    const secretSlug = `publication-secret-${suffix}`;
-    const publicSlug = `publication-public-${suffix}`;
-    const created: string[] = [];
+  it("keeps drafts and secret projects private through publish and unpublish", async () => {
+    const draftSlug = "publication-draft";
+    const secretSlug = "publication-secret";
+    const publicSlug = "publication-public";
 
-    try {
-      const draft = await server.createProject({ slug: draftSlug, title: "Draft", status: "draft" });
-      created.push(draft._id);
-      const secret = await server.createProject({ slug: secretSlug, title: "Secret", status: "published", isSecret: true });
-      created.push(secret._id);
-      const canonicalInput = server.CreateProjectSchema.parse({ slug: publicSlug.toUpperCase(), title: "Public", status: "draft" });
-      expect(canonicalInput.slug).toBe(publicSlug);
-      const project = await server.createProject(canonicalInput);
-      created.push(project._id);
+    await server.createProject(server.CreateProjectSchema.parse({ slug: draftSlug, title: "Draft", status: "draft" }));
+    await server.createProject(
+      server.CreateProjectSchema.parse({ slug: secretSlug, title: "Secret", status: "published", isSecret: true }),
+    );
+    const canonicalInput = server.CreateProjectSchema.parse({ slug: publicSlug.toUpperCase(), title: "Public", status: "draft" });
+    expect(canonicalInput.slug).toBe(publicSlug);
+    const project = await server.createProject(canonicalInput);
+    expect(project.id).toMatch(/^[0-9a-f-]{36}$/);
 
-      expect(await server.getProjectBySlugMongo(draftSlug, { publicOnly: true })).toBeNull();
-      expect(await server.getProjectBySlugMongo(secretSlug, { publicOnly: true })).toBeNull();
-      const initiallyPublic = await server.getProjects({ publicOnly: true });
-      expect(initiallyPublic).not.toEqual(expect.arrayContaining([expect.objectContaining({ slug: draftSlug })]));
-      expect(initiallyPublic).not.toEqual(expect.arrayContaining([expect.objectContaining({ slug: secretSlug })]));
+    expect(await server.getProjectBySlug(draftSlug, { publicOnly: true })).toBeNull();
+    expect(await server.getProjectBySlug(secretSlug, { publicOnly: true })).toBeNull();
+    expect(await server.getProjects({ publicOnly: true })).toEqual([]);
 
-      await server.updateProject(project._id, { status: "published" });
-      expect(await server.getProjectBySlugMongo(publicSlug, { publicOnly: true })).toMatchObject({ status: "published" });
-      expect(await server.getProjects({ publicOnly: true })).toEqual(expect.arrayContaining([
-        expect.objectContaining({ slug: publicSlug, status: "published" }),
-      ]));
+    expect(await server.updateProject(project.id, { status: "published" })).toBe(true);
+    expect(await server.getProjectBySlug(publicSlug, { publicOnly: true })).toMatchObject({ status: "published" });
+    const published = await server.getProjects({ publicOnly: true });
+    expect(published.map((item) => item.slug)).toEqual([publicSlug]);
+    expect(typeof published[0].publishedAt).toBe("string");
 
-      const sitemap = (await import("../apps/site/app/sitemap")).default;
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? (process.env.NODE_ENV === "production" ? "https://uguroezdamar.com" : "http://localhost:3000");
-      expect((await sitemap()).map((entry) => entry.url)).toContain(`${baseUrl}/projects/${publicSlug}`);
+    const sitemap = (await import("../apps/site/app/sitemap")).default;
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? (process.env.NODE_ENV === "production" ? "https://uguroezdamar.com" : "http://localhost:3000");
+    expect((await sitemap()).map((entry) => entry.url)).toContain(`${baseUrl}/projects/${publicSlug}`);
 
-      await server.updateProject(project._id, { isSecret: true });
-      expect(await server.getProjectBySlugMongo(publicSlug, { publicOnly: true })).toBeNull();
-      await server.updateProject(project._id, { isSecret: false });
+    await server.updateProject(project.id, { isSecret: true });
+    expect(await server.getProjectBySlug(publicSlug, { publicOnly: true })).toBeNull();
+    await server.updateProject(project.id, { isSecret: false });
 
-      await server.updateProject(project._id, { status: "draft" });
-      expect(await server.getProjectBySlugMongo(publicSlug, { publicOnly: true })).toBeNull();
-      expect(await server.getProjects({ publicOnly: true })).not.toEqual(expect.arrayContaining([
-        expect.objectContaining({ slug: publicSlug }),
-      ]));
-    } finally {
-      await Promise.all(created.map((id) => server.softDeleteProject(id)));
-    }
+    await server.updateProject(project.id, { status: "draft" });
+    expect(await server.getProjectBySlug(publicSlug, { publicOnly: true })).toBeNull();
+    expect(await server.getProjects({ publicOnly: true })).toEqual([]);
   });
 
-  integrationTest("enforces the MongoDB-backed contact limit and resets each window", async () => {
-    const address = `test-address-${Date.now()}-${Math.random()}`;
+  it("orders, reorders and soft-deletes projects", async () => {
+    const first = await server.createProject(server.CreateProjectSchema.parse({ slug: "order-a", title: "A" }));
+    const second = await server.createProject(server.CreateProjectSchema.parse({ slug: "order-b", title: "B" }));
+
+    await server.reorderProjects([second.id, first.id]);
+    const ordered = (await server.getProjects()).filter((item) => item.slug.startsWith("order-"));
+    expect(ordered.map((item) => item.slug)).toEqual(["order-b", "order-a"]);
+
+    expect(await server.softDeleteProject(first.id)).toBe(true);
+    expect(await server.getProjectById(first.id)).toBeNull();
+    expect(await server.getProjectBySlug("order-a")).toBeNull();
+  });
+
+  it("treats malformed ids as not found instead of failing", async () => {
+    expect(await server.getProjectById("not-a-uuid")).toBeNull();
+    expect(await server.updateProject("not-a-uuid", { title: "x" })).toBe(false);
+    expect(await server.softDeleteProject("507f1f77bcf86cd799439011")).toBe(false);
+  });
+
+  it("rejects a duplicate slug", async () => {
+    await server.createProject(server.CreateProjectSchema.parse({ slug: "unique-slug", title: "One" }));
+    await expect(
+      server.createProject(server.CreateProjectSchema.parse({ slug: "unique-slug", title: "Two" })),
+    ).rejects.toThrow();
+  });
+
+  it("enforces the contact limit and resets each window", async () => {
+    const address = "203.0.113.10";
     const currentWindowStart = Math.floor(Date.now() / (10 * 60 * 1000)) * (10 * 60 * 1000);
     const firstWindow = new Date(currentWindowStart + 1000);
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -73,21 +83,38 @@ describe("CMS project publication (MongoDB integration)", () => {
 
     const nextWindow = new Date(currentWindowStart + 10 * 60 * 1000 + 1000);
     await expect(server.consumeContactRateLimit(address, nextWindow)).resolves.toMatchObject({ allowed: true, remaining: 4 });
-
-    const db = await server.getDb();
-    const indexes = await db.collection("contact_rate_limits").listIndexes().toArray();
-    expect(indexes).toEqual(expect.arrayContaining([
-      expect.objectContaining({ key: { expiresAt: 1 }, expireAfterSeconds: 0 }),
-    ]));
   });
 
-  integrationTest("counts simultaneous first requests atomically", async () => {
-    const address = `race-address-${Date.now()}-${Math.random()}`;
+  it("removes rate-limit buckets after their retention window", async () => {
+    const longAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    await server.consumeContactRateLimit("203.0.113.20", longAgo);
+    await server.consumeContactRateLimit("203.0.113.21");
+    const rows = await server.getDb().select().from(server.schema.contactRateLimits);
+    expect(rows.every((row) => row.expiresAt.getTime() > Date.now())).toBe(true);
+  });
+
+  it("counts simultaneous first requests atomically", async () => {
     const now = new Date();
     const results = await Promise.all(
-      Array.from({ length: 10 }, () => server.consumeContactRateLimit(address, now)),
+      Array.from({ length: 10 }, () => server.consumeContactRateLimit("203.0.113.30", now)),
     );
     expect(results.filter((result) => result.allowed)).toHaveLength(5);
     expect(results.filter((result) => !result.allowed)).toHaveLength(5);
+  });
+
+  it("stores contact requests and pages and searches them safely", async () => {
+    const ids: string[] = [];
+    for (const name of ["Ada", "Grace", "100%_real"]) {
+      ids.push(await server.createContactRequest({ name, email: `${name.toLowerCase()}@example.com`, message: "Hello" }));
+    }
+    const firstPage = await server.listContactRequests({ limit: 2 });
+    expect(firstPage.items.map((item) => item.name)).toEqual(["100%_real", "Grace"]);
+    const secondPage = await server.listContactRequests({ limit: 2, cursor: firstPage.nextCursor ?? undefined });
+    expect(secondPage.items.map((item) => item.name)).toEqual(["Ada"]);
+
+    expect((await server.listContactRequests({ q: "grace" })).items).toHaveLength(1);
+    // Wildcards in the search term are literals, not patterns.
+    expect((await server.listContactRequests({ q: "%" })).items.map((item) => item.name)).toEqual(["100%_real"]);
+    expect(await server.countContactRequests()).toBe(3);
   });
 });

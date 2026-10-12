@@ -1,6 +1,7 @@
 import "server-only";
-import { ObjectId, type Filter, type FindOneAndUpdateOptions, type UpdateFilter } from "mongodb";
-import { getDb } from "../mongodb";
+import { eq } from "drizzle-orm";
+import { getDb } from "../db/client";
+import { profiles } from "../db/schema";
 
 export type ProfileLinks = {
 	github?: string | null;
@@ -21,93 +22,64 @@ export type Profile = {
 	createdAt: string;
 };
 
-export type DbProfile = {
-	_id?: ObjectId;
-	handle: string;
-	headline: string;
-	subheadline?: string | null;
-	bio: string;
-	location?: string | null;
-	email?: string | null;
-	links: {
-		github?: string | null;
-		linkedin?: string | null;
-		website?: string | null;
-	};
-	createdAt: Date;
-	updatedAt: Date;
-};
+export type DbProfile = typeof profiles.$inferSelect;
 
-function toProfile(doc: DbProfile): Profile {
+function toProfile(row: DbProfile): Profile {
 	return {
-		id: doc._id?.toHexString() ?? doc.handle,
-		handle: doc.handle,
-		headline: doc.headline,
-		subheadline: doc.subheadline ?? null,
-		bio: doc.bio,
-		location: doc.location ?? null,
-		email: doc.email ?? null,
+		id: row.id,
+		handle: row.handle,
+		headline: row.headline,
+		subheadline: row.subheadline ?? null,
+		bio: row.bio,
+		location: row.location ?? null,
+		email: row.email ?? null,
 		links: {
-			github: doc.links?.github ?? null,
-			linkedin: doc.links?.linkedin ?? null,
-			website: doc.links?.website ?? null,
+			github: row.links?.github ?? null,
+			linkedin: row.links?.linkedin ?? null,
+			website: row.links?.website ?? null,
 		},
-		createdAt: doc.createdAt.toISOString(),
-		updatedAt: doc.updatedAt.toISOString(),
+		createdAt: row.createdAt.toISOString(),
+		updatedAt: row.updatedAt.toISOString(),
 	};
 }
 
 export async function getProfile(handle = "main"): Promise<Profile | null> {
-	const db = await getDb();
-	const col = db.collection<DbProfile>("profile");
-	const doc = await col.findOne({ handle } as Filter<DbProfile>);
-	if (!doc) return null;
-	return toProfile(doc);
+	const [row] = await getDb().select().from(profiles).where(eq(profiles.handle, handle)).limit(1);
+	return row ? toProfile(row) : null;
 }
 
 export async function upsertProfile(
 	handle: string,
-	input: Omit<DbProfile, "_id" | "handle" | "createdAt" | "updatedAt">,
+	input: {
+		headline: string;
+		subheadline?: string | null;
+		bio: string;
+		location?: string | null;
+		email?: string | null;
+		links?: ProfileLinks;
+	},
 ): Promise<Profile> {
-	const db = await getDb();
-	const col = db.collection<DbProfile>("profile");
-
 	const now = new Date();
-	const update: UpdateFilter<DbProfile> = {
-		$set: {
-			headline: input.headline,
-			subheadline: input.subheadline ?? null,
-			bio: input.bio,
-			location: input.location ?? null,
-			email: input.email ?? null,
-			links: {
-				github: input.links?.github ?? null,
-				linkedin: input.links?.linkedin ?? null,
-				website: input.links?.website ?? null,
-			},
-			updatedAt: now,
+	const values = {
+		headline: input.headline,
+		subheadline: input.subheadline ?? null,
+		bio: input.bio,
+		location: input.location ?? null,
+		email: input.email ?? null,
+		links: {
+			github: input.links?.github ?? null,
+			linkedin: input.links?.linkedin ?? null,
+			website: input.links?.website ?? null,
 		},
-		$setOnInsert: {
-			handle,
-			createdAt: now,
-		} as Partial<DbProfile>,
+		updatedAt: now,
 	};
 
-	const res = await col.findOneAndUpdate(
-		{ handle } as Filter<DbProfile>,
-		update,
-		{ upsert: true, returnDocument: "after" } as FindOneAndUpdateOptions,
-	);
+	const [row] = await getDb()
+		.insert(profiles)
+		.values({ handle, ...values, createdAt: now })
+		.onConflictDoUpdate({ target: profiles.handle, set: values })
+		.returning();
 
-	if (!res.value) {
-		throw new Error("Failed to upsert profile");
-	}
-
-	return toProfile(res.value);
-}
-
-export async function ensureProfileIndexes() {
-	const db = await getDb();
-	const col = db.collection("profile");
-	await col.createIndex({ handle: 1 }, { unique: true });
+	if (!row) throw new Error("Failed to upsert profile");
+	return toProfile(row);
 }

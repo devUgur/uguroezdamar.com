@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
 	reactStrictMode: true,
-	serverExternalPackages: ["mongodb", "argon2"],
+	serverExternalPackages: ["argon2"],
 	async redirects() {
 		return [
 			{

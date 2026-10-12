@@ -56,7 +56,7 @@ export type CareerEntryType = z.infer<typeof CareerEntryTypeSchema>;
 export type CareerEntryInput = z.infer<typeof CreateCareerEntrySchema>;
 export type UpdateCareerEntryInput = z.infer<typeof UpdateCareerEntrySchema>;
 export type CareerEntry = CareerEntryInput & {
-  _id: string;
+  id: string;
   createdAt: string;
   updatedAt: string;
 };

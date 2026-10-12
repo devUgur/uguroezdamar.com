@@ -1,7 +1,8 @@
 import "server-only";
 
 export { env } from "./env";
-export { getClient, getDb } from "./mongodb";
+export { getDb, setDb, isUuid, DatabaseNotConfiguredError, type Database } from "./db/client";
+export * as schema from "./db/schema";
 export {
 	uploadBuffer,
 	getPublicUrl,
@@ -22,6 +23,7 @@ export {
 	countOwners,
 	updateAdminRoleById,
 	deleteAdminById,
+	recordAdminLogin,
 	getAdminSession,
 	deleteAdminSession,
 	canDelete,
@@ -38,13 +40,13 @@ export {
 	type AdminLoginInput,
 	type AdminRole,
 	type Admin,
+	type AdminSummary,
 	type AdminSession,
 } from "./admin";
 export {
 	createProject,
-	ensureProjectIndexes,
 	getProjectById,
-	getProjectBySlugMongo,
+	getProjectBySlug,
 	getProjects,
 	reorderProjects,
 	softDeleteProject,
@@ -69,7 +71,6 @@ export {
 	profile,
 	getProfile,
 	upsertProfile,
-	ensureProfileIndexes,
 	ProfileLinksSchema,
 	UpsertProfileSchema,
 } from "./profile";

@@ -11,7 +11,7 @@ export default async function ProjectEditPage({ params }: { params: Promise<{ id
 
   return (
     <div className="p-8">
-      <ProjectForm id={project._id} initial={project} />
+      <ProjectForm id={project.id} initial={project} />
     </div>
   );
 }

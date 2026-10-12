@@ -1,6 +1,6 @@
 export const env = {
   REVALIDATE_SECRET: process.env.REVALIDATE_SECRET ?? "",
-  MONGODB_URI: process.env.MONGODB_URI ?? "",
+  DATABASE_URL: process.env.DATABASE_URL ?? "",
   CONTACT_RATE_LIMIT_SECRET: process.env.CONTACT_RATE_LIMIT_SECRET ?? "",
   ADMIN_API_KEY: process.env.ADMIN_API_KEY ?? "",
   ADMIN_SESSION_TTL_SECONDS: Number(process.env.ADMIN_SESSION_TTL_SECONDS ?? "86400"),
@@ -17,5 +17,5 @@ export const env = {
   R2_ENDPOINT: process.env.R2_ENDPOINT ?? "",
   R2_REGION: process.env.R2_REGION ?? "auto",
   R2_FORCE_PATH_STYLE: process.env.R2_FORCE_PATH_STYLE ?? "true",
-  R2_PUBLIC_BASE_URL: process.env.R2_PUBLIC_BASE_URL ?? process.env.R2_PUBLIC_BASE ?? "",
+  R2_PUBLIC_BASE_URL: process.env.R2_PUBLIC_BASE_URL ?? "",
 };

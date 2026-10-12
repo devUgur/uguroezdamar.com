@@ -48,7 +48,7 @@ export default async function CareerPage() {
               </tr>
             ) : (
               items.map((item) => (
-                <tr key={item._id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                <tr key={item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                   <td className="p-4 font-medium">{item.title}</td>
                   <td className="p-4">
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground">
@@ -65,7 +65,7 @@ export default async function CareerPage() {
                     </span>
                   </td>
                   <td className="p-4 text-right">
-                    <Link href={`/admin/career/${item._id}`} className="text-xs text-blue-500 hover:underline mr-4">
+                    <Link href={`/admin/career/${item.id}`} className="text-xs text-blue-500 hover:underline mr-4">
                       Edit
                     </Link>
                   </td>

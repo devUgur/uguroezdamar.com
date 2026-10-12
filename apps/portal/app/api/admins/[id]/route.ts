@@ -31,8 +31,8 @@ export async function PATCH(request: NextRequest) {
   if (!target) return NextResponse.json({ error: "Not Found" }, { status: 404 });
 
   // Prevent self-demotion
-  const targetIdStr = target._id?.toString() ?? target.email;
-  const actingIdStr = actingAdmin?._id?.toString() ?? auth.session?.adminId ?? null;
+  const targetIdStr = target.id;
+  const actingIdStr = actingAdmin?.id ?? auth.session?.adminId ?? null;
   if (actingIdStr && targetIdStr && actingIdStr === targetIdStr && target.role === "owner" && newRole !== "owner") {
     return NextResponse.json({ error: "Owner cannot demote themselves" }, { status: 403 });
   }
@@ -45,7 +45,7 @@ export async function PATCH(request: NextRequest) {
 
   const updated = await updateAdminRoleById(idVal, newRole);
   if (!updated) return NextResponse.json({ error: "Not Found" }, { status: 404 });
-  return NextResponse.json({ ok: true, admin: { id: updated._id?.toString(), email: updated.email, role: updated.role, status: updated.status } });
+  return NextResponse.json({ ok: true, admin: { id: updated.id, email: updated.email, role: updated.role, status: updated.status } });
 }
 
 export async function DELETE(request: NextRequest) {
@@ -68,8 +68,8 @@ export async function DELETE(request: NextRequest) {
 
   // Prevent deletion of last owner
   // Prevent self-delete
-  const actingIdStr = actingAdmin?._id?.toString() ?? auth.session?.adminId ?? null;
-  const targetIdStr = target._id?.toString() ?? target.email;
+  const actingIdStr = actingAdmin?.id ?? auth.session?.adminId ?? null;
+  const targetIdStr = target.id;
   if (actingIdStr && targetIdStr && actingIdStr === targetIdStr) {
     return NextResponse.json({ error: "You cannot delete your own account" }, { status: 403 });
   }

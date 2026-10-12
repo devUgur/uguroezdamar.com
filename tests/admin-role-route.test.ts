@@ -43,7 +43,7 @@ describe("admin role route authorization", () => {
     mocks.requireAdmin.mockResolvedValue({
       ok: true,
       method: "session",
-      admin: { _id: "editor", role: "editor" },
+      admin: { id: "editor", role: "editor" },
       session: { adminId: "editor" },
     });
     const { PATCH } = await import("../apps/portal/app/api/admins/[id]/route");
@@ -63,12 +63,12 @@ describe("admin role route authorization", () => {
     mocks.requireAdmin.mockResolvedValue({
       ok: true,
       method: "session",
-      admin: { _id: "owner", role: "owner" },
+      admin: { id: "owner", role: "owner" },
       session: { adminId: "owner" },
     });
-    mocks.getAdminById.mockResolvedValue({ _id: "target", email: "target@example.com", role: "editor" });
+    mocks.getAdminById.mockResolvedValue({ id: "target", email: "target@example.com", role: "editor" });
     mocks.updateAdminRoleById.mockResolvedValue({
-      _id: "target",
+      id: "target",
       email: "target@example.com",
       role: "admin",
       status: "active",

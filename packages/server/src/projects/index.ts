@@ -2,9 +2,8 @@ import "server-only";
 
 export {
 	createProject,
-	ensureProjectIndexes,
 	getProjectById,
-	getProjectBySlugMongo,
+	getProjectBySlug,
 	getProjects,
 	reorderProjects,
 	softDeleteProject,

@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import "server-only";
 import {
-  getDb,
   env,
   createAdminSession,
   recordFailedLoginAttempt,
@@ -10,6 +9,7 @@ import {
   getAdminByEmail,
   verifyPassword,
   upgradeAdminPasswordHash,
+  recordAdminLogin,
   AdminLoginSchema,
 } from "@ugur/server";
 
@@ -56,29 +56,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: "Invalid credentials" }, { status: 401 });
     }
 
-    if (passwordCheck.needsRehash && admin._id) {
-      await upgradeAdminPasswordHash(admin._id, admin.passwordHash, password);
+    if (passwordCheck.needsRehash) {
+      await upgradeAdminPasswordHash(admin.id, admin.passwordHash, password);
     }
 
     // 4. Success - Create session
     await clearLoginAttempts(ip);
     const ua = request.headers.get("user-agent") ?? undefined;
     const session = await createAdminSession({
-      adminId: String(admin._id),
+      adminId: admin.id,
       email: admin.email,
       userAgent: ua,
       ip,
     });
 
-  // Update last login (filter by email to avoid ObjectId/string type mismatch)
-  const db = await getDb();
-    await db.collection("admins").updateOne({ email: admin.email }, {
-      $set: { lastLogin: new Date() },
-    });
+    await recordAdminLogin(admin.id);
 
   const res = NextResponse.json({ ok: true });
   const secure = process.env.NODE_ENV === "production";
-  res.cookies.set("admin_session", session._id, {
+  res.cookies.set("admin_session", session.id, {
     httpOnly: true,
     path: "/",
     maxAge: env.ADMIN_SESSION_TTL_SECONDS,
