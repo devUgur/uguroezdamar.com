@@ -3,15 +3,9 @@
 import { useState } from "react";
 
 import { Button, Card } from "@ugur/ui/client";
+import { submitContactRequest } from "../api";
 
 type State = { ok: true } | { ok: false; error: string } | null;
-
-function getContactApiUrl(): string {
-  if (typeof window !== "undefined") {
-    return process.env.NEXT_PUBLIC_CONTACT_API_URL ?? `${window.location.origin}/api/contact`;
-  }
-  return process.env.NEXT_PUBLIC_CONTACT_API_URL ?? "/api/contact";
-}
 
 export function ContactForm() {
   const [state, setState] = useState<State>(null);
@@ -27,11 +21,7 @@ export function ContactForm() {
         message: String(formData.get("message") ?? ""),
         nickname: String(formData.get("nickname") ?? ""),
       };
-      const res = await fetch(getContactApiUrl(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const res = await submitContactRequest(body);
       const data = await res.json();
       if (data.ok) {
         setState({ ok: true });

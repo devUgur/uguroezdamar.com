@@ -94,9 +94,11 @@ export {
 export {
 	createContactRequest,
 	listContactRequests,
+	consumeContactRateLimit,
 	contactSchema,
 	type ContactInput,
 	type ContactRequest,
+	type ContactRateLimitResult,
 } from "./contact";
 export type { DbProfile, Profile, ProfileLinks } from "./profile";
 export type { UpsertProfileInput } from "./profile";

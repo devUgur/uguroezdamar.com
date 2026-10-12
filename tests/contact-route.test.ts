@@ -1,12 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockCreateContactRequest = vi.fn();
+const mockConsumeContactRateLimit = vi.fn();
+process.env.CONTACT_RATE_LIMIT_SECRET = "test-only-contact-rate-limit-secret-32";
 
 vi.mock("@ugur/server", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@ugur/server")>();
   return {
     ...actual,
     createContactRequest: (...args: unknown[]) => mockCreateContactRequest(...args),
+    consumeContactRateLimit: (...args: unknown[]) => mockConsumeContactRateLimit(...args),
   };
 });
 
@@ -14,6 +17,8 @@ describe("POST /api/contact contract", () => {
   beforeEach(() => {
     mockCreateContactRequest.mockReset();
     mockCreateContactRequest.mockResolvedValue("test-id");
+    mockConsumeContactRateLimit.mockReset();
+    mockConsumeContactRateLimit.mockResolvedValue({ allowed: true, remaining: 4, retryAfterSeconds: 600 });
   });
 
   it("returns 400 and invalid input for invalid JSON", async () => {
@@ -54,7 +59,7 @@ describe("POST /api/contact contract", () => {
           email: "jane@example.com",
           message: "Hello",
         }),
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-nf-client-connection-ip": "198.51.100.10" },
       })
     );
     expect(res.status).toBe(200);
@@ -119,10 +124,58 @@ describe("POST /api/contact contract", () => {
     const { POST } = await import("../apps/site/app/api/contact/route");
     const res = await POST(new Request("https://site.example/api/contact", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-nf-client-connection-ip": "198.51.100.10" },
       body: JSON.stringify({ name: "Jane", email: "jane@example.com", message: "Hello" }),
     }));
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ ok: false, error: "Failed to save message" });
+  });
+
+  it("returns 429 and Retry-After when the shared rate limit is exhausted", async () => {
+    mockConsumeContactRateLimit.mockResolvedValueOnce({ allowed: false, remaining: 0, retryAfterSeconds: 237 });
+    const { POST } = await import("../apps/site/app/api/contact/route");
+    const res = await POST(new Request("https://site.example/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-nf-client-connection-ip": "198.51.100.11" },
+      body: JSON.stringify({ name: "Jane", email: "jane@example.com", message: "Hello" }),
+    }));
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBe("237");
+    expect(mockCreateContactRequest).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the trusted proxy address is missing", async () => {
+    const { POST } = await import("../apps/site/app/api/contact/route");
+    const res = await POST(new Request("https://site.example/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Jane", email: "jane@example.com", message: "Hello" }),
+    }));
+    expect(res.status).toBe(503);
+    expect(mockConsumeContactRateLimit).not.toHaveBeenCalled();
+    expect(mockCreateContactRequest).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the trusted proxy address is malformed", async () => {
+    const { POST } = await import("../apps/site/app/api/contact/route");
+    const res = await POST(new Request("https://site.example/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-nf-client-connection-ip": "spoofed, 198.51.100.1" },
+      body: JSON.stringify({ name: "Jane", email: "jane@example.com", message: "Hello" }),
+    }));
+    expect(res.status).toBe(503);
+    expect(mockConsumeContactRateLimit).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the shared rate-limit store is unavailable", async () => {
+    mockConsumeContactRateLimit.mockRejectedValueOnce(new Error("store unavailable"));
+    const { POST } = await import("../apps/site/app/api/contact/route");
+    const res = await POST(new Request("https://site.example/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-nf-client-connection-ip": "198.51.100.12" },
+      body: JSON.stringify({ name: "Jane", email: "jane@example.com", message: "Hello" }),
+    }));
+    expect(res.status).toBe(503);
+    expect(mockCreateContactRequest).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
 const testMongoUri = process.env.TEST_MONGODB_URI;
+process.env.CONTACT_RATE_LIMIT_SECRET ??= "test-only-contact-rate-limit-secret-32";
 if (testMongoUri) {
   const parsed = new URL(testMongoUri);
   if (!new Set(["localhost", "127.0.0.1", "[::1]"]).has(parsed.hostname)) {
@@ -59,5 +60,34 @@ describe("CMS project publication (MongoDB integration)", () => {
     } finally {
       await Promise.all(created.map((id) => server.softDeleteProject(id)));
     }
+  });
+
+  integrationTest("enforces the MongoDB-backed contact limit and resets each window", async () => {
+    const address = `test-address-${Date.now()}-${Math.random()}`;
+    const currentWindowStart = Math.floor(Date.now() / (10 * 60 * 1000)) * (10 * 60 * 1000);
+    const firstWindow = new Date(currentWindowStart + 1000);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await expect(server.consumeContactRateLimit(address, firstWindow)).resolves.toMatchObject({ allowed: true });
+    }
+    await expect(server.consumeContactRateLimit(address, firstWindow)).resolves.toMatchObject({ allowed: false, remaining: 0 });
+
+    const nextWindow = new Date(currentWindowStart + 10 * 60 * 1000 + 1000);
+    await expect(server.consumeContactRateLimit(address, nextWindow)).resolves.toMatchObject({ allowed: true, remaining: 4 });
+
+    const db = await server.getDb();
+    const indexes = await db.collection("contact_rate_limits").listIndexes().toArray();
+    expect(indexes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: { expiresAt: 1 }, expireAfterSeconds: 0 }),
+    ]));
+  });
+
+  integrationTest("counts simultaneous first requests atomically", async () => {
+    const address = `race-address-${Date.now()}-${Math.random()}`;
+    const now = new Date();
+    const results = await Promise.all(
+      Array.from({ length: 10 }, () => server.consumeContactRateLimit(address, now)),
+    );
+    expect(results.filter((result) => result.allowed)).toHaveLength(5);
+    expect(results.filter((result) => !result.allowed)).toHaveLength(5);
   });
 });

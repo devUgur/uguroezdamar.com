@@ -1,6 +1,7 @@
 export const env = {
   REVALIDATE_SECRET: process.env.REVALIDATE_SECRET ?? "",
   MONGODB_URI: process.env.MONGODB_URI ?? "",
+  CONTACT_RATE_LIMIT_SECRET: process.env.CONTACT_RATE_LIMIT_SECRET ?? "",
   ADMIN_API_KEY: process.env.ADMIN_API_KEY ?? "",
   ADMIN_SESSION_TTL_SECONDS: Number(process.env.ADMIN_SESSION_TTL_SECONDS ?? "86400"),
   ADMIN_INVITE_EXPIRES_HOURS: Number(process.env.ADMIN_INVITE_EXPIRES_HOURS ?? "72"),

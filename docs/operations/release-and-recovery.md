@@ -12,7 +12,7 @@ Das Repository enthält GitHub Actions für Lint, Typecheck, Tests und Build. Di
 
 ### Netlify-Monorepo-Konfiguration
 
-Für öffentliche Site und Portal sind getrennte Netlify-Projekte vorgesehen. Bei beiden bleibt das Netlify-**Base directory** auf Repository-Root (leer); das jeweilige **Package directory** wird in der Netlify-UI auf `apps/site` bzw. `apps/portal` gesetzt. Damit installiert Netlify das pnpm-Workspace am Root und die app-spezifische `netlify.toml` steuert Build und Publish. Die Toolchain ist Node `24.21.0` und pnpm `10.34.2`. Die Konfiguration im Repository belegt nicht, dass GitHub-Verbindung, Deploy-Previews oder Site-Variablen im Dashboard aktiv sind. Für Release R1 müssen Preview-URL und ausgelieferter Commit-SHA für beide Projekte dokumentiert werden.
+Für öffentliche Site und Portal sind getrennte Netlify-Projekte vorgesehen. Bei beiden bleibt das Netlify-**Base directory** auf Repository-Root (leer); das jeweilige **Package directory** wird in der Netlify-UI auf `apps/site` bzw. `apps/portal` gesetzt. Damit installiert Netlify das pnpm-Workspace am Root und die app-spezifische `netlify.toml` steuert Build und Publish. Die Toolchain ist Node `24.21.0` und pnpm `10.34.2`. Next.js wird durch den von Netlify verwalteten OpenNext-Adapter konfiguriert; `@netlify/plugin-nextjs` wird nicht manuell gepinnt, damit automatische Adapter-Updates aktiv bleiben. Die Konfiguration im Repository belegt nicht, dass GitHub-Verbindung, Deploy-Previews oder Site-Variablen im Dashboard aktiv sind. Für Release R1 müssen Preview-URL und ausgelieferter Commit-SHA für beide Projekte dokumentiert werden.
 
 ## Release-Ablauf
 
@@ -34,8 +34,9 @@ Jede Produktions-/Preview-Umgebung muss Server-Routen unterstützen und eine pas
 
 ## Kontakt- und Admin-Smoke-Checks
 
-- Kontakt-Endpunkt: valide Anfrage speichern, invalide Anfrage, Cross-Origin-/Content-Type-/Größenprüfung, Honeypot-Fall und DB-Fehler prüfen. Der aktuelle Erfolg bestätigt ausschließlich die Speicherung in MongoDB; er bestätigt keinen E-Mail-Versand. Die UI muss dieses Speicherverhalten korrekt benennen.
-- Ein belastbares öffentliches Rate-Limit ist noch nicht eingerichtet. Vor Launch muss die Begrenzung auf der Hosting-/Edge-Ebene oder mit einem persistenten Zähler und dokumentierter Aufbewahrung aktiviert und gegen die Preview geprüft werden.
+- Kontakt-Endpunkt: valide Anfrage speichern, invalide Anfrage, Cross-Origin-/Content-Type-/Größenprüfung, Honeypot-Fall, 429/Retry-After und DB-Fehler prüfen. Das persistente Rate-Limit zählt höchstens fünf Anfragen pro pseudonymisiertem Client-IP-Schlüssel in zehn Minuten. Netlify muss `x-nf-client-connection-ip` an den Handler durchreichen; der Wert wird als IP-Adresse validiert. Das HMAC des Client-IP-Schlüssels wird nach maximal etwa 70 Minuten per MongoDB-TTL entfernt; `CONTACT_RATE_LIMIT_SECRET` muss mindestens 32 Zeichen lang und je Umgebung getrennt sein. Der Request-Erfolg bestätigt ausschließlich die Speicherung in MongoDB, keinen E-Mail-Versand.
+- Das MongoDB-Rate-Limit benötigt das TTL-Indexrecht für `contact_rate_limits.expiresAt`. Die Anwendung legt den Index beim ersten Zugriff an; `pnpm setup:indexes` nimmt ihn ebenfalls in den vorbereitenden Indexlauf auf. Rate-Limit, trusted Client-IP-Header und 429-Verhalten sind noch gegen die echte Preview zu verifizieren.
+- Kontaktanfragen selbst haben aktuell keine automatische Löschfrist. Betreiber und Datenschutzverantwortliche müssen eine Aufbewahrungs- und Löschregel festlegen, bevor das Formular produktiv freigegeben wird.
 - Admin: erlaubte Anmeldung, abgelehnte Rolle, abgelehntes unberechtigtes Update, Logout und Invite-Ablauf prüfen.
 - Niemals produktive Passwörter in Smoke-Test-Automation speichern; Testkonten besitzen nur erforderliche Rechte.
 

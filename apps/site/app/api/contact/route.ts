@@ -1,4 +1,5 @@
-import { contactSchema, createContactRequest, type ContactInput } from "@ugur/server";
+import { consumeContactRateLimit, contactSchema, createContactRequest, type ContactInput } from "@ugur/server";
+import { isIP } from "node:net";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -61,6 +62,25 @@ export async function POST(request: Request) {
 
   if (parsed.data.nickname) {
     return NextResponse.json({ ok: true });
+  }
+
+  const clientAddress = request.headers.get("x-nf-client-connection-ip") ?? request.headers.get("x-real-ip");
+  if (!clientAddress || isIP(clientAddress.trim()) === 0) {
+    return NextResponse.json({ ok: false, error: "Contact service temporarily unavailable" }, { status: 503 });
+  }
+
+  let limit: Awaited<ReturnType<typeof consumeContactRateLimit>>;
+  try {
+    limit = await consumeContactRateLimit(clientAddress);
+  } catch {
+    console.error("Contact rate limit unavailable");
+    return NextResponse.json({ ok: false, error: "Contact service temporarily unavailable" }, { status: 503 });
+  }
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { ok: false, error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
   }
 
   try {

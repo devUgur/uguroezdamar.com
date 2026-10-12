@@ -40,6 +40,11 @@ async function main() {
     console.log("Creating contact_requests index: createdAt -1");
     await contactCol.createIndex({ createdAt: -1 });
 
+    // Ensure short-lived MongoDB-backed public contact rate-limit buckets.
+    const contactRateLimitCol = db.collection("contact_rate_limits");
+    console.log("Creating contact_rate_limits TTL index on expiresAt");
+    await contactRateLimitCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
     // Ensure admin_sessions TTL index on `expiresAt`
     const sessionsCol = db.collection("admin_sessions");
     console.log("Creating admin_sessions TTL index on expiresAt");

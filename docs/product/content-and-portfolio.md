@@ -19,6 +19,8 @@ Die Website soll anhand echter Arbeit zeigen, wie Ugur Özdamar Software konzipi
 
 **Release-Blocker (12.10.2026):** Beide Seiten enthalten noch Platzhalter und sind nicht zur Veröffentlichung freigegeben. Vor dem Live-Release müssen die verantwortliche Person/Firma, ladungsfähige Anschrift, Kontaktweg, tatsächliche Hosting-/Datenverarbeitung, verwendete Dienste und Aufbewahrungsfristen vom Betreiber bestätigt und in passende Rechtstexte überführt werden. Diese Tatsachen werden nicht aus dem Code oder aus Annahmen erfunden.
 
+Der Kontaktendpunkt speichert aktuell Name, E-Mail-Adresse, Nachricht und Zeitstempel in MongoDB ohne automatische Löschfrist. Für das Rate-Limit wird ein HMAC-basierter, zeitlich begrenzter IP-Schlüssel verwendet, der nach ungefähr 70 Minuten per TTL entfernt wird. Beide Datenflüsse sowie die bestätigte Aufbewahrungsregel müssen in der Datenschutzerklärung zutreffend abgebildet werden.
+
 Ob alle vorhandenen Routen erhalten bleiben, wird anhand Analytics/Links und Redirect-Bedarf entschieden. Es dürfen keine zwei konkurrierenden Projektwahrheiten entstehen.
 
 ## Inhaltsschema und Publish-Zustände
