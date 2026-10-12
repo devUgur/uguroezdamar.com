@@ -45,4 +45,4 @@ Nach der R1.1-Codehärtung im weiterhin offenen Draft-PR #2 zeigte die öffentli
 
 - Klare Trennung von wiederverwendbaren UI-Primitives und anwendungsspezifischem Layout.
 - Weniger Client-JavaScript auf der Startseite; Auswirkungen auf LCP/CLS werden erst nach Messung beurteilt.
-- Navigation und Fokus-/Menüverhalten sind implementiert. Responsive Browser- und Tastaturprüfung bleibt Teil der R2-A-Abnahme.
+- Navigation und Fokus-/Menüverhalten sind implementiert. Die Responsive-Matrix (320–1920 px), Browser-Smoke, Axe und die Escape-Prüfung des mobilen Menüs sind für den leeren lokalen Preview-Datenbestand dokumentiert; veröffentlichte CMS-Inhalte benötigen eine separate Inhaltsabnahme.

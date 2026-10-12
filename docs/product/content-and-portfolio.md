@@ -31,7 +31,7 @@ Der aktuelle Homepage-Fluss lautet: bestätigte Positionierung und Standort → 
 
 Die Startseitenabschnitte sind Server Components. App-spezifische Navigation und Branding liegen in `apps/site/src/features/navigation`, generische UI- und Theme-Primitives in `packages/ui`. Das Styling bewahrt die bestehenden warmen neutralen Themes und Fonts und nutzt Fluid-Typografie, responsive 12-Spalten-Komposition, sichtbare Fokuszustände und Reduced-Motion-Regeln. Die Nav führt zu Projects, About, Education, Blog und Contact; Imprint und Privacy sind im Footer erreichbar. Die englische Copy dieser Iteration ist keine Zusage einer Übersetzung.
 
-R2-A-Lint, Typecheck und Produktionsbuild sind lokal grün. Finale Screenshots, responsive Breiten, Browser-Smoke, Axe und Tastaturprüfung sind vor Merge noch zu dokumentieren. Die Produktions- und Rechtsfreigabe bleibt in Phase 0/2 separat.
+R2-A-Lint, Typecheck und Produktionsbuild sind lokal grün. Browser-Smoke lieferte 200 für `/`, `/projects`, `/about`, `/education`, `/blog` und `/contact`; `/work` antwortet mit 308 auf `/projects`. Die horizontale Dokumentbreite entsprach bei 320, 375, 768, 1024, 1440 und 1920 px jeweils dem Viewport. Das mobile Menü öffnet per Tastatur und schließt mit Escape. Axe meldete auf Startseite, Projektübersicht und Kontaktseite keine Verstöße. Screenshots für hell/dunkel bei 375, 768 und 1440 px sowie vollständige helle Seitenansichten liegen unter [R2-A-Visuelle Nachweise](evidence/r2-a/README.md). Die lokale Vorschau nutzte eine leere, isolierte lokale Datenbank; veröffentlichte CMS-Inhalte müssen in einer separaten Inhaltsabnahme geprüft werden. Die Produktions- und Rechtsfreigabe bleibt in Phase 0/2 separat.
 
 ## Inhaltsschema und Publish-Zustände
 
