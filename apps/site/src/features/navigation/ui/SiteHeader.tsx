@@ -10,8 +10,6 @@ import { SiteLogo } from "./SiteLogo";
 const NAV_LINKS = [
   { href: "/projects", label: "Projects" },
   { href: "/about", label: "About" },
-  { href: "/education", label: "Education" },
-  { href: "/blog", label: "Writing" },
   { href: "/contact", label: "Contact" },
 ] as const;
 
@@ -46,25 +44,27 @@ export function SiteHeader() {
     <>
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-foreground focus:px-4 focus:py-2 focus:text-xs focus:font-mono focus:uppercase focus:tracking-wider focus:text-background focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-accent"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-foreground focus:px-4 focus:py-2 focus:text-sm focus:text-background focus:shadow-lg focus:outline-2 focus:outline-offset-2 focus:outline-ring"
       >
         Skip to main content
       </a>
 
       <header
         className={cn(
-          "fixed inset-x-0 top-0 z-40 transition-all duration-300",
-          scrolled
-            ? "border-b border-border/60 bg-background/90 py-3 backdrop-blur-md shadow-xs"
-            : "border-b border-transparent bg-background/60 py-5 backdrop-blur-xs",
+          "fixed inset-x-0 top-0 z-40 border-b transition-[background-color,border-color,padding] duration-300",
+          mobileOpen
+            ? "border-border/50 bg-background py-3"
+            : scrolled
+              ? "border-border/50 bg-background/90 py-3 backdrop-blur-md"
+              : "border-transparent bg-transparent py-5",
         )}
       >
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 sm:px-8 lg:px-12">
+        <div className="site-container flex items-center justify-between">
           <SiteLogo />
 
-          <div className="flex items-center gap-6 sm:gap-8">
+          <div className="flex items-center gap-3 md:gap-8">
             <nav
-              className="hidden lg:flex items-center gap-5 xl:gap-7 font-mono text-[11px] uppercase tracking-widest"
+              className="hidden items-center gap-8 font-mono text-[13px] uppercase tracking-[0.08em] md:flex"
               aria-label="Main navigation"
             >
               {NAV_LINKS.map((item) => {
@@ -75,15 +75,20 @@ export function SiteHeader() {
                     key={item.href}
                     href={item.href}
                     aria-current={isActive ? "page" : undefined}
-                  className="group relative inline-flex min-h-11 flex-col justify-center py-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-xs"
+                    className="group relative inline-flex min-h-11 flex-col justify-center rounded-xs focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
                   >
-                    <span className={cn(isActive && "text-foreground font-medium")}>
+                    <span
+                      className={cn(
+                        "transition-colors duration-150 group-hover:text-foreground",
+                        isActive ? "text-foreground" : "text-foreground/75",
+                      )}
+                    >
                       {item.label}
                     </span>
                     <span
                       aria-hidden="true"
                       className={cn(
-                        "mt-1 block h-[1px] bg-foreground transition-all duration-200",
+                        "absolute bottom-2 left-0 block h-px bg-foreground transition-all duration-150",
                         isActive ? "w-full" : "w-0 group-hover:w-full",
                       )}
                     />
@@ -92,44 +97,42 @@ export function SiteHeader() {
               })}
             </nav>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <ThemeToggle />
 
-              <div className="lg:hidden">
-                <button
-                  type="button"
-                  aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
-                  aria-expanded={mobileOpen}
-                  aria-controls="mobile-navigation"
-                  onClick={() => setMobileOpen((open) => !open)}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border/80 text-foreground transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              <button
+                type="button"
+                aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+                aria-expanded={mobileOpen}
+                aria-controls="mobile-navigation"
+                onClick={() => setMobileOpen((open) => !open)}
+                className="-mr-2.5 inline-flex h-11 w-11 items-center justify-center rounded-md text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:hidden"
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
                 >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    {mobileOpen ? (
-                      <>
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </>
-                    ) : (
-                      <>
-                        <line x1="4" y1="7" x2="20" y2="7" />
-                        <line x1="4" y1="12" x2="20" y2="12" />
-                        <line x1="4" y1="17" x2="20" y2="17" />
-                      </>
-                    )}
-                  </svg>
-                </button>
-              </div>
+                  {mobileOpen ? (
+                    <>
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </>
+                  ) : (
+                    <>
+                      <line x1="3" y1="7" x2="21" y2="7" />
+                      <line x1="3" y1="12" x2="21" y2="12" />
+                      <line x1="3" y1="17" x2="21" y2="17" />
+                    </>
+                  )}
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -137,26 +140,21 @@ export function SiteHeader() {
         <nav
           id="mobile-navigation"
           aria-label="Mobile navigation"
-          className={cn(
-            "lg:hidden border-t border-border/60 bg-background/98 backdrop-blur-lg px-6 py-4 shadow-lg transition-all duration-200",
-            mobileOpen ? "block" : "hidden",
-          )}
+          className={cn("md:hidden", mobileOpen ? "block" : "hidden")}
         >
-          <ul className="mx-auto max-w-7xl divide-y divide-border/40 font-mono text-xs uppercase tracking-widest">
+          <ul className="site-container pb-6 pt-4">
             {NAV_LINKS.map((item) => {
               const isActive = pathname?.startsWith(item.href);
 
               return (
-                <li key={item.href}>
+                <li key={item.href} className="border-t border-border/50 first:border-t-0">
                   <Link
                     href={item.href}
                     aria-current={isActive ? "page" : undefined}
                     onClick={() => setMobileOpen(false)}
                     className={cn(
-                      "block min-h-11 py-3.5 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
-                      isActive
-                        ? "text-foreground font-semibold"
-                        : "text-muted-foreground",
+                      "flex min-h-14 items-center font-serif text-2xl tracking-tight transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                      isActive ? "text-foreground" : "text-foreground/75",
                     )}
                   >
                     {item.label}
