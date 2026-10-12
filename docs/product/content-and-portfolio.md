@@ -19,7 +19,7 @@ Die Website soll anhand echter Arbeit zeigen, wie Ugur Özdamar Software konzipi
 
 **Release-Blocker (12.10.2026):** Beide Seiten enthalten noch Platzhalter und sind nicht zur Veröffentlichung freigegeben. Vor dem Live-Release müssen die verantwortliche Person/Firma, ladungsfähige Anschrift, Kontaktweg, tatsächliche Hosting-/Datenverarbeitung, verwendete Dienste und Aufbewahrungsfristen vom Betreiber bestätigt und in passende Rechtstexte überführt werden. Diese Tatsachen werden nicht aus dem Code oder aus Annahmen erfunden.
 
-Der Kontaktendpunkt speichert aktuell Name, E-Mail-Adresse, Nachricht und Zeitstempel in MongoDB ohne automatische Löschfrist. Für das Rate-Limit wird ein HMAC-basierter, zeitlich begrenzter IP-Schlüssel verwendet, der nach ungefähr 70 Minuten per TTL entfernt wird. Beide Datenflüsse sowie die bestätigte Aufbewahrungsregel müssen in der Datenschutzerklärung zutreffend abgebildet werden.
+Der Kontaktendpunkt speichert aktuell Name, E-Mail-Adresse, Nachricht und Zeitstempel in PostgreSQL ohne automatische Löschfrist. Für das Rate-Limit wird ein HMAC-basierter, zeitlich begrenzter IP-Schlüssel verwendet, der nach ungefähr 70 Minuten per TTL entfernt wird. Beide Datenflüsse sowie die bestätigte Aufbewahrungsregel müssen in der Datenschutzerklärung zutreffend abgebildet werden.
 
 Die kanonische URL für alle Projekte ist `/projects`. Die Route `/work` leitet auf `/projects` weiter, um bestehende Links bruchlos aufzunehmen (ADR 0015). Es gibt keine zwei konkurrierenden Projektwahrheiten.
 
@@ -43,12 +43,12 @@ Zustände: `draft` (privat), `preview` (authentifiziert bzw. signiert und zeitli
 
 Audit und lokaler Code zeigten gemischte Quellen: MongoDB für Projekte/Profil/Karriere, lokale MDX-Dateien für Blog und Projekt-Fallbacks sowie statischer Export für die Site. [ADR 0013](../architecture/decisions/0013-cms-content-and-server-rendering.md) legt nun eine Quelle je Inhaltsbereich fest:
 
-- **Projekte, Profil, Karriere:** MongoDB/CMS ist die Quelle. Das Portal ist redaktioneller Schreibpfad; Entwürfe und als geheim markierte Projekte werden öffentlich nicht abgefragt.
+- **Projekte, Profil, Karriere:** Das CMS (PostgreSQL, [ADR 0016](../architecture/decisions/0016-postgres-neon-infisical-cli.md)) ist die Quelle. Das Portal ist redaktioneller Schreibpfad; Entwürfe und als geheim markierte Projekte werden öffentlich nicht abgefragt.
 - **Blog:** MDX in Git ist die Quelle. Änderungen laufen durch Review und Deploy; das Portal darf diese Einträge nicht unabhängig überschreiben.
 
 Keine stillen Fallbacks zwischen Datenquellen. Projekt-MDX-Fallbacks und Demo-Inhalte sind aus dem öffentlichen Pfad entfernt. Eine CMS-Veröffentlichung ist auf der dynamisch gerenderten Site mit der nächsten Anfrage sichtbar.
 
-Die Site nutzt serverseitiges Next.js statt `output: "export"`. Produktion benötigt `MONGODB_URI` zur Laufzeit. Netlify ist das kanonische Ziel; das Render-Blueprint ist eine Alternative mit eigener Konfiguration.
+Die Site nutzt serverseitiges Next.js statt `output: "export"`. Produktion benötigt `DATABASE_URL` zur Laufzeit. Netlify ist das kanonische Ziel; das Render-Blueprint ist eine Alternative mit eigener Konfiguration.
 
 ## Case-Study-Vorlage
 

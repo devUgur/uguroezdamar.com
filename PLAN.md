@@ -64,7 +64,7 @@ Phasen dürfen nur dann parallel laufen, wenn ihre Abhängigkeiten und Daten-/Ro
 
 **Zweck:** Eine eindeutige Wahrheit darüber herstellen, welcher Inhalt veröffentlicht ist und wie er die öffentliche Website erreicht.
 
-**Entscheidung:** [ADR 0013](docs/architecture/decisions/0013-cms-content-and-server-rendering.md) legt MongoDB/CMS für Portfolio-Daten und serverseitiges Next.js fest. Netlify ist kanonisch; Render bleibt eine alternative Blueprint-Konfiguration. Blogartikel bleiben Git-/MDX.
+**Entscheidung:** [ADR 0013](docs/architecture/decisions/0013-cms-content-and-server-rendering.md) legt das CMS für Portfolio-Daten und serverseitiges Next.js fest; die Datenbank ist seit [ADR 0016](docs/architecture/decisions/0016-postgres-neon-infisical-cli.md) PostgreSQL auf Neon. Netlify ist kanonisch; Render bleibt eine alternative Blueprint-Konfiguration. Blogartikel bleiben Git-/MDX.
 
 **Arbeitspakete nach Entscheidung**
 
@@ -125,7 +125,7 @@ Phasen dürfen nur dann parallel laufen, wenn ihre Abhängigkeiten und Daten-/Ro
 - Serverseitige Datenzugriffe bleiben server-only. UI und Verträge importieren keine Implementierungsdetails aus Datenbank oder Admin-Auth.
 - Validierung erfolgt an Vertrauensgrenzen; Autorisierung wird serverseitig für jede geschützte Aktion geprüft.
 - Geänderte Inhalte und Architekturverträge erhalten passende automatisierte Prüfungen. Tests werden dort ergänzt, wo Verhalten oder Risiko es verlangen.
-- Keine vertraulichen Werte in Repository, Dokumentation, Fixtures, Screenshots oder Logs. `.env`-Dateien und vorhandene lokale Änderungen bleiben außerhalb des Plans.
+- Keine vertraulichen Werte in Repository, Dokumentation, Fixtures, Screenshots oder Logs. Secrets liegen ausschließlich in Infisical ([docs/operations/secrets.md](docs/operations/secrets.md)).
 - ADRs dokumentieren Entscheidungen, die spätere Änderungen teuer machen; sie ersetzen keine Umsetzung oder Verifikation.
 
 ## Launch-Entscheidung
@@ -139,6 +139,7 @@ Ein öffentlicher Relaunch erfolgt erst, wenn Phase 1 und 2 abgenommen sind, kri
 | 0 — Verifizieren & stabilisieren | lokale Gates, Mobile-Smoke und Axe-Prüfung grün | Hosting-Preview, Kontaktzustellung und Live-Deploy bleiben zu verifizieren |
 | 1 — Security & CI-Fundament | umgesetzt; lokale und GitHub-CI-Nachweise grün | unabhängige Prüfung offen |
 | 2 — Content & Deployment | SSR/CMS lokal umgesetzt; CMS- und Rate-Limit-Integration ergänzt; Preview und Betreiberangaben offen | Netlify-Dashboard für beide Sites verifizieren; Preview-Commit-SHAs, isolierte DB/Accounts, Slug-Datenmigration, Kontaktaufbewahrung/-benachrichtigung sowie bestätigte Impressums-/Datenschutzangaben bleiben Release-Blocker |
+| Plattform — Datenbank und Secrets | MongoDB-Cluster existiert nicht mehr. Datenschicht auf PostgreSQL/Drizzle umgestellt, Tests gegen PGlite, Secrets-Manifest und `pnpm ugur`-CLI nach viralsync-Vorbild vorhanden (ADR 0016); lokale Gates grün | Infisical-Projekt anlegen und `pnpm ugur setup` ausführen; Neon-Projekt provisionieren; Migration und erstes Owner-Konto; Secret Sync zum Hosting; alte `.env`-Dateien löschen; Inhalte neu erfassen |
 | 3 — Portfolio-Erlebnis | R2-A technisch umgesetzt, visuell vom Owner **nicht freigegeben** (Issue #8). R1- und R2-Branch sind lokal in `main` zusammengeführt. R2-A.1/A1 (Original-Logo, Header, Hero, Footer) umgesetzt; lokale Gates grün; Nachweise unter `docs/product/evidence/r2-a1/` | Visuelle Freigabe A1 durch den Owner; danach A2 (echte Projekte, ViralSync-Case-Study, DB-Fehler von leerem Zustand trennen) und A3 (Profil, Skills, Education). Kein Produktions-Deploy vor R1-Gates und Rotation der offengelegten Zugangsdaten |
 | 4 — Production Quality | geplant | nach stabiler Kernfunktion Messwerte und E2E-Scope festlegen |
 

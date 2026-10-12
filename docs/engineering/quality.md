@@ -36,7 +36,7 @@ Tests verwenden isolierte Fixtures, deterministische Uhr/IDs und Stubs für exte
 - Änderungen klein halten und betroffene Checks ausführen.
 - Vor einem PR `pnpm guard`, `pnpm lint`, `pnpm typecheck`, `pnpm test` und den relevanten Build ausführen.
 - PR-Beschreibung nennt Problem, Verhalten, Sicherheits-/Datenfolgen und Verifikation.
-- Änderungen an Umgebungsvariablen aktualisieren `.env.example`, niemals `.env` mit echten Werten.
+- Änderungen an Umgebungsvariablen aktualisieren `tooling/cli/src/secrets-manifest.ts`; `tests/secrets-manifest.test.ts` erzwingt das. Schemaänderungen brauchen eine Migration (`pnpm db:check`).
 - Keine Tests ausführen, wenn der Arbeitsauftrag es untersagt; dann verbleibende Verifikationslücke klar dokumentieren.
 
 ## Release-Gates

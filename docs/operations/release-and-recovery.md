@@ -6,7 +6,7 @@ Das Repository enthält GitHub Actions für Lint, Typecheck, Tests und Build. Di
 
 ## Umgebungen
 
-- **Lokal:** synthetische oder isolierte Daten; `.env.example` dokumentiert Namen und sichere Beispielwerte.
+- **Lokal:** Stage `dev` (eigener Neon-Branch) mit Secrets aus Infisical; siehe [Secrets und Entwicklungsumgebung](secrets.md).
 - **Preview:** getrennte Zugangsdaten und Testdaten, keine Kopie echter Kontakt-/Admin-Datensätze ohne begründete Schutzmaßnahmen.
 - **Produktion:** minimale DB-Rechte, verwaltete Secrets, Backups, Logs ohne PII/Secrets, definierter Rollback.
 
@@ -23,7 +23,7 @@ Für öffentliche Site und Portal sind getrennte Netlify-Projekte vorgesehen. Be
 5. Smoke-Checks auf Startseite, Projekte, Blog, Kontakt und Portal-Login ausführen.
 6. Release-Commit, Build-ID und Ergebnis festhalten.
 
-Jede Produktions-/Preview-Umgebung muss Server-Routen unterstützen und eine passende `MONGODB_URI` konfigurieren. Statische Export-Deploys sind mit dem festgelegten Inhaltsmodell nicht kompatibel.
+Jede Produktions-/Preview-Umgebung muss Server-Routen unterstützen und `DATABASE_URL` aus Infisical erhalten (Secret Sync). Statische Export-Deploys sind mit dem festgelegten Inhaltsmodell nicht kompatibel.
 
 ## Datenmigration und Rollback
 
@@ -34,8 +34,8 @@ Jede Produktions-/Preview-Umgebung muss Server-Routen unterstützen und eine pas
 
 ## Kontakt- und Admin-Smoke-Checks
 
-- Kontakt-Endpunkt: valide Anfrage speichern, invalide Anfrage, Cross-Origin-/Content-Type-/Größenprüfung, Honeypot-Fall, 429/Retry-After und DB-Fehler prüfen. Das persistente Rate-Limit zählt höchstens fünf Anfragen pro pseudonymisiertem Client-IP-Schlüssel in zehn Minuten. Netlify muss `x-nf-client-connection-ip` an den Handler durchreichen; der Wert wird als IP-Adresse validiert. Das HMAC des Client-IP-Schlüssels wird nach maximal etwa 70 Minuten per MongoDB-TTL entfernt; `CONTACT_RATE_LIMIT_SECRET` muss mindestens 32 Zeichen lang und je Umgebung getrennt sein. Der Request-Erfolg bestätigt ausschließlich die Speicherung in MongoDB, keinen E-Mail-Versand.
-- Das MongoDB-Rate-Limit benötigt das TTL-Indexrecht für `contact_rate_limits.expiresAt`. Die Anwendung legt den Index beim ersten Zugriff an; `pnpm setup:indexes` nimmt ihn ebenfalls in den vorbereitenden Indexlauf auf. Rate-Limit, trusted Client-IP-Header und 429-Verhalten sind noch gegen die echte Preview zu verifizieren.
+- Kontakt-Endpunkt: valide Anfrage speichern, invalide Anfrage, Cross-Origin-/Content-Type-/Größenprüfung, Honeypot-Fall, 429/Retry-After und DB-Fehler prüfen. Das persistente Rate-Limit zählt höchstens fünf Anfragen pro pseudonymisiertem Client-IP-Schlüssel in zehn Minuten. Netlify muss `x-nf-client-connection-ip` an den Handler durchreichen; der Wert wird als IP-Adresse validiert. Das HMAC des Client-IP-Schlüssels wird nach maximal etwa 70 Minuten beim nächsten Zählvorgang entfernt; `CONTACT_RATE_LIMIT_SECRET` muss mindestens 32 Zeichen lang und je Umgebung getrennt sein. Der Request-Erfolg bestätigt ausschließlich die Speicherung in der Datenbank, keinen E-Mail-Versand.
+- Das Rate-Limit liegt in der Tabelle `contact_rate_limits` und wird mit einem atomaren `INSERT … ON CONFLICT` gezählt; abgelaufene Einträge werden beim nächsten Zählvorgang gelöscht. Trusted Client-IP-Header und 429-Verhalten sind noch gegen die echte Preview zu verifizieren.
 - Kontaktanfragen selbst haben aktuell keine automatische Löschfrist. Betreiber und Datenschutzverantwortliche müssen eine Aufbewahrungs- und Löschregel festlegen, bevor das Formular produktiv freigegeben wird.
 - Admin: erlaubte Anmeldung, abgelehnte Rolle, abgelehntes unberechtigtes Update, Logout und Invite-Ablauf prüfen.
 - Niemals produktive Passwörter in Smoke-Test-Automation speichern; Testkonten besitzen nur erforderliche Rechte.

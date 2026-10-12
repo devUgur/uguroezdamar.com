@@ -12,6 +12,7 @@ Diese Dokumentation ist die zentrale, gepflegte Referenz für Architektur, Engin
 | [Abhängigkeitsmatrix](engineering/dependency-matrix.md) | unterstützte Laufzeiten, Paketstände, Upgrade-Entscheidungen und Pflege |
 | [Sicherheit](security/README.md) | Authentifizierung, Autorisierung, Daten, Uploads und Secrets |
 | [Content & Portfolio](product/content-and-portfolio.md) | Inhaltsmodell, Publish-Entscheidung und redaktionelle Qualität |
+| [Secrets & Entwicklungsumgebung](operations/secrets.md) | Infisical, Secrets-Manifest, `pnpm ugur`-CLI, Datenbank-Befehle, Rotation |
 | [Betrieb & Recovery](operations/release-and-recovery.md) | Build, Release, Rollback, Backups und Incident-Ablauf |
 | [Audits](audits/2026-10-12-code-and-architecture-audit.md) | Befunde, Quellen und Verifikationsstatus des Audits vom 12.10.2026 |
 

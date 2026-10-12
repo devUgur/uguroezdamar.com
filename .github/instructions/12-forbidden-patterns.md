@@ -2,7 +2,7 @@
 applyTo: '**'
 ---
 
-❌ Mongo im Client
+❌ Datenbankzugriff im Client
 ❌ DB Calls in UI
 ❌ Fetch zur eigenen API für Form Submit
 ❌ Inline Styles

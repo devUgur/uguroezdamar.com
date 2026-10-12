@@ -17,7 +17,7 @@ Portfolio und Admin-Portal als pnpm-/Turborepo-Monorepo.
 | `tooling/guards` | automatisierte Architekturregeln |
 | `docs` | Architektur, Standards, Sicherheit, Produkt und Betrieb |
 
-Die Site konfiguriert derzeit statischen Export. MongoDB, MDX-Inhalte und Laufzeitendpunkte sind noch nicht zu einem durchgängigen Veröffentlichungsmodell vereinheitlicht. Die Zielentscheidung und Abnahmekriterien stehen in der [Roadmap](PLAN.md) und der [Architekturübersicht](docs/architecture/README.md).
+Site und Portal laufen serverseitig. Projekte, Profil, Karriere und Admin-Konten liegen in PostgreSQL (Neon, Drizzle), Blogartikel als MDX im Repository. Entscheidungen: [ADR 0013](docs/architecture/decisions/0013-cms-content-and-server-rendering.md) und [ADR 0016](docs/architecture/decisions/0016-postgres-neon-infisical-cli.md).
 
 ## Lokale Befehle
 
@@ -31,7 +31,7 @@ pnpm test
 pnpm build
 ```
 
-Voraussetzungen und Umgebungsvariablen stehen in den jeweiligen `.env.example`-Dateien. Keine echten Secrets in Repository, Beispieldateien oder Logs eintragen.
+Es gibt keine `.env`-Dateien: Alle Variablen liegen in Infisical und werden von `pnpm dev` injiziert. Einmalig `pnpm ugur setup` ausführen; Details in [docs/operations/secrets.md](docs/operations/secrets.md).
 
 ## Verbindliche Referenzen
 

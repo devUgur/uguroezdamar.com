@@ -10,7 +10,7 @@ Inhalt
 
 Kein DB Import in UI
 
-Kein Mongo in app/
+Kein Datenbankzugriff in app/
 
 Queries nur in features/*/server/queries.ts
 
@@ -20,4 +20,4 @@ Repository Pattern Pflicht
 
 Flow Definition:
 
-Page → Query → Repo → Mongo
+Page → Query → Repo → Postgres

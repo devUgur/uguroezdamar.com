@@ -31,7 +31,7 @@ Dieses Dokument definiert Mindestanforderungen für Admin-Portal, Kontaktfluss, 
 ## Daten und Secrets
 
 - Produktions-/Preview-Daten und Secrets trennen; Rechte minimal vergeben und Secrets regelmäßig rotieren.
-- Keine echten `.env`-Dateien committen. Logs, Test-Fixtures, Screenshots und Dokumentation dürfen keine Geheimnisse enthalten.
+- Secrets liegen ausschließlich in Infisical ([Betrieb](../operations/secrets.md)); es gibt keine `.env`-Dateien. Logs, Test-Fixtures, Screenshots, Agenten- und CLI-Ausgaben dürfen keine Geheimnisse enthalten; die Projekt-CLI gibt nur Schlüsselnamen aus.
 - Kontaktanfragen minimieren, Zweck und Aufbewahrungszeit dokumentieren und Zugriff begrenzen.
 - Backups verschlüsseln und Restore praktisch prüfen; Backup-Erfolg allein belegt keine Wiederherstellbarkeit.
 
