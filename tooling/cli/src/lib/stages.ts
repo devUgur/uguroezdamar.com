@@ -19,10 +19,13 @@ export function parseStage(value: string | undefined, fallback: Stage = "dev"): 
   return stage as Stage;
 }
 
-/** How the apps address themselves on a developer's machine; never stored in Infisical. */
+/**
+ * How the apps address themselves on a developer's machine; never stored in Infisical.
+ * Ports 3100/3101 stay clear of viralsync.io, which uses 3000 and up on the same machine.
+ */
 export const LOCAL_ORIGINS = {
-  site: "http://localhost:3000",
-  portal: "http://localhost:3001",
+  site: "http://localhost:3100",
+  portal: "http://localhost:3101",
 } as const;
 
 /** The address variables of a local run, replacing the hosted values of the `dev` stage. */

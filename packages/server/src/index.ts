@@ -1,7 +1,7 @@
 import "server-only";
 
 export { env } from "./env";
-export { getDb, setDb, isUuid, DatabaseNotConfiguredError, type Database } from "./db/client";
+export { getDb, setDb, isUuid, describeDbError, DatabaseNotConfiguredError, type Database } from "./db/client";
 export * as schema from "./db/schema";
 export {
 	uploadBuffer,

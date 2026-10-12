@@ -1,5 +1,5 @@
 import "server-only";
-import { env, getProjectBySlug, getProjects, type ProjectRecord } from "@ugur/server";
+import { describeDbError, env, getProjectBySlug, getProjects, type ProjectRecord } from "@ugur/server";
 
 function requireContentDatabase() {
   if (env.DATABASE_URL) return true;
@@ -12,8 +12,8 @@ export async function getSiteProjects(): Promise<ProjectRecord[]> {
   if (!requireContentDatabase()) return [];
   try {
     return await getProjects({ status: "published", publicOnly: true, limit: 500 });
-  } catch {
-    console.error("Public projects could not be loaded from database.");
+  } catch (error) {
+    console.error("Public projects could not be loaded from database:", describeDbError(error));
     return [];
   }
 }
@@ -22,8 +22,8 @@ export async function getSiteProjectBySlug(slug: string): Promise<ProjectRecord 
   if (!requireContentDatabase()) return null;
   try {
     return await getProjectBySlug(slug.toLowerCase(), { publicOnly: true });
-  } catch {
-    console.error("Public project could not be loaded from database.");
+  } catch (error) {
+    console.error("Public project could not be loaded from database:", describeDbError(error));
     return null;
   }
 }

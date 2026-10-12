@@ -54,3 +54,13 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function isUuid(value: string): boolean {
 	return UUID.test(value);
 }
+
+/**
+ * A loggable one-liner for a failed query: driver error code and message, with anything that
+ * looks like a connection string removed. Callers log this instead of dropping the cause.
+ */
+export function describeDbError(error: unknown): string {
+	const { name, code, message } = (error ?? {}) as { name?: string; code?: string; message?: string };
+	const text = String(message ?? error).replace(/postgres(ql)?:\/\/\S+/gi, "<connection string>");
+	return [name, code, text].filter(Boolean).join(" · ");
+}

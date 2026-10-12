@@ -43,6 +43,17 @@ describe("secrets manifest", () => {
     }
   });
 
+  it("lets turbo pass every declared key through to the apps", () => {
+    // Turbo runs tasks in strict env mode: an unlisted variable never reaches `next dev`.
+    const turbo = JSON.parse(readFileSync(join(root, "turbo.json"), "utf8")) as {
+      globalPassThroughEnv: string[];
+      tasks: Record<string, { env?: string[] }>;
+    };
+    const passed = new Set([...turbo.globalPassThroughEnv, ...(turbo.tasks.build?.env ?? [])]);
+    expect([...declared].filter((key) => !passed.has(key))).toEqual([]);
+    expect(turbo.tasks.dev?.env).toEqual(turbo.tasks.build?.env);
+  });
+
   it("keeps .env files and the retired database out of the repository", () => {
     const gitignore = readFileSync(join(root, ".gitignore"), "utf8");
     expect(gitignore).toMatch(/^\.env$/m);

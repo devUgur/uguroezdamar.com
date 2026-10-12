@@ -7,7 +7,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    testTimeout: 15_000,
+    // The first test of a file pays for importing Next and booting in-memory Postgres.
+    testTimeout: 40_000,
     hookTimeout: 30_000,
   },
   resolve: {

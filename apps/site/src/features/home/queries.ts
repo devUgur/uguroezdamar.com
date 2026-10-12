@@ -1,5 +1,5 @@
 import "server-only";
-import { getProfile, getCareerEntries } from "@ugur/server";
+import { describeDbError, getProfile, getCareerEntries } from "@ugur/server";
 
 export type AboutProfileContent = {
   primaryText: string;
@@ -46,8 +46,8 @@ export async function getProfileForAbout(handle = "main"): Promise<AboutProfileC
       primaryText: profile.headline?.trim() ?? "",
       secondaryText: [profile.subheadline, profile.bio].filter(Boolean).join(" ").trim(),
     };
-  } catch {
-    console.error("Public profile could not be loaded.");
+  } catch (error) {
+    console.error("Public profile could not be loaded:", describeDbError(error));
     return { primaryText: "", secondaryText: "" };
   }
 }
@@ -63,8 +63,8 @@ export async function getTimelineForAbout(): Promise<AboutTimelineEntry[]> {
       }))
       .sort((a, b) => yearSortValue(b.year) - yearSortValue(a.year))
       .slice(0, 4);
-  } catch {
-    console.error("Public career timeline could not be loaded.");
+  } catch (error) {
+    console.error("Public career timeline could not be loaded:", describeDbError(error));
     return [];
   }
 }
@@ -86,8 +86,8 @@ export async function getTimelineForEducation(): Promise<EducationTimelineEntry[
         status: item.summary ?? undefined,
       }))
       .sort((a, b) => yearSortValue(b.year) - yearSortValue(a.year));
-  } catch {
-    console.error("Public education timeline could not be loaded.");
+  } catch (error) {
+    console.error("Public education timeline could not be loaded:", describeDbError(error));
     return [];
   }
 }
