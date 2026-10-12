@@ -1,5 +1,7 @@
 # R2-A — Editorial Engineering
 
+> **Stand 12.10.2026:** Die visuelle R2-A-Gestaltung ist vom Owner **nicht freigegeben** (Issue #8). R2-A.1 entwickelt die ursprüngliche Website kontrolliert weiter (etwa 70 % alte Identität, 30 % neue Verbesserungen). Tranche A1 (Logo, Header, Hero, Footer) liegt zur visuellen Freigabe vor: [Nachweise](evidence/r2-a1/README.md). Aussagen dieses Dokuments zu Sektionen unterhalb des Heros beschreiben den R2-A-Stand und werden in A2/A3 überarbeitet.
+
 ## Zweck und Zielgruppen
 
 Die Startseite soll Recruiter, technische Kolleginnen und Kollegen sowie mögliche Auftraggeber schnell zu veröffentlichten Projekten und Kontakt führen. Diese Gruppen beschreiben Zielgruppen, keine bestätigten Anfragen, Kunden oder Verfügbarkeiten.
@@ -8,12 +10,14 @@ Die Startseite soll Recruiter, technische Kolleginnen und Kollegen sowie möglic
 
 Bestätigte Fakten für diese Iteration: Ugur Özdamar, Software-/Full-Stack-Entwickler, Dortmund. Karriere-, Profil- und Bildungsangaben erscheinen nur, wenn sie im CMS veröffentlicht sind. Es werden keine Abschlüsse, Kunden, Erfolge, Verfügbarkeiten, Kennzahlen oder Projektdetails ergänzt, die nicht belegt und freigegeben sind.
 
-Die Startseite verwendet derzeit diese Copy:
+Die Startseite verwendet seit R2-A.1 (A1) diese Copy:
 
-- Eyebrow: “Software development · Dortmund”
-- Headline: “From interface to infrastructure.”
-- Beschreibung: “Full-stack software development across user-facing interfaces and the systems behind them.”
-- Aktionen: “Selected work” und “Get in touch”
+- Headline: “I build structured digital systems.” (aus der ursprünglichen Website übernommen)
+- Metazeile: “Full-stack developer — Dortmund, Germany”
+- Beschreibung: “I design and build web applications end to end: React and TypeScript interfaces, the APIs and data models behind them, and the deployment that keeps them running.”
+- Aktionen: “View projects” und “Get in touch”
+
+Die R2-A-Headline “From interface to infrastructure.” wurde vom Owner nicht freigegeben und ist ersetzt.
 
 Der Auftritt ist in dieser Iteration englischsprachig. Eine Übersetzung wird nicht zugesagt.
 
@@ -40,6 +44,8 @@ Der Auftritt ist in dieser Iteration englischsprachig. Eine Übersetzung wird ni
 
 ## Komponenten- und Inhaltsregeln
 
+- Das Logo ist das SVG aus `apps/site/app/icon.svg` (zugleich Favicon); `BrandMark` bildet es inline ab und wird per Test gegen die Datei geprüft. Ein Text-Monogramm ist kein Ersatz.
+- Hauptnavigation: Projects, About, Contact — identisch auf Desktop und mobil. Footer: Contact, Imprint, Privacy.
 - Marken- und Seitennavigation leben unter `apps/site/src/features/navigation`; `packages/ui` enthält app-neutrale UI-Primitives und Theme-Bausteine.
 - Seiten, CMS-Abfragen und redaktionelle Homepage-Abschnitte sind Server Components. Nur Navigation, Theme-Wechsel und tatsächlich interaktive Formulare benötigen Client Components.
 - Die Homepage liest ausschließlich öffentliche CMS-Projekte. Gezeigt werden Titel, veröffentlichte Kurzbeschreibung, vorhandene Jahresangaben und eingetragene Technologien. Das Datenmodell enthält kein belastbares Rollenfeld; Tags werden deshalb nicht als persönliche Rolle ausgegeben.

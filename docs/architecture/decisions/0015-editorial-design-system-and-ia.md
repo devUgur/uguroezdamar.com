@@ -1,6 +1,6 @@
 # ADR 0015: Editorial-Designsystem, Informationsarchitektur und kanonische Projekthierarchie
 
-- Status: accepted
+- Status: accepted (Architektur und IA); visuelle Gestaltung durch Nachtrag R2-A.1 korrigiert
 - Datum: 2026-10-12
 - Beteiligte: Projektverantwortliche
 
@@ -46,3 +46,13 @@ Nach der R1.1-Codehärtung im weiterhin offenen Draft-PR #2 zeigte die öffentli
 - Klare Trennung von wiederverwendbaren UI-Primitives und anwendungsspezifischem Layout.
 - Weniger Client-JavaScript auf der Startseite; Auswirkungen auf LCP/CLS werden erst nach Messung beurteilt.
 - Navigation und Fokus-/Menüverhalten sind implementiert. Die Responsive-Matrix (320–1920 px), Browser-Smoke, Axe und die Escape-Prüfung des mobilen Menüs sind für den leeren lokalen Preview-Datenbestand dokumentiert; veröffentlichte CMS-Inhalte benötigen eine separate Inhaltsabnahme.
+
+## Nachtrag R2-A.1 (2026-10-12)
+
+Der Owner hat die visuelle R2-A-Gestaltung nicht freigegeben (Issue #8). Architekturgrenzen, kanonische Projekthierarchie und Server-Component-Entscheidungen bleiben gültig. Geändert wird:
+
+- **Kontextpunkt 1 entfällt:** „I build structured digital systems.“ ist die bevorzugte Headline und Teil der Markenidentität; sie wird um eine konkrete Beschreibung ergänzt statt ersetzt.
+- **Logo:** `apps/site/app/icon.svg` ist das kanonische Brand Asset. `apps/site/src/features/navigation/ui/BrandMark.tsx` bildet es inline ab; `tests/brand-mark.test.tsx` verhindert Abweichungen. Das Text-Monogramm „UÖ“ ist entfernt.
+- **Hauptnavigation:** Projects, About, Contact. Education und Writing bleiben als Routen bestehen, stehen aber nicht in der Hauptnavigation, solange dort keine veröffentlichten Inhalte vorliegen.
+- **Shell:** Header, Hero und Footer folgen der ursprünglichen Website (transparenter Header, dreizeilige Serifen-Headline mit linkem Schwerpunkt, einzeiliger Footer). Das 12-Spalten-Raster ist für den Hero nicht mehr maßgeblich.
+- Die visuelle Freigabe erfolgt tranchenweise (A1 Shell, A2 Projekte, A3 Profil); grüne Gates ersetzen sie nicht.
