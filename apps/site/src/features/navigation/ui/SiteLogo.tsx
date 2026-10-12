@@ -1,17 +1,16 @@
 import Link from "next/link";
+import { BrandMark } from "./BrandMark";
 
-export function SiteLogo({ compact = false }: { compact?: boolean }) {
+export function SiteLogo({ compact = false, size = 36 }: { compact?: boolean; size?: number }) {
   return (
     <Link
       href="/"
-      className="group inline-flex items-center gap-3 text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-sm"
+      className="group inline-flex min-h-11 items-center gap-3 rounded-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
       aria-label="Ugur Özdamar — Homepage"
     >
-      <span className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/80 bg-surface font-serif text-sm font-bold tracking-tight text-foreground transition-all duration-300 group-hover:border-foreground/40 group-hover:bg-foreground group-hover:text-background">
-        UÖ
-      </span>
+      <BrandMark size={size} className="shrink-0" />
       {!compact && (
-        <span className="font-serif text-lg tracking-tight text-foreground transition-colors duration-300 group-hover:text-foreground/80">
+        <span className="font-serif text-lg tracking-tight transition-colors duration-300 group-hover:text-accent">
           Ugur Özdamar
         </span>
       )}
