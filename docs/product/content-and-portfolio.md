@@ -56,7 +56,7 @@ ViralSync, Video Lab und Pebblewick können Kandidaten sein. Ihre Repositories s
 - Jeder öffentliche Link zeigt auf eine existierende Route oder eine bewusst definierte Weiterleitung.
 - Platzhalter, Demo-Projekte und Hello-World-Artikel gehören nicht in den Produktionskatalog.
 - Bilder haben aussagekräftige Alt-Texte und sind für die Auslieferung optimiert.
-- Inhalte werden semantisch und sicher als Markdown/MDX bzw. validierte Komponenten gerendert, nicht als unformatierter `<pre>`-Text.
+- CMS-Projekttexte sind nicht vertrauenswürdiger Inhalt und werden als Markdown ohne rohes HTML oder MDX-Ausdrücke gerendert. MDX-Ausführung ist ausschließlich für reviewte, Git-versionierte Blogdateien erlaubt.
 - Design bleibt editorial und zurückhaltend; Fokus liegt auf realen Produkten, gut lesbarer Typografie und präziser Sprache.
 - Navigation ist responsiv und tastaturbedienbar; Bewegung respektiert `prefers-reduced-motion`.
 - Deutsch/Englisch wird nur zugesagt, wenn beide Fassungen aktuell und in der Navigation auffindbar sind.

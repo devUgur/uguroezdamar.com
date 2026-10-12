@@ -1,12 +1,13 @@
 [build]
-  # When creating the Netlify site for the portal, set the site's
-  # "Base directory" to `apps/portal` and Netlify will use this file.
+  # Portal Netlify project: keep Base directory unset (repository root)
+  # and set Package directory to apps/portal in the Netlify UI. This lets
+  # Netlify install the pnpm workspace from its root.
   command = "pnpm --filter @ugur/portal build"
-  publish = ".next"
+  publish = "apps/portal/.next"
 
 [build.environment]
-  NODE_VERSION = "22"
-  PNPM_VERSION = "10.15.1"
+  NODE_VERSION = "24.21.0"
+  PNPM_VERSION = "10.34.2"
   NEXT_USE_NETLIFY_EDGE = "true"
   NETLIFY_NEXT_SKEW_PROTECTION = "true"
 

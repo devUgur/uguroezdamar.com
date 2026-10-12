@@ -10,6 +10,10 @@ Das Repository enthält GitHub Actions für Lint, Typecheck, Tests und Build. Di
 - **Preview:** getrennte Zugangsdaten und Testdaten, keine Kopie echter Kontakt-/Admin-Datensätze ohne begründete Schutzmaßnahmen.
 - **Produktion:** minimale DB-Rechte, verwaltete Secrets, Backups, Logs ohne PII/Secrets, definierter Rollback.
 
+### Netlify-Monorepo-Konfiguration
+
+Für öffentliche Site und Portal sind getrennte Netlify-Projekte vorgesehen. Bei beiden bleibt das Netlify-**Base directory** auf Repository-Root (leer); das jeweilige **Package directory** wird in der Netlify-UI auf `apps/site` bzw. `apps/portal` gesetzt. Damit installiert Netlify das pnpm-Workspace am Root und die app-spezifische `netlify.toml` steuert Build und Publish. Die Toolchain ist Node `24.21.0` und pnpm `10.34.2`. Die Konfiguration im Repository belegt nicht, dass GitHub-Verbindung, Deploy-Previews oder Site-Variablen im Dashboard aktiv sind. Für Release R1 müssen Preview-URL und ausgelieferter Commit-SHA für beide Projekte dokumentiert werden.
+
 ## Release-Ablauf
 
 1. Pull Request mit Scope, Risiko, Daten-/Security-Auswirkung und Verifikation erstellen.
@@ -30,7 +34,8 @@ Jede Produktions-/Preview-Umgebung muss Server-Routen unterstützen und eine pas
 
 ## Kontakt- und Admin-Smoke-Checks
 
-- Kontakt-Endpunkt: valide Anfrage, invalide Anfrage, Spam-/Honeypot-Fall und Zustellungsfehler prüfen.
+- Kontakt-Endpunkt: valide Anfrage speichern, invalide Anfrage, Cross-Origin-/Content-Type-/Größenprüfung, Honeypot-Fall und DB-Fehler prüfen. Der aktuelle Erfolg bestätigt ausschließlich die Speicherung in MongoDB; er bestätigt keinen E-Mail-Versand. Die UI muss dieses Speicherverhalten korrekt benennen.
+- Ein belastbares öffentliches Rate-Limit ist noch nicht eingerichtet. Vor Launch muss die Begrenzung auf der Hosting-/Edge-Ebene oder mit einem persistenten Zähler und dokumentierter Aufbewahrung aktiviert und gegen die Preview geprüft werden.
 - Admin: erlaubte Anmeldung, abgelehnte Rolle, abgelehntes unberechtigtes Update, Logout und Invite-Ablauf prüfen.
 - Niemals produktive Passwörter in Smoke-Test-Automation speichern; Testkonten besitzen nur erforderliche Rechte.
 

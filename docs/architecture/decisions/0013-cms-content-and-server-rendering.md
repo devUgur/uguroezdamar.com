@@ -16,6 +16,7 @@ Das vorhandene Netlify-Projekt ist in `netlify.toml` als primärer Site-Deploy m
 - Die Site verwendet serverfähigen Next.js-Betrieb. `output: "export"` wird entfernt. Seiten, die CMS-Daten lesen, werden dynamisch gerendert; dadurch wird eine CMS-Veröffentlichung bei der nächsten Anfrage sichtbar.
 - Netlify bleibt das kanonische Produktionsziel. Das Render-Blueprint wird als serverfähige Alternative an dasselbe Laufzeitmodell angepasst und darf nicht parallel als konkurrierende Produktionsquelle betrieben werden.
 - Blogartikel bleiben Git-/MDX-Inhalte. Eine Redaktion über das Portal wird erst zugesagt, wenn deren Schreib- und Publish-Pfad tatsächlich implementiert ist.
+- CMS-Projekttexte werden als eingeschränktes Markdown ohne rohes HTML oder ausführbare MDX-Ausdrücke gerendert. Die MDX-Kompilierung bleibt auf reviewte Blogdateien aus Git begrenzt.
 - Projekt-MDX-Fallbacks und Beispielinhalte werden nicht mehr automatisch öffentlich ausgeliefert. Fehlende Daten zeigen einen klaren leeren Zustand oder einen Betriebsfehler, nie Demo-Inhalte.
 - Case-Study-URLs verwenden normalisierte Kleinbuchstaben-Slugs. Die bestehende ViralSync-URL mit Großschreibung wird auf den kanonischen Slug weitergeleitet.
 
@@ -38,4 +39,5 @@ Das vorhandene Netlify-Projekt ist in `netlify.toml` als primärer Site-Deploy m
 - Netlify Preview muss Projekt veröffentlichen, Entwurf verbergen, Projekt zurückziehen und Änderungen ohne Site-Rebuild anzeigen.
 - Kontakt-POST muss in der Produktionslaufzeit einen Request sicher speichern.
 - Öffentliche Listen und Slug-Abfragen schließen unveröffentlichte und als geheim markierte Projekte aus.
+- CMS-Markdown rendert kein rohes HTML und führt keine JSX-/MDX-Ausdrücke aus.
 - Offizielle Plattformreferenzen: [Next.js Static Exports](https://nextjs.org/docs/app/guides/static-exports), [Netlify Next.js](https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/) und [Render Next.js Deploy](https://render.com/docs/deploy-nextjs-app).

@@ -1,6 +1,6 @@
 [build]
-  # Default: build the public site. Use a separate Netlify site
-  # for the portal (subdomain) with its own netlify.toml in apps/portal.
+  # Public-site Netlify project: keep Base directory unset (repository root)
+  # and set Package directory to apps/site in the Netlify UI.
   command = "pnpm --filter @ugur/site build"
   publish = "apps/site/.next"
 

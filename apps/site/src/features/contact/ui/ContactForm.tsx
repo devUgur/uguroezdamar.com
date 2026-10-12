@@ -36,10 +36,10 @@ export function ContactForm() {
       if (data.ok) {
         setState({ ok: true });
       } else {
-        setState({ ok: false, error: data.error ?? "Failed to send" });
+        setState({ ok: false, error: data.error ?? "Failed to save request" });
       }
     } catch {
-      setState({ ok: false, error: "Failed to send" });
+      setState({ ok: false, error: "Failed to save request" });
     } finally {
       setPending(false);
     }
@@ -94,7 +94,7 @@ export function ContactForm() {
           <Button type="submit" disabled={pending}>
             Send
           </Button>
-          {state?.ok ? <p className="text-sm text-zinc-700">Sent.</p> : null}
+          {state?.ok ? <p className="text-sm text-zinc-700" role="status">Your request has been saved.</p> : null}
           {state && !state.ok ? (
             <p className="text-sm text-red-600">{state.error}</p>
           ) : null}

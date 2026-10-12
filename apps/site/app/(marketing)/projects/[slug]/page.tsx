@@ -2,8 +2,8 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { getSiteProjectBySlug } from "@/src/features/projects/queries";
+import { ProjectMarkdown } from "@/src/features/projects/ui/ProjectMarkdown";
 import { Container, Section } from "@ugur/ui";
-import { compileMdx } from "@/src/features/blog/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +16,6 @@ export default async function ProjectDetailPage({
   const project = await getSiteProjectBySlug(slug);
 
   if (!project) return notFound();
-  const content = await compileMdx(project.content ?? "");
-
   return (
     <Container>
       <Section title={project.title} description={project.summary || undefined}>
@@ -49,7 +47,7 @@ export default async function ProjectDetailPage({
         ) : null}
 
         <div className="prose prose-zinc max-w-none">
-          {content}
+          <ProjectMarkdown source={project.content ?? ""} />
         </div>
       </Section>
     </Container>

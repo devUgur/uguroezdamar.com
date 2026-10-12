@@ -28,7 +28,10 @@ export async function getProjects(options?: {
 	const query: Filter<any> = { deletedAt: { $exists: false } };
 	if (options?.status) query.status = options.status;
 	if (options?.featured !== undefined) query.featured = options.featured;
-	if (options?.publicOnly) query.isSecret = { $ne: true };
+	if (options?.publicOnly) {
+		query.status = "published";
+		query.isSecret = { $ne: true };
+	}
 
 	const docs = await col
 		.find(query)
