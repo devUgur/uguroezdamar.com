@@ -1,3 +1,3 @@
-import { CareerEntry } from "@ugur/server";
+import type { CareerEntry } from "@ugur/server";
 
 export type { CareerEntry };

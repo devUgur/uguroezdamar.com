@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { reorderProjects } from "@ugur/server/projects/repo";
+import { reorderProjects } from "@ugur/server";
 import { requireAdmin } from "@/apps/portal/src/adapters/auth/utils";
 
 export const runtime = "nodejs";

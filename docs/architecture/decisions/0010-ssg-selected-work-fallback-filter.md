@@ -1,7 +1,7 @@
 # ADR 0010: SSG Selected Work – Fallback-Projekt nicht anzeigen
 
 ## Status
-Angenommen (2025-03-05)
+Superseded durch [ADR 0013](0013-cms-content-and-server-rendering.md) (2026-10-12)
 
 ## Kontext
 - Die Site nutzt SSG (Static Site Generation); „Selected Work“ kommt aus MDX unter `apps/site/content/projects/` oder aus MongoDB, wenn `MONGODB_URI` gesetzt ist.

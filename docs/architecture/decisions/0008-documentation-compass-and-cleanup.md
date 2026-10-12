@@ -1,7 +1,7 @@
 # ADR 0008: Documentation Compass and Root Cleanup
 
 ## Status
-Angenommen (2025-03-05)
+Durch ADR 0012 abgelöst (ursprünglich angenommen 2025-03-05)
 
 ## Kontext
 Das Repo hatte mehrere Meta-Ebenen (ADRs, README, `.github/instructions`, `.cursor/`, optimization-Review, Guards). Für neue Leser und für AI/Tooling war unklar: Was liest man zuerst? Was ist bindend? Was ist historisch? Zusätzlich lag `optimization.md` im Repo-Root und der Restordner `work-items` existierte noch.
@@ -10,7 +10,7 @@ Das Repo hatte mehrere Meta-Ebenen (ADRs, README, `.github/instructions`, `.curs
 
 ### 1. Dokumentations-Kompass im README
 - **Read first:** README und ADR 0006 (Domain-Glossar, Boundaries, Content Source-of-Truth).
-- **Binding:** ESLint und ADRs (`.cursor/adr/`).
+- **Binding:** ESLint und ADRs (damals `.cursor/adr/`, seit ADR 0012 `docs/architecture/decisions/`).
 - **Tool-/AI-spezifisch:** `.cursor/`, `.github/instructions` – überschreiben die bindenden Regeln nicht.
 - **Historisch/Kontext:** z. B. `.cursor/optimization-review.md` – Kontext für Entscheidungen, keine operativen Vorgaben.
 

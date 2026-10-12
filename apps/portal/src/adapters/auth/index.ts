@@ -1,9 +1,17 @@
 import "server-only";
 
-import { getAdminSession } from "@ugur/server";
+import { deleteAdminSession, getAdminById, getAdminSession } from "@ugur/server";
 import { readCookie } from "./utils";
 
 export async function getCurrentSession() {
 	const cookieStore = await readCookie("admin_session");
-	return cookieStore ? getAdminSession(cookieStore) : null;
+	if (!cookieStore) return null;
+	const session = await getAdminSession(cookieStore);
+	if (!session) return null;
+	const admin = await getAdminById(session.adminId);
+	if (!admin || admin.status !== "active" || admin.email !== session.email) {
+		await deleteAdminSession(cookieStore);
+		return null;
+	}
+	return session;
 }

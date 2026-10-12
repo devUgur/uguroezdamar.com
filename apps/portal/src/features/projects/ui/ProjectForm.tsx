@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ProjectRecord, ProjectKind, CreateProjectInput } from "@ugur/server";
+import type { ProjectRecord, ProjectKind, CreateProjectInput } from "@ugur/server";
 import { 
   Plus, 
   Trash2, 
@@ -117,7 +117,7 @@ function buildInitialState(initial?: ProjectRecord): FormState {
   const yTo = init?.yearTo != null ? Number(init.yearTo) : "";
   const ongoing = !!init?.ongoing;
   let yearFrom: number | "" = yFrom;
-  let yearTo: number | "" = yTo;
+  const yearTo: number | "" = yTo;
   if (yearFrom === "" && initial?.publishedAt) {
     const d = new Date(initial.publishedAt);
     if (!Number.isNaN(d.getFullYear())) yearFrom = d.getFullYear();
@@ -143,7 +143,6 @@ export default function ProjectForm({ id, initial }: Props) {
   const router = useRouter();
   const [state, setState] = useState<FormState>(() => buildInitialState(initial));
   const [loading, setLoading] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [uploadingAppIndex, setUploadingAppIndex] = useState<number | null>(null);

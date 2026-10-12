@@ -1,7 +1,7 @@
 # ADR 0006: Domain Glossary, Boundary Rules, and Content Source-of-Truth
 
 ## Status
-Angenommen (2025-03-05)
+Teilweise ersetzt durch [ADR 0012](0012-central-documentation-structure.md) und [ADR 0013](0013-cms-content-and-server-rendering.md) (2026-10-12); Glossar und übrige Grenzregeln bleiben gültig.
 
 ## Domain glossary
 

@@ -31,7 +31,7 @@ export function LoginForm() {
           } else {
             window.location.href = "/";
           }
-        } catch (e) {
+        } catch {
           window.location.href = "/";
         }
       }

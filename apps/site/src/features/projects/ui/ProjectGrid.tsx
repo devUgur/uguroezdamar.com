@@ -6,11 +6,15 @@ export function ProjectGrid({ projects }: { projects: ProjectRecord[] }) {
   return (
     <div className="py-10">
       <ProjectHero />
-      <div className="grid gap-4">
-        {projects.map((p) => (
-          <ProjectCard key={p.slug} project={p} />
-        ))}
-      </div>
+      {projects.length === 0 ? (
+        <p className="py-8 text-sm text-muted-foreground">No projects have been published yet. Please check back soon.</p>
+      ) : (
+        <div className="grid gap-4">
+          {projects.map((p) => (
+            <ProjectCard key={p.slug} project={p} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

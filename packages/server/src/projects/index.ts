@@ -21,7 +21,6 @@ export {
 } from "./validators";
 
 export { buildProjectAssetKey, collectProjectAssetUrls, sanitizeProjectSlug } from "./assets";
-export { getMdxProjectBySlug, getMdxProjects } from "./mdx";
 
 export type {
 	ProjectKind,

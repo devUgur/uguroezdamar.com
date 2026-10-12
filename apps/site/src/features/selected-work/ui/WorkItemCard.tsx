@@ -1,10 +1,11 @@
 import React from "react";
+import Link from "next/link";
 import type { WorkItem } from "../types";
 
 export default function WorkItemCard({ item }: { item: WorkItem }) {
   return (
     <article className="border rounded-xl overflow-hidden group hover:shadow-md transition-shadow bg-card">
-      <a href={`/work/${item.slug}`} className="block">
+      <Link href={`/projects/${item.slug}`} className="block">
         {item.previewImageUrl || item.coverImageUrl ? (
           <div className="aspect-video relative overflow-hidden bg-muted">
             <img 
@@ -29,7 +30,7 @@ export default function WorkItemCard({ item }: { item: WorkItem }) {
             ))}
           </div>
         </div>
-      </a>
+      </Link>
     </article>
   );
 }

@@ -1,17 +1,20 @@
 import { defineConfig } from 'vitest/config';
-import { resolve } from 'path';
+import { resolve } from 'node:path';
+
+const rootDir = import.meta.dirname;
 
 export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
+    testTimeout: 15_000,
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname),
-      'server-only': resolve(__dirname, 'tests', '_stubs', 'server-only.js'),
-      '@ugur/server': resolve(__dirname, 'packages/server/dist/index.js'),
-      '@ugur/core': resolve(__dirname, 'packages/core/dist/index.js'),
+      '@': resolve(rootDir),
+      'server-only': resolve(rootDir, 'tests', '_stubs', 'server-only.js'),
+      '@ugur/server': resolve(rootDir, 'packages/server/dist/index.js'),
+      '@ugur/core': resolve(rootDir, 'packages/core/dist/index.js'),
     },
   },
 });

@@ -1,6 +1,8 @@
 import { Hero, Work, Contact } from "@/src/features/home";
 import { About, Education } from "@/src/features/marketing";
 
+export const dynamic = "force-dynamic";
+
 export default function HomePage() {
   return (
     <>

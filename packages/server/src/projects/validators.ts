@@ -1,5 +1,13 @@
 import "server-only";
 import { z } from "zod";
+import { sanitizeProjectSlug } from "./assets";
+
+const ProjectSlugSchema = z
+	.string()
+	.trim()
+	.min(1)
+	.transform(sanitizeProjectSlug)
+	.pipe(z.string().min(1));
 
 export const ProjectKindSchema = z.enum(["web", "mobile", "desktop", "cli"]);
 
@@ -26,7 +34,7 @@ export const ProjectAppSchema = z.object({
 });
 
 export const CreateProjectSchema = z.object({
-	slug: z.string().min(1),
+	slug: ProjectSlugSchema,
 	title: z.string().min(1),
 	summary: z.string().optional().nullable(),
 	content: z.string().optional().nullable(), // MDX or long-form content

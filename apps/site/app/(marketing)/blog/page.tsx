@@ -9,7 +9,9 @@ export default async function BlogPage() {
     <Container>
       <Section title="Blog" description="Writing and notes.">
         <div className="grid gap-4">
-          {posts.map((post) => (
+          {posts.length === 0 ? (
+            <p className="py-8 text-sm text-muted-foreground">No articles have been published yet.</p>
+          ) : posts.map((post) => (
             <PostCard key={post.slug} post={post} />
           ))}
         </div>

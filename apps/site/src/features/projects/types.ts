@@ -1,3 +1,3 @@
-import { ProjectRecord, ProjectKind } from "@ugur/server";
+import type { ProjectRecord, ProjectKind } from "@ugur/server";
 
 export type { ProjectRecord, ProjectKind };

@@ -22,7 +22,6 @@ export function WorkGallery({ images, projectName, variant = "auto", className =
   if (!images.length) return null;
 
   const useStrip = variant === "strip" || (variant === "auto" && images.length > 4);
-  const useGrid = !useStrip;
 
   return (
     <>

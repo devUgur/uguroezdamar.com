@@ -208,7 +208,8 @@ export default function WorkClient({ projects }: { projects: SelectedWorkProject
 
       {projects.length === 0 ? (
         <div className="text-sm text-muted-foreground">
-          Work is currently in progress. Coming soon.
+          <p>No selected projects have been published yet.</p>
+          <Link href="/projects" className="mt-2 inline-block underline underline-offset-4">Browse all projects</Link>
         </div>
       ) : (
         <div className="flex flex-col gap-32 md:gap-40 lg:gap-56">

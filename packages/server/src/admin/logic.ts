@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import argon2 from "argon2";
 import { ObjectId, type Filter } from "mongodb";
 import { env } from "../env";
 import { getDb } from "../mongodb";
@@ -37,20 +38,73 @@ export type RequireAdminResult =
   | { ok: true; method: "session"; session: AdminSession; admin: Admin | null }
   | { ok: false; reason: "no_session" | "invalid_session"; method?: never; session?: never; admin?: never };
 
-export function hashPassword(password: string) {
+function hashLegacyPassword(password: string) {
   return createHash("sha256").update(password + (env.ADMIN_API_KEY ?? "")).digest("hex");
+}
+
+export async function hashPassword(password: string) {
+  return argon2.hash(password, {
+    type: argon2.argon2id,
+    memoryCost: 65_536,
+    timeCost: 3,
+    parallelism: 1,
+  });
+}
+
+export async function verifyPassword(password: string, storedHash: string) {
+  if (storedHash.startsWith("$argon2id$")) {
+    try {
+      return { valid: await argon2.verify(storedHash, password), needsRehash: false };
+    } catch {
+      return { valid: false, needsRehash: false };
+    }
+  }
+
+  // Existing accounts use SHA-256(password + ADMIN_API_KEY). Verify once, then
+  // upgrade the hash on successful login so new credentials never use SHA-256.
+  if (/^[a-f0-9]{64}$/i.test(storedHash)) {
+    const legacyHash = hashLegacyPassword(password);
+    const valid = timingSafeEqualsString(legacyHash, storedHash);
+    return { valid, needsRehash: valid };
+  }
+
+  return { valid: false, needsRehash: false };
+}
+
+export async function upgradeAdminPasswordHash(id: string | ObjectId, expectedHash: string, password: string) {
+  const db = await getDb();
+  const col = db.collection<Admin>(ADMINS_COLL);
+  const passwordHash = await hashPassword(password);
+  const result = await col.updateOne(
+    { _id: typeof id === "string" && ObjectId.isValid(id) ? new ObjectId(id) : id, passwordHash: expectedHash },
+    { $set: { passwordHash } },
+  );
+  return result.modifiedCount > 0;
 }
 
 export async function createAdminInvite(email: string, invitedByEmail: string, role: AdminRole = "editor") {
   const db = await getDb();
   const col = db.collection("admin_invites");
+  const normalizedEmail = email.toLowerCase();
+  const admins = db.collection<Admin>(ADMINS_COLL);
+  if (await admins.findOne({ email: normalizedEmail })) {
+    return { ok: false, error: "Admin already exists" };
+  }
+  const now = new Date();
+  const pendingInvite = await col.findOne({
+    email: normalizedEmail,
+    usedAt: null,
+    expiresAt: { $gt: now },
+  });
+  if (pendingInvite) return { ok: false, error: "An active invite already exists" };
+
   const rawToken = randomBytes(32).toString("hex");
   const tokenHash = createHash("sha256").update(rawToken).digest("hex");
   const expiresHours = Number(env.ADMIN_INVITE_EXPIRES_HOURS ?? "48");
-  const expiresAt = new Date(Date.now() + expiresHours * 3600 * 1000);
+  const expiresAt = new Date(now.getTime() + expiresHours * 3600 * 1000);
 
   await col.insertOne({
-    email: email.toLowerCase(),
+    email: normalizedEmail,
     role,
     tokenHash,
     expiresAt,
@@ -59,12 +113,8 @@ export async function createAdminInvite(email: string, invitedByEmail: string, r
     usedAt: null,
   });
 
-  if ((env.NODE_ENV ?? process.env.NODE_ENV) === "development") {
-    const appUrl = env.APP_URL ?? process.env.APP_URL ?? "http://localhost:3000";
-    return { ok: true, inviteUrl: `${appUrl}/signup?token=${rawToken}` };
-  }
-
-  return { ok: true };
+  const appUrl = (env.APP_URL ?? process.env.APP_URL ?? "http://localhost:3001").replace(/\/$/, "");
+  return { ok: true, inviteUrl: `${appUrl}/signup?token=${encodeURIComponent(rawToken)}` };
 }
 
 export async function acceptAdminInvite(rawToken: string, password: string) {
@@ -74,13 +124,22 @@ export async function acceptAdminInvite(rawToken: string, password: string) {
   const invite = await col.findOne({ tokenHash });
   if (!invite) return { ok: false, error: "Invalid token" };
   if (invite.usedAt) return { ok: false, error: "Token already used" };
-  if (invite.expiresAt && invite.expiresAt.getTime() < Date.now()) return { ok: false, error: "Token expired" };
+  const now = new Date();
+  if (invite.expiresAt && invite.expiresAt.getTime() <= now.getTime()) return { ok: false, error: "Token expired" };
+
+  // Claim the invite atomically so simultaneous requests cannot create two
+  // accounts or accept the same single-use token more than once.
+  const claim = await col.updateOne(
+    { _id: invite._id, tokenHash, usedAt: null, expiresAt: { $gt: now } },
+    { $set: { usedAt: now } },
+  );
+  if (claim.modifiedCount !== 1) return { ok: false, error: "Token already used or expired" };
 
   const adminsCol = db.collection<Admin>(ADMINS_COLL);
   const existing = await adminsCol.findOne({ email: invite.email });
   if (existing) return { ok: false, error: "Admin already exists" };
 
-  const pwdHash = hashPassword(password);
+  const pwdHash = await hashPassword(password);
   const doc: Omit<Admin, "_id"> = {
     email: invite.email,
     passwordHash: pwdHash,
@@ -89,8 +148,6 @@ export async function acceptAdminInvite(rawToken: string, password: string) {
     createdAt: new Date(),
   };
   const res = await adminsCol.insertOne(doc);
-
-  await col.updateOne({ tokenHash }, { $set: { usedAt: new Date() } });
 
   return { ok: true, adminId: res.insertedId?.toString?.() ?? null };
 }
@@ -157,23 +214,6 @@ export async function deleteAdminById(id: string) {
     : { email: id.toLowerCase() };
   const res = await col.deleteOne(filter);
   return res.deletedCount > 0;
-}
-
-export async function inviteAdmin(email: string, invitedByEmail: string, role: AdminRole = "editor") {
-  const db = await getDb();
-  const col = db.collection<Admin>(ADMINS_COLL);
-  const existing = await col.findOne({ email: email.toLowerCase() });
-  if (existing) return { ok: false, error: "Admin already exists" };
-
-  await col.insertOne({
-    email: email.toLowerCase(),
-    passwordHash: "",
-    status: "invited",
-    invitedBy: invitedByEmail,
-    role,
-    createdAt: new Date(),
-  });
-  return { ok: true };
 }
 
 export async function getAdminSession(id?: string | null) {

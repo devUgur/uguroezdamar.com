@@ -9,12 +9,24 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_MONGODB_URI: mongodb://127.0.0.1:27017/ugur_test
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24.21.0
       - name: Enable corepack
         run: corepack enable
       - name: Install dependencies
@@ -23,5 +35,7 @@ jobs:
         run: pnpm lint
       - name: Typecheck
         run: pnpm typecheck
+      - name: Tests
+        run: pnpm test
       - name: Build
         run: pnpm build

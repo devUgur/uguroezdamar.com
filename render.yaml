@@ -1,11 +1,17 @@
-# Render Blueprint – Static Site (@ugur/site)
-# Build must run from repo root so apps/site/out is created.
-# Dashboard: Static Site → Connect repo → use Build command below.
+# Render Blueprint – server-rendered Next.js site (@ugur/site).
+# Netlify remains the canonical production deployment; use this only as an
+# explicitly configured alternative with its own MONGODB_URI and domain.
 
 services:
   - type: web
     name: ugur-site
-    runtime: static
-    # Build from repo root so monorepo deps resolve and out/ is under apps/site/
-    buildCommand: pnpm install && pnpm run build:site
-    staticPublishPath: apps/site/out
+    runtime: node
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm run build:site
+    startCommand: pnpm --filter @ugur/site start
+    envVars:
+      - key: NODE_VERSION
+        value: "24.21.0"
+      - key: MONGODB_URI
+        sync: false
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false

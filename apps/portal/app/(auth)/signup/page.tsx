@@ -19,7 +19,7 @@ export default function SignupPage() {
     e.preventDefault();
     setMessage(null);
     if (!token) return setMessage("Missing invite token");
-    if (password.length < 8) return setMessage("Password must be at least 8 characters");
+    if (password.length < 12) return setMessage("Password must be at least 12 characters");
     if (password !== confirm) return setMessage("Passwords do not match");
 
     setBusy(true);
@@ -52,11 +52,11 @@ export default function SignupPage() {
         </div>
         <div style={{ marginBottom: 12 }}>
           <label>New Password</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: "100%" }} />
+          <input type="password" minLength={12} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: "100%" }} />
         </div>
         <div style={{ marginBottom: 12 }}>
           <label>Confirm Password</label>
-          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} style={{ width: "100%" }} />
+          <input type="password" minLength={12} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} style={{ width: "100%" }} />
         </div>
         <div>
           <button type="submit" disabled={busy}>{busy ? "Submitting…" : "Accept Invite"}</button>

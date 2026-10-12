@@ -1,7 +1,7 @@
 import { MongoClient } from "mongodb";
-import { createHash } from "crypto";
 import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
+import { hashAdminPassword } from "./password-hash.mjs";
 
 // Load .env if present and variables not already set
 const envPath = resolve(process.cwd(), ".env");
@@ -21,19 +21,16 @@ if (existsSync(envPath)) {
 }
 
 const MONGODB_URI = process.env.MONGODB_URI;
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
-
 if (!MONGODB_URI) {
   console.error("MONGODB_URI is not set. Set it in your environment or .env file.");
   process.exit(1);
 }
 
-const email = "admin@example.com";
-const password = ADMIN_API_KEY || "change-me-immediately";
-const pepper = ADMIN_API_KEY || "";
-
-function hashPassword(pwd) {
-  return createHash("sha256").update(pwd + pepper).digest("hex");
+const email = process.env.INITIAL_ADMIN_EMAIL?.trim().toLowerCase();
+const password = process.env.INITIAL_ADMIN_PASSWORD;
+if (!email || !password || password.length < 12) {
+  console.error("Set INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD (at least 12 characters).");
+  process.exit(1);
 }
 
 async function run() {
@@ -47,7 +44,7 @@ async function run() {
     await client.close();
     return;
   }
-  const pwdHash = hashPassword(password);
+  const pwdHash = await hashAdminPassword(password);
   const doc = {
     email,
     passwordHash: pwdHash,

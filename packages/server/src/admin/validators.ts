@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const AcceptAdminInviteSchema = z.object({
 	token: z.string().min(1),
-	password: z.string().min(8),
+	password: z.string().min(12),
 });
 
 export type AcceptAdminInviteInput = z.infer<typeof AcceptAdminInviteSchema>;

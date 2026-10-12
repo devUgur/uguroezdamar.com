@@ -21,13 +21,14 @@ export async function PATCH(request: NextRequest) {
   const actingAdmin = auth.method === "session" ? auth.admin : null;
   const actingIsBearer = auth.method === "bearer";
 
-  const target = await getAdminById(idVal);
-  if (!target) return NextResponse.json({ error: "Not Found" }, { status: 404 });
-
-  // Prevent non-owner from promoting to owner
-  if (newRole === "owner" && !actingIsBearer && (!actingAdmin || actingAdmin.role !== "owner")) {
+  // Role assignment is an owner-level operation. Editors and admins must not
+  // be able to grant themselves or another user elevated privileges.
+  if (!actingIsBearer && actingAdmin?.role !== "owner") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  const target = await getAdminById(idVal);
+  if (!target) return NextResponse.json({ error: "Not Found" }, { status: 404 });
 
   // Prevent self-demotion
   const targetIdStr = target._id?.toString() ?? target.email;

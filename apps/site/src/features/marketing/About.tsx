@@ -8,9 +8,11 @@ export async function About() {
     <section id="about" className="py-24 md:py-32 lg:py-40 px-6 md:px-12 lg:px-24 hairline-t">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-8">
         <div className="lg:col-span-7">
-          <p className="font-sans text-xl md:text-2xl leading-[1.6] md:leading-[1.8] text-foreground max-w-[680px]">
-            {profile.primaryText}
-          </p>
+          {profile.primaryText ? (
+            <p className="font-sans text-xl md:text-2xl leading-[1.6] md:leading-[1.8] text-foreground max-w-[680px]">
+              {profile.primaryText}
+            </p>
+          ) : null}
           {profile.secondaryText ? (
             <p className="mt-8 font-sans text-lg md:text-xl leading-relaxed text-muted-foreground max-w-[680px]">
               {profile.secondaryText}

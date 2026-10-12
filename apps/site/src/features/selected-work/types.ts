@@ -1,3 +1,3 @@
-import { ProjectRecord } from "@ugur/server";
+import type { ProjectRecord } from "@ugur/server";
 
 export type { ProjectRecord as WorkItem };

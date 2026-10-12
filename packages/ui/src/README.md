@@ -10,4 +10,4 @@ Physical layout (aligned with logical grouping):
 - **icons/** – GitHubIcon, LinkedInIcon.
 - **lib/** – utils (e.g. `cn`).
 
-Public API: `index.ts` (all exports) and `client.ts` (client-safe only, for use in Client Components that must not pull in Server-only code like Footer).
+Public API: `index.ts` (all exports) and `client.ts` (client-safe exports for Client Components). Shared UI components do not read cookies or depend on server packages; application-specific session UI belongs in the app shell.

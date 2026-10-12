@@ -1,7 +1,7 @@
 import { MongoClient } from "mongodb";
-import { createHash } from "crypto";
 import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
+import { hashAdminPassword } from "./password-hash.mjs";
 
 // Load .env if present
 const envPath = resolve(process.cwd(), ".env");
@@ -21,19 +21,13 @@ if (existsSync(envPath)) {
 }
 
 const MONGODB_URI = process.env.MONGODB_URI;
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY ?? "";
-
 if (!MONGODB_URI) {
   console.error("MONGODB_URI is not set in environment or .env");
   process.exit(1);
 }
 
-function hashPassword(pwd) {
-  return createHash("sha256").update(pwd + (ADMIN_API_KEY ?? "")).digest("hex");
-}
-
 function usage() {
-  console.log("Usage: node scripts/set-admin-password.mjs --email admin@example.com --password newpass");
+  console.log("Usage: node tooling/scripts/set-admin-password.mjs --email admin@example.com --password <new-password>");
 }
 
 const args = process.argv.slice(2);
@@ -44,8 +38,9 @@ for (let i = 0; i < args.length; i++) {
   if (args[i] === "--password") password = args[++i];
 }
 
-if (!email || !password) {
+if (!email || !password || password.length < 12) {
   usage();
+  console.error("Password must contain at least 12 characters.");
   process.exit(1);
 }
 
@@ -54,13 +49,18 @@ async function run() {
   await client.connect();
   const db = client.db();
   const col = db.collection("admins");
-  const hashed = hashPassword(password);
-  const res = await col.findOneAndUpdate({ email: email.toLowerCase() }, { $set: { passwordHash: hashed, status: "active" } }, { returnDocument: "after" });
-  if (!res.value) {
+  const hashed = await hashAdminPassword(password);
+  const result = await col.findOneAndUpdate(
+    { email: email.toLowerCase() },
+    { $set: { passwordHash: hashed, status: "active" } },
+    { returnDocument: "after" },
+  );
+  if (!result.value) {
     console.error("Admin not found for email:", email);
     await client.close();
     process.exit(1);
   }
+  await db.collection("admin_sessions").deleteMany({ adminId: result.value._id.toString() });
   console.log("Updated admin password for", email);
   await client.close();
 }

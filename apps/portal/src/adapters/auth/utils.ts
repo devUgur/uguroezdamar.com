@@ -1,7 +1,9 @@
+import "server-only";
 import { cookies, headers } from "next/headers";
 import {
   env,
-  getAdminByEmail,
+  deleteAdminSession,
+  getAdminById,
   getAdminSession,
   timingSafeEqualsString,
   type Admin,
@@ -48,6 +50,10 @@ export async function requireAdmin(request: Request): Promise<RequireAdminResult
   if (!sessionId) return { ok: false, reason: "no_session" };
   const session = await getAdminSession(sessionId);
   if (!session) return { ok: false, reason: "invalid_session" };
-  const admin = await getAdminByEmail(session.email);
-  return { ok: true, method: "session", session, admin: admin ?? null };
+  const admin = await getAdminById(session.adminId);
+  if (!admin || admin.status !== "active" || admin.email !== session.email) {
+    await deleteAdminSession(sessionId);
+    return { ok: false, reason: "invalid_session" };
+  }
+  return { ok: true, method: "session", session, admin };
 }

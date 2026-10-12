@@ -69,7 +69,7 @@ export default async function TeamPage() {
       </div>
 
       <div className="bg-muted/50 border rounded-lg p-4 text-sm text-muted-foreground">
-        <strong>How invitations work:</strong> Once invited, the new admin can log in using their email. On the first login, they must use the <code>ADMIN_API_KEY</code> as their password to activate their account.
+        <strong>How invitations work:</strong> Create a single-use invite link and send it to the colleague through a trusted channel. They set their own password (at least 12 characters) on the sign-up page. The global <code>ADMIN_API_KEY</code> is never used as a login password.
       </div>
     </div>
   );

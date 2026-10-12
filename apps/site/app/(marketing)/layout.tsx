@@ -1,5 +1,7 @@
 import { Footer, Header, ScrollProgress } from "@ugur/ui";
 
+export const dynamic = "force-dynamic";
+
 export default function MarketingLayout({
   children,
 }: {

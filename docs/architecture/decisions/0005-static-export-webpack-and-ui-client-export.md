@@ -1,7 +1,7 @@
 # ADR 0005: Static Export mit Webpack und @ugur/ui/client
 
 ## Status
-Angenommen (2025-03-05)
+Superseded durch [ADR 0013](0013-cms-content-and-server-rendering.md) (2026-10-12)
 
 ## Kontext
 - Die Site (`@ugur/site`) soll als Static Site (z. B. auf Render) mit `output: "export"` deployt werden.

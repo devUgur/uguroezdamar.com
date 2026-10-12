@@ -19,6 +19,7 @@ function toProjectRecord(doc: any): ProjectRecord {
 export async function getProjects(options?: {
 	status?: string;
 	featured?: boolean;
+	publicOnly?: boolean;
 	limit?: number;
 }): Promise<ProjectRecord[]> {
 	const db = await getDb();
@@ -27,6 +28,7 @@ export async function getProjects(options?: {
 	const query: Filter<any> = { deletedAt: { $exists: false } };
 	if (options?.status) query.status = options.status;
 	if (options?.featured !== undefined) query.featured = options.featured;
+	if (options?.publicOnly) query.isSecret = { $ne: true };
 
 	const docs = await col
 		.find(query)
@@ -37,11 +39,16 @@ export async function getProjects(options?: {
 	return docs.map(toProjectRecord);
 }
 
-export async function getProjectBySlugMongo(slug: string): Promise<ProjectRecord | null> {
+export async function getProjectBySlugMongo(slug: string, options?: { publicOnly?: boolean }): Promise<ProjectRecord | null> {
 	const db = await getDb();
 	const col = db.collection(PROJECTS_COLLECTION);
 
-	const doc = await col.findOne({ slug, deletedAt: { $exists: false } });
+	const query: Filter<any> = { slug, deletedAt: { $exists: false } };
+	if (options?.publicOnly) {
+		query.status = "published";
+		query.isSecret = { $ne: true };
+	}
+	const doc = await col.findOne(query);
 	if (!doc) return null;
 
 	return toProjectRecord(doc);
@@ -66,7 +73,7 @@ export async function createProject(input: CreateProjectInput): Promise<ProjectR
 		...input,
 		createdAt: now,
 		updatedAt: now,
-		publishedAt: input.publishedAt ? new Date(input.publishedAt) : null,
+		publishedAt: input.status === "published" ? (input.publishedAt ? new Date(input.publishedAt) : now) : null,
 		previewUpdatedAt: input.previewUpdatedAt ? new Date(input.previewUpdatedAt) : null,
 	};
 
@@ -83,7 +90,9 @@ export async function updateProject(id: string, input: UpdateProjectInput): Prom
 		updatedAt: new Date(),
 	};
 
-	if (input.publishedAt) {
+	if (input.status === "published" && !input.publishedAt) {
+		update.publishedAt = new Date();
+	} else if (input.publishedAt) {
 		update.publishedAt = new Date(input.publishedAt);
 	}
 	if (input.previewUpdatedAt) {

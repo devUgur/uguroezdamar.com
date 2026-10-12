@@ -1,5 +1,6 @@
 "use server";
 
+import "server-only";
 import { contactSchema, createContactRequest, type ContactInput } from "@ugur/server";
 
 export async function submitContact(_: unknown, formData: FormData) {

@@ -12,7 +12,7 @@ export async function Education() {
 
       {education.length === 0 ? (
         <div className="text-sm text-muted-foreground">
-          Education is currently in progress. Coming soon.
+          No education entries have been published yet.
         </div>
       ) : (
       <div className="max-w-4xl relative">

@@ -1,8 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-	output: "export",
 	reactStrictMode: true,
-	serverExternalPackages: ["mongodb"],
+	serverExternalPackages: ["mongodb", "argon2"],
+	async redirects() {
+		return [
+			{
+				source: "/projects/ViralSync",
+				destination: "/projects/viralsync",
+				permanent: true,
+			},
+		];
+	},
 };
 
 export default nextConfig;

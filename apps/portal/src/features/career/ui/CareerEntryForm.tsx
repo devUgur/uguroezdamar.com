@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CareerEntry, CareerEntryType } from "@ugur/server";
+import type { CareerEntry, CareerEntryType } from "@ugur/server";
 import { 
   Briefcase, 
   GraduationCap, 
@@ -21,8 +21,6 @@ import {
   Eye,
   Type,
   FileText,
-  ExternalLink,
-  ChevronDown
 } from "lucide-react";
 import { cn } from "@ugur/core";
 
@@ -147,8 +145,6 @@ export function CareerEntryForm({ id, initial }: Props) {
       setLoading(false);
     }
   };
-
-  const currentType = TYPES.find(t => t.value === state.type) || TYPES[0];
 
   return (
     <div className="max-w-5xl mx-auto p-8 space-y-8 pb-24">

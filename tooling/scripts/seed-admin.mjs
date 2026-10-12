@@ -1,22 +1,3 @@
-import { env, getDb, hashPassword } from "@ugur/server";
-
-export async function seedAdmins() {
-  const db = await getDb();
-  const col = db.collection("admins");
-  
-  const email = "admin@example.com"; // User should change this
-  const password = env.ADMIN_API_KEY || "change-me-immediately";
-  
-  const existing = await col.findOne({ email });
-  if (!existing) {
-    console.log("Seeding initial admin...");
-    await col.insertOne({
-      email,
-      passwordHash: hashPassword(password),
-      status: "active",
-      role: "owner",
-      createdAt: new Date(),
-    });
-    console.log("Admin seeded: ", email);
-  }
-}
+// Backward-compatible entrypoint; the implementation and environment handling
+// live in the explicit, Argon2id-based bootstrap script.
+import "./seed-admin-simple.mjs";

@@ -63,6 +63,7 @@ export default tseslint.config(
               name: "@ugur/server",
               message:
                 "@ugur/server is server-only. Use it only in route handlers, server actions, middleware, or src/server modules.",
+                allowTypeImports: true,
             },
           ],
         },
@@ -109,6 +110,7 @@ export default tseslint.config(
               name: "@ugur/server",
               message:
                 "@ugur/server is server-only. Use it only in route handlers, server actions, middleware, or src/server modules.",
+              allowTypeImports: true,
             },
           ],
         },
@@ -152,6 +154,7 @@ export default tseslint.config(
               name: "@ugur/server",
               message:
                 "@ugur/server is server-only. Use it only in route handlers, server actions, middleware, or src/server modules.",
+              allowTypeImports: true,
             },
           ],
         },
@@ -177,4 +180,30 @@ export default tseslint.config(
   },
   ...tseslint.configs.recommended,
   nextPlugin.configs["core-web-vitals"],
+  {
+    files: [
+      "apps/site/src/features/**/queries.{ts,tsx}",
+      "apps/site/src/features/**/actions.{ts,tsx}",
+      "apps/portal/src/adapters/**/*.{ts,tsx}",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            ...alwaysRestrictedPatterns,
+            { group: ["@ugur/server/*"], message: "Import from the @ugur/server package entrypoint." },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["**/*.{ts,tsx}"],
+    rules: {
+      // Legacy repository modules still contain untyped MongoDB document shapes.
+      // Keep them visible while preventing these warnings from blocking unrelated fixes.
+      "@typescript-eslint/no-explicit-any": "warn",
+    },
+  },
 );

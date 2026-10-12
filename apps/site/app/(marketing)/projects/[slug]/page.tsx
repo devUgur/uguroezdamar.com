@@ -1,24 +1,11 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
-import { getSiteProjectBySlug, getSiteProjects } from "@/src/features/projects/queries";
+import { getSiteProjectBySlug } from "@/src/features/projects/queries";
 import { Container, Section } from "@ugur/ui";
+import { compileMdx } from "@/src/features/blog/queries";
 
-export async function generateStaticParams() {
-  try {
-    const projects = await getSiteProjects();
-    if (projects.length > 0) {
-      return projects.map((p) => ({ slug: p.slug }));
-    }
-  } catch (error) {
-    console.error("Failed to generate static params for projects:", error);
-  }
-
-  // Fallback to avoid build error in Next.js 16 if no projects found
-  return [{ slug: "__placeholder__" }];
-}
-
-export const dynamicParams = false;
+export const dynamic = "force-dynamic";
 
 export default async function ProjectDetailPage({
   params,
@@ -29,6 +16,7 @@ export default async function ProjectDetailPage({
   const project = await getSiteProjectBySlug(slug);
 
   if (!project) return notFound();
+  const content = await compileMdx(project.content ?? "");
 
   return (
     <Container>
@@ -61,7 +49,7 @@ export default async function ProjectDetailPage({
         ) : null}
 
         <div className="prose prose-zinc max-w-none">
-          <pre className="whitespace-pre-wrap text-sm">{project.content}</pre>
+          {content}
         </div>
       </Section>
     </Container>
