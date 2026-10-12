@@ -185,8 +185,17 @@ html {
 	border-top: 1px solid hsl(var(--border));
 }
 
-/* keep links inheriting color by default */
-a { color: inherit; }
+/* Hero scroll cue: a hairline sweeping left to right. */
+.scroll-cue {
+	animation: scroll-cue 2s ease-in-out infinite;
+}
+
+@keyframes scroll-cue {
+	0% { transform: translateX(-100%); }
+	50% { transform: translateX(0); }
+	100% { transform: translateX(100%); }
+}
+
 
 @media (prefers-reduced-motion: reduce) {
 	*,
