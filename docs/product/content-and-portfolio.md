@@ -17,6 +17,8 @@ Die Website soll anhand echter Arbeit zeigen, wie Ugur Özdamar Software konzipi
 | `/contact` | zugängliche Kontaktoption mit nachweisbarer Zustellung |
 | `/imprint`, `/privacy` | rechtlich gepflegte Informationen passend zum tatsächlichen Betrieb |
 
+**Release-Blocker (12.10.2026):** Beide Seiten enthalten noch Platzhalter und sind nicht zur Veröffentlichung freigegeben. Vor dem Live-Release müssen die verantwortliche Person/Firma, ladungsfähige Anschrift, Kontaktweg, tatsächliche Hosting-/Datenverarbeitung, verwendete Dienste und Aufbewahrungsfristen vom Betreiber bestätigt und in passende Rechtstexte überführt werden. Diese Tatsachen werden nicht aus dem Code oder aus Annahmen erfunden.
+
 Ob alle vorhandenen Routen erhalten bleiben, wird anhand Analytics/Links und Redirect-Bedarf entschieden. Es dürfen keine zwei konkurrierenden Projektwahrheiten entstehen.
 
 ## Inhaltsschema und Publish-Zustände
