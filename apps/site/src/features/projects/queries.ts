@@ -10,10 +10,20 @@ function requireContentDatabase() {
 /** Published, non-secret projects from the CMS are the public source of truth. */
 export async function getSiteProjects(): Promise<ProjectRecord[]> {
   if (!requireContentDatabase()) return [];
-  return getProjects({ status: "published", publicOnly: true, limit: 500 });
+  try {
+    return await getProjects({ status: "published", publicOnly: true, limit: 500 });
+  } catch {
+    console.error("Public projects could not be loaded from database.");
+    return [];
+  }
 }
 
 export async function getSiteProjectBySlug(slug: string): Promise<ProjectRecord | null> {
   if (!requireContentDatabase()) return null;
-  return getProjectBySlugMongo(slug.toLowerCase(), { publicOnly: true });
+  try {
+    return await getProjectBySlugMongo(slug.toLowerCase(), { publicOnly: true });
+  } catch {
+    console.error("Public project could not be loaded from database.");
+    return null;
+  }
 }

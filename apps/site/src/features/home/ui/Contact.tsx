@@ -1,23 +1,25 @@
-import React from "react";
-import { ArrowUpRight } from "lucide-react";
+import Link from "next/link";
 
 export function Contact() {
   return (
-    <section id="contact" className="py-32 md:py-40 lg:py-56 px-6 md:px-12 lg:px-24 border-t border-border/40 flex flex-col items-center justify-center text-center">
-      <h2 className="font-serif text-4xl md:text-5xl lg:text-7xl mb-16 tracking-tight group cursor-default">
-        Let’s build something <span className="text-accent italic transition-all duration-500">meaningful.</span>
-      </h2>
-
-      <div className="flex flex-col md:flex-row gap-8 md:gap-16 font-mono text-sm uppercase tracking-widest text-secondary-foreground">
-        <a href="mailto:ugur.oezdamar@itc-studenten.de" className="inline-flex items-center gap-2 group hover:text-accent hover:-translate-y-1 transition-all duration-300">
-          Email <ArrowUpRight className="w-3 h-3 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300" />
-        </a>
-        <span className="inline-flex items-center gap-2 font-mono text-sm uppercase tracking-widest text-muted-foreground/60 cursor-default" aria-disabled="true" title="Profil in Kürze">
-          LinkedIn <ArrowUpRight className="w-3 h-3 opacity-40" />
-        </span>
-        <a href="https://github.com/devUgur" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 group hover:text-accent hover:-translate-y-1 transition-all duration-300">
-          GitHub <ArrowUpRight className="w-3 h-3 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300" />
-        </a>
+    <section id="contact" aria-labelledby="contact-heading" className="site-section pb-24 md:pb-32">
+      <div className="site-container grid grid-cols-1 items-end gap-8 md:grid-cols-12 md:gap-8">
+        <div className="md:col-span-8">
+          <p className="mb-5 font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground md:text-sm">
+            05 <span className="mx-2 text-border">/</span> Contact
+          </p>
+          <h2 id="contact-heading" className="max-w-4xl text-4xl leading-[1.05] tracking-[-0.04em] md:text-6xl lg:text-7xl">
+            Start a conversation.
+          </h2>
+        </div>
+        <div className="md:col-span-3 md:col-start-10">
+          <p className="max-w-sm text-sm leading-6 text-muted-foreground">
+            For a question or a message about software work, use the contact page.
+          </p>
+          <Link href="/contact" className="link-underline mt-5 inline-flex min-h-11 items-center gap-3 font-mono text-xs uppercase tracking-[0.13em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
+            Go to contact <span aria-hidden="true">↗</span>
+          </Link>
+        </div>
       </div>
     </section>
   );
