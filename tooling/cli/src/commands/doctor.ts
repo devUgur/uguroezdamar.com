@@ -1,5 +1,5 @@
 import { has } from "../lib/exec.ts";
-import { infisicalConfig, INFISICAL_DOMAIN, listSecretNames } from "../lib/infisical.ts";
+import { accessHint, infisicalConfig, listSecretNames } from "../lib/infisical.ts";
 import { neonLoggedIn } from "../lib/neon.ts";
 import type { Stage } from "../lib/stages.ts";
 import { secretsFor } from "../secrets-manifest.ts";
@@ -22,7 +22,7 @@ function secretChecks(stage: Stage): Check[] {
   if (!infisicalConfig()) return [];
   const names = listSecretNames(stage);
   if (!names) {
-    return [{ name: `Infisical (${stage})`, ok: false, hint: `infisical login --domain=${INFISICAL_DOMAIN}` }];
+    return [{ name: `Infisical (${stage})`, ok: false, hint: accessHint() }];
   }
   return secretsFor(stage)
     .filter((spec) => !spec.optional)

@@ -1,6 +1,7 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { has, run } from "../lib/exec.ts";
 import {
+  accessHint,
   INFISICAL_DOMAIN,
   INFISICAL_FILE,
   infisicalConfig,
@@ -14,9 +15,9 @@ const step = (text: string) => console.log(`\n▸ ${text}`);
 /**
  * One-time onboarding of a machine: sign in to Infisical and Neon in the browser and link this
  * checkout to its Infisical project. Every step is skipped when it is already done, so the
- * command is safe to repeat. Nothing is written to disk except `.infisical.json` (a project id).
+ * command is safe to repeat; `relink` forgets the linked project and asks again. Nothing is written to disk except `.infisical.json` (a project id).
  */
-export function setup(): number {
+export function setup(relink = false): number {
   if (!process.stdin.isTTY) {
     console.error("`pnpm ugur setup` opens the browser and asks questions: run it in your own terminal.");
     return 1;
@@ -31,11 +32,16 @@ export function setup(): number {
     }
   }
 
-  if (!infisicalConfig()) {
-    step(`Sign in to Infisical (${INFISICAL_DOMAIN}) — a browser window opens.`);
-    if (run("infisical", ["login", `--domain=${INFISICAL_DOMAIN}`]).code !== 0) return 1;
+  if (relink && existsSync(INFISICAL_FILE)) rmSync(INFISICAL_FILE);
 
-    step('Choose this product\'s Infisical project (create "uguroezdamar-com" in the web app first if it is missing).');
+  if (!infisicalConfig()) {
+    // `init` lists nothing without a session; an existing one is reused.
+    if (!relink) {
+      step(`Sign in to Infisical (${INFISICAL_DOMAIN}) — a browser window opens.`);
+      if (run("infisical", ["login", `--domain=${INFISICAL_DOMAIN}`]).code !== 0) return 1;
+    }
+
+    step('Choose the organization, then this product\'s project. It must be of type "Secrets Management".');
     if (run("infisical", ["init", `--domain=${INFISICAL_DOMAIN}`]).code !== 0) return 1;
     const { workspaceId } = JSON.parse(readFileSync(INFISICAL_FILE, "utf8")) as { workspaceId?: string };
     if (!workspaceId) {
@@ -43,8 +49,16 @@ export function setup(): number {
       return 1;
     }
     writeInfisicalConfig(workspaceId);
+    if (!listSecretNames("dev") || !listSecretNames("prod")) {
+      console.error(`\n✗ The chosen project cannot hold this product's secrets.\n${accessHint()}`);
+      return 1;
+    }
     console.log("✓ .infisical.json written — commit it; it holds a project id, no secret.");
   } else if (!listSecretNames("dev")) {
+    if (accessHint().includes("--relink")) {
+      console.error(accessHint());
+      return 1;
+    }
     step(`Sign in to Infisical (${INFISICAL_DOMAIN}) — a browser window opens.`);
     if (run("infisical", ["login", `--domain=${INFISICAL_DOMAIN}`]).code !== 0) return 1;
   } else {

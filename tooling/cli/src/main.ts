@@ -18,7 +18,8 @@ import { parseStage, STAGES, type Stage } from "./lib/stages.ts";
 
 const HELP = `uguroezdamar.com CLI — pnpm ugur <command>
 
-  setup                      One-time: sign in to Infisical and Neon in the browser, link the project
+  setup [--relink]           One-time: sign in to Infisical and Neon in the browser, link the project
+                             (--relink chooses a different Infisical project)
   doctor                     Check tools, logins and required secrets
   dev [--filter site|portal] Run the apps with dev secrets injected and localhost addresses
   run -- <cmd>               Run a command with secrets and localhost addresses (e.g. a local build)
@@ -54,6 +55,7 @@ const { values, positionals } = parseArgs({
     to: { type: "string" },
     overwrite: { type: "boolean", default: false },
     rotate: { type: "boolean", default: false },
+    relink: { type: "boolean", default: false },
     apply: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
   },
@@ -69,7 +71,7 @@ async function main(): Promise<number> {
   const stage = parseStage(values.stage);
   switch (`${command} ${sub ?? ""}`.trim()) {
     case "setup":
-      return setup();
+      return setup(values.relink);
     case "doctor":
       return doctor(stage);
     case "dev":

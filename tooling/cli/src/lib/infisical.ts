@@ -48,14 +48,18 @@ export interface SecretNames {
   empty: string[];
 }
 
+/** Why the last read failed, in Infisical's own words (never contains secret values). */
+let lastReadError: string | null = null;
+
 function exportRows(stage: Stage): Array<{ key: string; value: string }> | null {
   const base = baseArgs(stage);
   if (!base) return null;
-  const { code, stdout } = run(
+  const { code, stdout, stderr } = run(
     "infisical",
     ["export", ...base, "--path", "/", "--format", "json", "--silent"],
     { capture: true },
   );
+  lastReadError = code === 0 ? null : (stderr.match(/^Message:\s*(.+)$/m)?.[1]?.trim() ?? null);
   if (code !== 0) return null;
   try {
     return JSON.parse(stdout || "[]") as Array<{ key: string; value: string }>;
@@ -137,5 +141,13 @@ export function withSecrets(stage: Stage, command: string[]): [string, string[]]
 export const SETUP_HINT = "Not linked to Infisical yet — run `pnpm ugur setup`.";
 export const LOGIN_HINT = `Cannot read Infisical — run \`infisical login --domain=${INFISICAL_DOMAIN}\` (or \`pnpm ugur setup\`).`;
 
-/** The right hint for a failed read: not linked yet, or linked but not signed in. */
-export const accessHint = () => (infisicalConfig() ? LOGIN_HINT : SETUP_HINT);
+export const RELINK_HINT =
+  "Create a project of type \"Secrets Management\" in Infisical, then run `pnpm ugur setup --relink` and choose it.";
+
+/** The right hint for a failed read: not linked, linked to an unusable project, or not signed in. */
+export function accessHint(): string {
+  if (!infisicalConfig()) return SETUP_HINT;
+  if (!lastReadError) return LOGIN_HINT;
+  const wrongProject = /project is of type|not found/i.test(lastReadError);
+  return [`Infisical refused: ${lastReadError}`, wrongProject ? RELINK_HINT : LOGIN_HINT].join("\n");
+}
