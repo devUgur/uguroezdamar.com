@@ -5,16 +5,17 @@
 Das Repository ist ein pnpm-/Turborepo-Monorepo. Der derzeitige lokale Quellbaum enthält zwei Next.js-Anwendungen (`apps/site`, `apps/portal`), drei gemeinsam genutzte Pakete (`packages/core`, `packages/server`, `packages/ui`), Tests, Tooling und GitHub Actions. Die bevorzugte Weiterentwicklung ist ein modularer Monolith mit wenigen klaren Grenzen. Es gibt keinen Grund, allein wegen des Audits neue Services oder Pakete einzuführen.
 
 ```text
-Besucher ──> apps/site ───────────────> @ugur/server ──> MongoDB / MDX
-                 │                         ▲
-                 └──> @ugur/ui, @ugur/core │
-Admin ─────> apps/portal ──────────────────┘
+Besucher ──> apps/site ───────────────> @ugur/server ──> MongoDB
+                 │                           ▲
+                 ├──> Git/MDX Blog           │
+                 └──> @ugur/ui, @ugur/core   │
+Admin ─────> apps/portal ────────────────────┘
                     └──> @ugur/ui, @ugur/core
 
 CI: Guards → Lint → Typecheck → Tests → Build → Deploy (nach Freigabe)
 ```
 
-Das Diagramm zeigt den groben Ist-Zuschnitt, nicht alle Importpfade. Die konkrete Inhaltsquelle, Laufzeit und Publish-Kopplung sind noch zu entscheiden; der Static Export der Site und serverseitige API-/Datenanforderungen müssen dabei gemeinsam bewertet werden.
+Die öffentliche Site und das Admin-Portal benötigen eine serverfähige Next.js-Laufzeit. Redaktionsverwaltete Profildaten, Karriere und Projekte liegen in MongoDB; Blogartikel sind versionierte MDX-Dateien. Netlify ist die kanonisch konfigurierte Produktion; eine alternative Render-Konfiguration ist dokumentiert.
 
 ## Verantwortlichkeiten
 
@@ -41,14 +42,14 @@ Das Diagramm zeigt den groben Ist-Zuschnitt, nicht alle Importpfade. Die konkret
 
 ## Laufzeit- und Inhaltsentscheidung
 
-Die öffentliche Site konfiguriert aktuell `output: "export"`. Gleichzeitig enthält das Repository serverseitige Datenzugriffe, eine Kontakt-POST-Route und ein Portal, das CMS-Inhalte bearbeitet. Diese Modelle müssen vor der nächsten Publish-Implementierung als Gesamtfluss entschieden werden.
+Die frühere Static-Export-Konfiguration wurde durch die in ADR 0013 beschlossene serverseitige Auslieferung ersetzt. Die Alternativen bleiben als Entscheidungsverlauf dokumentiert.
 
 | Option | Geeignet, wenn | Konsequenzen |
 | --- | --- | --- |
 | Git/MDX als Quelle und statischer Export | Inhalte werden selten geändert und PR/Build ist der gewünschte Freigabeweg | MongoDB-Projekt-Publishing aus der Public Site entfernen oder klar auf statische Build-Eingaben abbilden; Kontakt an externen/serverfähigen Dienst anbinden |
 | CMS/MongoDB mit serverfähiger Site | Inhalte müssen im Portal direkt bearbeitet und gezielt veröffentlicht werden | Hosting mit Server-Runtime; Cache-/Revalidation-, Backup-, Preview- und Zugriffsmodell festlegen |
 
-Die Entscheidung ist in [ADR 0013](decisions/0013-cms-content-and-server-rendering.md) festgehalten: MongoDB/CMS für redaktionell verwaltete Profile, Karriere und Projekte; Blogbeiträge verbleiben als MDX in Git. Die Site liefert CMS-Routen serverseitig aus. Details stehen in [`../product/content-and-portfolio.md`](../product/content-and-portfolio.md).
+Die angenommene Entscheidung ist in [ADR 0013](decisions/0013-cms-content-and-server-rendering.md) festgehalten: MongoDB/CMS für redaktionell verwaltete Profile, Karriere und Projekte; Blogbeiträge verbleiben als MDX in Git. Die Site liefert CMS-Routen serverseitig aus. Details stehen in [`../product/content-and-portfolio.md`](../product/content-and-portfolio.md).
 
 ## Datenfluss und Fehlverhalten
 
@@ -76,4 +77,4 @@ Für wesentliche Entscheidungen ADRs im Ordner `docs/architecture/decisions/` an
 ## Verifikation und Rückprüfung
 ```
 
-Zu Beginn ist insbesondere ein ADR zur Laufzeit-/Content-Quelle nötig. Eine Entscheidung gilt erst als angenommen, wenn Betrieb, Migration und Rückweg beschrieben sind.
+Die Content-/Laufzeitentscheidung liegt in ADR 0013. Weitere ADRs halten neue, langfristig wirksame Entscheidungen fest; sie ersetzen weder Migration noch Release-Verifikation.

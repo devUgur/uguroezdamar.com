@@ -61,7 +61,7 @@ export function ContactForm() {
           <input
             id="name"
             name="name"
-            className="rounded-md border border-zinc-200 px-3 py-2 text-sm"
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
             required
           />
         </div>
@@ -73,7 +73,7 @@ export function ContactForm() {
             id="email"
             name="email"
             type="email"
-            className="rounded-md border border-zinc-200 px-3 py-2 text-sm"
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
             required
           />
         </div>
@@ -84,7 +84,7 @@ export function ContactForm() {
           <textarea
             id="message"
             name="message"
-            className="min-h-32 rounded-md border border-zinc-200 px-3 py-2 text-sm"
+            className="min-h-32 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
             required
           />
         </div>

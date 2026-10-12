@@ -9,8 +9,8 @@ const base =
   "inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors";
 
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-zinc-900 text-white hover:bg-zinc-800",
-  secondary: "border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50",
+  primary: "bg-primary text-primary-foreground hover:bg-primary/90",
+  secondary: "border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80",
 };
 
 export function Button({

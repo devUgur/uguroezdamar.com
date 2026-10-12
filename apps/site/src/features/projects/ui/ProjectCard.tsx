@@ -21,7 +21,7 @@ export function ProjectCard({ project }: { project: ProjectRecord }) {
             </Link>
           </h3>
           {project.summary ? (
-            <p className="mt-1 text-sm text-zinc-600">{project.summary}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{project.summary}</p>
           ) : null}
         </div>
       </div>

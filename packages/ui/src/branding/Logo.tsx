@@ -6,7 +6,7 @@ export function Logo({ compact = false, size = 36 }: { compact?: boolean; size?:
     <Link href="/" className="flex items-center gap-3 group">
       <img
         src="/icon.svg"
-        alt="Ugur Özdamar"
+        alt={compact ? "Ugur Özdamar" : ""}
         width={size}
         height={size}
         style={{ width: size, height: size }}

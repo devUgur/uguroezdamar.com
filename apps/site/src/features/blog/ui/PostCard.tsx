@@ -12,7 +12,7 @@ export function PostCard({ post }: { post: PostRecord }) {
         </Link>
       </h3>
       {post.summary ? (
-        <p className="mt-1 text-sm text-zinc-600">{post.summary}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{post.summary}</p>
       ) : null}
     </Card>
   );

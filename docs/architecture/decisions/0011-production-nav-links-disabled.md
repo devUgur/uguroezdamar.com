@@ -1,7 +1,7 @@
 # ADR 0011: Navigationspunkte in Produktion deaktiviert
 
 ## Status
-Angenommen (2025-03-16)
+Superseded durch [ADR 0014](0014-responsive-public-navigation.md) (2026-10-12)
 
 ## Kontext
 - Die öffentliche Site (Marketing-Layout) zeigt im Header Links zu About, Work, Projects und Contact.

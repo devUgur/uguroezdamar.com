@@ -14,11 +14,9 @@ const NAV_LINKS = [
   { href: "/contact", label: "Contact" },
 ] as const;
 
-/** In production, nav links are disabled so users stay on the homepage only. */
-const navLinksEnabled = process.env.NODE_ENV !== "production";
-
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -29,6 +27,17 @@ export function Header() {
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => setMobileOpen(false), [pathname]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [mobileOpen]);
 
   return (
     <header className={cn(
@@ -55,29 +64,16 @@ export function Header() {
                 "block h-[1px] bg-foreground mt-1 transition-all duration-150",
                 isActive ? "w-full" : "w-0 group-hover:w-full"
               );
-              if (navLinksEnabled) {
-                return (
-                  <Link
-                    key={l.href}
-                    href={l.href}
-                    aria-current={isActive ? "page" : undefined}
-                    className={itemClass}
-                  >
-                    <span className={labelClass}>{l.label}</span>
-                    <span className={lineClass} />
-                  </Link>
-                );
-              }
               return (
-                <span
+                <Link
                   key={l.href}
-                  className={cn(itemClass, "cursor-default")}
-                  aria-disabled="true"
-                  title="Coming soon"
+                  href={l.href}
+                  aria-current={isActive ? "page" : undefined}
+                  className={itemClass}
                 >
                   <span className={labelClass}>{l.label}</span>
                   <span className={lineClass} />
-                </span>
+                </Link>
               );
             })}
           </nav>
@@ -86,7 +82,14 @@ export function Header() {
           <ThemeToggle />
 
           <div className="md:hidden flex-shrink-0">
-            <button aria-label="Open menu" className="p-2 transition-transform active:scale-95 text-foreground">
+            <button
+              type="button"
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileOpen}
+              aria-controls="mobile-navigation"
+              onClick={() => setMobileOpen((open) => !open)}
+              className="p-2 transition-transform active:scale-95 text-foreground"
+            >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -96,6 +99,29 @@ export function Header() {
           </div>
         </div>
       </div>
+      <nav
+        id="mobile-navigation"
+        aria-label="Mobile navigation"
+        className={cn("md:hidden border-t border-border/50 bg-background px-6", mobileOpen ? "block" : "hidden")}
+      >
+        <ul className="mx-auto max-w-7xl divide-y divide-border/50 font-mono text-sm uppercase tracking-widest">
+          {NAV_LINKS.map((link) => {
+            const active = pathname?.startsWith(link.href);
+            return (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => setMobileOpen(false)}
+                  className="block py-4 text-muted-foreground hover:text-foreground focus-visible:text-foreground"
+                >
+                  {link.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
     </header>
   );
 }

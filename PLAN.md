@@ -14,7 +14,7 @@ Das Zielsystem besteht aus einer öffentlichen Portfolio-/Blog-Anwendung, einem 
 
 | Reihenfolge | Phase | Ergebnis | Eintrittsbedingung |
 | --- | --- | --- | --- |
-| 0 | Verifizieren & stabilisieren | reproduzierbarer Baseline-Status, bekannte Produktionsrisiken eingegrenzt | lokale Gates und Dev-Browser-Smoke grün; Hosting-Preview offen |
+| 0 | Verifizieren & stabilisieren | reproduzierbarer Baseline-Status, bekannte Produktionsrisiken eingegrenzt | lokale Gates, Mobile-Smoke und Axe-Prüfung grün; Hosting-Preview offen |
 | 1 | Security & CI-Fundament | Admin-Zugriffe abgesichert, Qualitätsprüfungen verlässlich | Implementierung, lokale Regression und GitHub-CI grün; unabhängige Prüfung offen |
 | 2 | Content & Deployment | eine definierte Publish-Wahrheit und funktionsfähige öffentliche Routen | SSR/CMS-Umstellung lokal gebaut; Preview, Slug-Migration und Kontaktzustellung offen |
 | 3 | Portfolio-Erlebnis | vollständige Navigation und hochwertige, belegbare Projektseiten | Phasen 1–2 abgeschlossen |
@@ -136,7 +136,7 @@ Ein öffentlicher Relaunch erfolgt erst, wenn Phase 1 und 2 abgenommen sind, kri
 
 | Phase | Status | Nächster konkreter Schritt |
 | --- | --- | --- |
-| 0 — Verifizieren & stabilisieren | lokale Gates und Dev-Browser-Smoke grün | Hosting-Preview, Kontaktzustellung und Live-Deploy bleiben zu verifizieren |
+| 0 — Verifizieren & stabilisieren | lokale Gates, Mobile-Smoke und Axe-Prüfung grün | Hosting-Preview, Kontaktzustellung und Live-Deploy bleiben zu verifizieren |
 | 1 — Security & CI-Fundament | umgesetzt; lokale und GitHub-CI-Nachweise grün | unabhängige Prüfung offen |
 | 2 — Content & Deployment | lokal umgesetzt; Preview offen | Laufzeit-Mongo-Konfiguration, Slug-Datenmigration und Kontaktzustellung bleiben offen |
 | 3 — Portfolio-Erlebnis | geplant | Content-Freigaben und Case-Study-Material zusammentragen |
