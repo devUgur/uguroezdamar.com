@@ -1,0 +1,44 @@
+---
+# DRAFT — not part of a production build. Statements were checked against the repository on
+# 2026-10-13 (README, package manifest, source layout). Before publishing: confirm every statement,
+# add `role`, `contributions` and `period`, add a cover under public/projects/video-lab/,
+# then set `draft: false`.
+title: Video Lab
+summary: A conversational AI video studio — an idea becomes a production plan with scenes, prompts, audio and cost, and only an approved plan is generated, composed and rendered.
+category: AI tooling
+status: active
+featured: true
+displayOrder: 20
+draft: true
+technologies:
+  - TypeScript
+  - Next.js
+  - Vercel AI SDK
+  - Mastra
+  - FFmpeg
+  - Modal
+repositoryVisibility: private
+updatedAt: 2026-10-13
+---
+
+## Challenge
+
+Generating a short video with AI models is a chain of paid steps: images, clips, voice, music,
+composition. A wrong prompt in the first step is only noticed after the last one has been paid for.
+
+## Solution
+
+Video Lab plans before it spends. A director agent turns an idea into a concrete plan — scenes,
+prompts, audio, estimated cost — and nothing is generated until that exact plan is approved.
+Changing the plan requires a new approval. Compositions can then be edited scene by scene and
+rendered to MP4.
+
+## Architecture
+
+Providers — OpenAI, Google, fal.ai, ElevenLabs and others — are connected with the user's own
+keys, which are stored encrypted with the master key in the operating system's keychain.
+Self-hosted open models run on Modal behind a gateway. Every paid generation is recorded in a
+cost ledger, with a cost estimate per plan and budget limits. Without a provider the whole pipeline runs on free
+mock media, so the workflow can be developed and tested without cost.
+
+{/* Outcome: add only what can be shown — example videos, cost per video, or timings. */}

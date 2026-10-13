@@ -33,10 +33,6 @@ describe("CMS project publication (Postgres integration)", () => {
     expect(published.map((item) => item.slug)).toEqual([publicSlug]);
     expect(typeof published[0].publishedAt).toBe("string");
 
-    const sitemap = (await import("../apps/site/app/sitemap")).default;
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? (process.env.NODE_ENV === "production" ? "https://uguroezdamar.com" : "http://localhost:3000");
-    expect((await sitemap()).map((entry) => entry.url)).toContain(`${baseUrl}/projects/${publicSlug}`);
-
     await server.updateProject(project.id, { isSecret: true });
     expect(await server.getProjectBySlug(publicSlug, { publicOnly: true })).toBeNull();
     await server.updateProject(project.id, { isSecret: false });

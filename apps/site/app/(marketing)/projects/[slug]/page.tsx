@@ -1,55 +1,112 @@
+import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { getSiteProjectBySlug } from "@/src/features/projects/queries";
-import { ProjectMarkdown } from "@/src/features/projects/ui/ProjectMarkdown";
-import { Container, Section } from "@ugur/ui";
+import { compileMdx } from "@/src/content/mdx";
+import { formatPeriod, getProjectBySlug, getProjects, projectLinks } from "@/src/content/projects";
 
-export const dynamic = "force-dynamic";
+type Params = { params: Promise<{ slug: string }> };
 
-export default async function ProjectDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const project = await getSiteProjectBySlug(slug);
+const STATUS_LABELS = { active: "In development", completed: "Completed", archived: "Archived" } as const;
 
+// Every case study is a file in the repository: all pages are known at build time.
+export const dynamicParams = false;
+
+export async function generateStaticParams() {
+  const projects = await getProjects();
+  // Next.js rejects an empty list together with `dynamicParams = false`.
+  return projects.length > 0 ? projects.map(({ slug }) => ({ slug })) : [{ slug: "__none__" }];
+}
+
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const project = await getProjectBySlug((await params).slug);
+  if (!project) return {};
+  return {
+    title: project.title,
+    description: project.summary,
+    // A draft is only ever served by a local dev server; keep it out of any index regardless.
+    robots: project.draft ? { index: false, follow: false } : undefined,
+    openGraph: { title: project.title, description: project.summary, images: project.cover ? [project.cover.src] : undefined },
+  };
+}
+
+export default async function ProjectDetailPage({ params }: Params) {
+  const project = await getProjectBySlug((await params).slug);
   if (!project) return notFound();
+
+  const body = await compileMdx(project.body);
+  const links = projectLinks(project);
+  const facts = [
+    { label: "Role", value: project.role },
+    { label: "Period", value: formatPeriod(project.period) },
+    { label: "Status", value: STATUS_LABELS[project.status] },
+  ].filter((fact): fact is { label: string; value: string } => Boolean(fact.value));
+
   return (
-    <Container>
-      <Section title={project.title} description={project.summary || undefined}>
-        {project.images.length ? (
-          <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-3">
-            {project.images.map((image) => (
-              <div key={`${image.url}-${image.kind ?? "img"}`} className="overflow-hidden rounded-md border bg-muted/20">
-                <Image
-                  src={image.url}
-                  alt={image.alt ?? ""}
-                  width={1200}
-                  height={560}
-                  unoptimized
-                  className="w-full h-56 object-cover"
-                />
+    <article className="site-container py-16 md:py-24">
+      <header className="max-w-3xl">
+        <p className="mb-4 font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground">
+          <Link href="/projects" className="link-underline">Projects</Link>
+          <span className="mx-2 text-border">/</span>
+          {project.category}
+          {project.draft ? <span className="ml-3 rounded-xs border border-foreground/30 px-2 py-0.5 text-foreground">Draft</span> : null}
+        </p>
+        <h1 className="font-serif text-[clamp(2.5rem,5vw+0.5rem,4rem)] leading-tight tracking-tight">{project.title}</h1>
+        <p className="mt-5 text-lg leading-8 text-muted-foreground">{project.summary}</p>
+      </header>
+
+      {project.cover ? (
+        <div className="relative mt-10 aspect-video overflow-hidden rounded-lg border border-border/60 bg-surface md:mt-14">
+          <Image src={project.cover.src} alt={project.cover.alt} fill priority sizes="(max-width: 1280px) 100vw, 1200px" className="object-cover" />
+        </div>
+      ) : null}
+
+      <div className="mt-12 grid grid-cols-1 gap-12 md:mt-16 md:grid-cols-12 md:gap-8">
+        <aside className="md:col-span-4" aria-label="Project facts">
+          <dl className="border-t border-border">
+            {facts.map((fact) => (
+              <div key={fact.label} className="grid grid-cols-[6rem_minmax(0,1fr)] gap-4 border-b border-border py-4">
+                <dt className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">{fact.label}</dt>
+                <dd className="text-sm leading-6">{fact.value}</dd>
               </div>
             ))}
-          </div>
-        ) : null}
+          </dl>
 
-        {project.links.length ? (
-          <div className="mb-6 flex flex-wrap gap-3">
-            {project.links.map((link) => (
-              <a key={`${link.platform}-${link.url}`} href={link.url} target="_blank" rel="noreferrer" className="text-sm underline underline-offset-2">
-                {link.label || link.platform}
-              </a>
+          <h2 className="mt-8 font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">Technologies</h2>
+          <ul className="mt-3 flex flex-wrap gap-1.5">
+            {project.technologies.map((technology) => (
+              <li key={technology} className="rounded-xs border border-border/60 bg-surface/80 px-2 py-0.5 font-mono text-[11px] text-foreground/80">
+                {technology}
+              </li>
             ))}
-          </div>
-        ) : null}
+          </ul>
 
-        <div className="prose prose-zinc max-w-none">
-          <ProjectMarkdown source={project.content ?? ""} />
+          {links.length > 0 ? (
+            <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2">
+              {links.map((link) => (
+                <li key={link.url}>
+                  <a href={link.url} target="_blank" rel="noreferrer" className="link-underline inline-flex min-h-11 items-center gap-2 font-mono text-xs uppercase tracking-[0.13em]">
+                    {link.label} <span aria-hidden="true">↗</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </aside>
+
+        <div className="md:col-span-7 md:col-start-6">
+          {project.contributions.length > 0 ? (
+            <section aria-labelledby="contributions-heading" className="mb-12">
+              <h2 id="contributions-heading" className="font-serif text-2xl md:text-3xl">What I did</h2>
+              <ul className="mt-5 list-disc space-y-2 pl-5 text-base leading-7 text-muted-foreground">
+                {project.contributions.map((contribution) => <li key={contribution}>{contribution}</li>)}
+              </ul>
+            </section>
+          ) : null}
+          <div className="prose prose-zinc max-w-none">{body}</div>
         </div>
-      </Section>
-    </Container>
+      </div>
+    </article>
   );
 }

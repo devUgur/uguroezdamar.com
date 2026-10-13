@@ -72,7 +72,8 @@ Details: [`docs/operations/secrets.md`](docs/operations/secrets.md).
 - Das Logo ist `apps/site/app/icon.svg`. Es wird nicht nachgebaut oder ersetzt.
 
 **Inhalte und SEO**
-- Projekte, Profil und Karriere kommen aus dem CMS; Blogartikel sind MDX im Repository und werden nur im Server-Layer geparst.
+- Projekte liegen als MDX in `apps/site/content/projects/`, Profil und Werdegang in `apps/site/content/profile.ts`; Blogartikel sind ebenfalls MDX. Git ist die einzige Quelle (ADR 0019); geparst wird nur im Server-Layer über `apps/site/src/content/`.
+- Ein Projekt mit `draft: true` erscheint nur lokal. Private Repositories werden nie verlinkt, und Texte dazu gehen erst nach Freigabe des Owners auf `draft: false`.
 - Keine erfundenen Projekte, Kunden, Abschlüsse, Kennzahlen oder Screenshots. Fehlen Inhalte, wird die Sektion klein gehalten oder ausgeblendet.
 - Metadata-API, `next/image`, selbst gehostete Fonts, Sitemap.
 

@@ -6,11 +6,9 @@ const nextConfig = {
 	serverExternalPackages: ["argon2"],
 	async redirects() {
 		return [
-			{
-				source: "/projects/ViralSync",
-				destination: "/projects/viralsync",
-				permanent: true,
-			},
+			// The former "work" section is the project catalog.
+			{ source: "/work", destination: "/projects", permanent: true },
+			{ source: "/work/:slug", destination: "/projects/:slug", permanent: true },
 		];
 	},
 };
