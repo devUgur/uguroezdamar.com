@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { REPO_ROOT, run } from "./exec.ts";
 import { STAGES, type Stage } from "./stages.ts";
@@ -105,18 +106,26 @@ const lastErrorLine = (stderr: string, redact?: string) =>
     .at(-1);
 
 /**
- * Sets one shared secret at `/`. The value goes to Infisical as an argument of a process
- * started without a shell, so no shell ever parses or logs it; stdout (which echoes the
- * secret) is discarded and only the last stderr line is reported.
+ * Sets one shared secret at `/`. The value never becomes a process argument, where process
+ * lists and endpoint telemetry could read it: it is written to a file only this user can read,
+ * in a private temporary directory, handed to Infisical as `KEY=@file` and removed right after.
+ * stdout (which echoes the secret) is discarded and only the last stderr line is reported.
  */
 export function setSecret(stage: Stage, key: string, value: string): { ok: boolean; error?: string } {
   const base = baseArgs(stage);
   if (!base) return { ok: false, error: "not linked to an Infisical project (pnpm ugur setup)" };
-  const args = ["secrets", "set", `${key}=${value}`, ...base, "--path", "/", "--type", "shared", "--silent"];
-  const result = spawnSync("infisical", args, { stdio: ["ignore", "ignore", "pipe"], encoding: "utf8" });
-  if (result.status === 0) return { ok: true };
-  const error = lastErrorLine(result.stderr ?? "", value);
-  return error ? { ok: false, error } : { ok: false };
+  const dir = mkdtempSync(join(tmpdir(), "ugur-secret-"));
+  const file = join(dir, "value");
+  try {
+    writeFileSync(file, value, { mode: 0o600 });
+    const args = ["secrets", "set", `${key}=@${file}`, ...base, "--path", "/", "--type", "shared", "--silent"];
+    const result = spawnSync("infisical", args, { stdio: ["ignore", "ignore", "pipe"], encoding: "utf8" });
+    if (result.status === 0) return { ok: true };
+    const error = lastErrorLine(result.stderr ?? "", value);
+    return error ? { ok: false, error } : { ok: false };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 /** Deletes shared secrets at `/`. Errors carry key names, never values. */
