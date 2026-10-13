@@ -24,7 +24,7 @@ Diese Datei ist die einzige Regelquelle für Menschen und Agenten. Editor-spezif
 | Daten | Neon PostgreSQL, Branches `dev` und `prod` |
 | Secret-Werte | Infisical (eu), nie Dateien |
 | Variablennamen | `tooling/cli/src/secrets-manifest.ts` |
-| Deployment | [`render.yaml`](render.yaml), abgeglichen mit dem Render-Dashboard |
+| Deployment | Vercel, zwei Projekte aus diesem Repository ([`docs/operations/preview.md`](docs/operations/preview.md), ADR 0020) |
 | Gestaltung | [`docs/product/r2-design-brief.md`](docs/product/r2-design-brief.md), Tokens in `apps/site/app/globals.css` |
 
 ## Befehle

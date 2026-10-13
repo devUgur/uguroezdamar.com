@@ -5,7 +5,9 @@ import { hasAbout, hasEducation } from "@/src/content/profile";
 import { getProjects } from "@/src/content/projects";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? (process.env.NODE_ENV === "production" ? "https://uguroezdamar.com" : "http://localhost:3100");
+  // A preview deployment has no address of its own in the secrets; Vercel names it.
+  const preview = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined;
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? preview ?? (process.env.NODE_ENV === "production" ? "https://uguroezdamar.com" : "http://localhost:3100");
   // Drafts are never listed, whatever the environment.
   const projects = await getProjects({ includeDrafts: false });
   const pages = ["/", "/projects", "/blog", "/contact", "/privacy", "/imprint"];

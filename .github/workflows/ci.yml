@@ -2,8 +2,7 @@ name: CI
 
 on:
   push:
-    # `dev` is what the preview deploys once these checks have passed.
-    branches: [ main, dev ]
+    branches: [ main ]
   # Every pull request, also one stacked on another branch.
   pull_request:
 

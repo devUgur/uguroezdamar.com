@@ -15,7 +15,7 @@ Admin ─────> apps/portal ───────────────
 CI: Guards → Lint → Typecheck → Tests → Build → Deploy (nach Freigabe)
 ```
 
-Die öffentliche Site und das Admin-Portal benötigen eine serverfähige Next.js-Laufzeit. Projekte, Profil und Werdegang sind Dateien im Repository ([ADR 0019](decisions/0019-content-from-git.md)), Blogartikel versionierte MDX-Dateien; die Inhaltsseiten werden beim Build erzeugt. PostgreSQL auf Neon ([ADR 0016](decisions/0016-postgres-neon-infisical-cli.md)) hält Kontaktanfragen, Rate-Limit, Admin-Konten und Sessions. Produktion läuft bei Render ([ADR 0018](decisions/0018-render-hosting.md)).
+Die öffentliche Site und das Admin-Portal benötigen eine serverfähige Next.js-Laufzeit. Projekte, Profil und Werdegang sind Dateien im Repository ([ADR 0019](decisions/0019-content-from-git.md)), Blogartikel versionierte MDX-Dateien; die Inhaltsseiten werden beim Build erzeugt. PostgreSQL auf Neon ([ADR 0016](decisions/0016-postgres-neon-infisical-cli.md)) hält Kontaktanfragen, Rate-Limit, Admin-Konten und Sessions. Hosting ist Vercel ([ADR 0020](decisions/0020-vercel-hosting.md)); bis zur Umstellung liefert Render noch den alten Stand aus.
 
 ## Verantwortlichkeiten
 
