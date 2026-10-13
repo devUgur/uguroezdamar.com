@@ -1,7 +1,7 @@
-import type { ProjectRecord } from "../types";
+import type { Project } from "@/src/content/projects";
 import { ProjectCard } from "./ProjectCard";
 
-export function ProjectGrid({ projects }: { projects: ProjectRecord[] }) {
+export function ProjectGrid({ projects }: { projects: Project[] }) {
   return (
     <div>
       {/* Editorial Header */}
@@ -13,7 +13,7 @@ export function ProjectGrid({ projects }: { projects: ProjectRecord[] }) {
           Projects
         </h1>
         <p className="font-sans text-base md:text-lg leading-relaxed text-muted-foreground">
-          Browse project entries that have been published for this portfolio. Details and available references vary by project.
+          Case studies of software I have built: the problem, the solution and the architecture behind it.
         </p>
       </div>
 

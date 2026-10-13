@@ -1,6 +1,6 @@
 # ADR 0013: CMS-Projekte mit serverseitiger Next.js-Auslieferung
 
-- Status: angenommen — Datenbankwahl ersetzt durch [ADR 0016](0016-postgres-neon-infisical-cli.md), Hosting durch [ADR 0018](0018-render-hosting.md)
+- Status: ersetzt — Inhaltsmodell durch [ADR 0019](0019-content-from-git.md), Datenbankwahl durch [ADR 0016](0016-postgres-neon-infisical-cli.md), Hosting durch [ADR 0018](0018-render-hosting.md)
 - Datum: 2026-10-12
 - Beteiligte: Projektverantwortliche
 

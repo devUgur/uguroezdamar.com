@@ -1,9 +1,9 @@
+import type { Metadata } from "next";
+
 import { About } from "@/src/features/marketing/About";
 
-export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "About" };
 
-export default async function AboutPage() {
-  return (
-    <About />
-  );
+export default function AboutPage() {
+  return <About />;
 }

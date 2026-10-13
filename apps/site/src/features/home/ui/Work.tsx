@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { getSiteWorkItems } from "@/src/features/selected-work/queries";
+import { getFeaturedProjects } from "@/src/content/projects";
 import { SelectedProjectCard } from "./SelectedProjectCard";
 
-export async function Work() {
-  const projects = (await getSiteWorkItems()).slice(0, 3);
+export async function Work({ number }: { number: string }) {
+  const projects = (await getFeaturedProjects()).slice(0, 3);
 
   return (
     <section id="work" aria-labelledby="selected-work-heading" className="site-section">
@@ -11,10 +11,10 @@ export async function Work() {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-12 md:gap-8">
           <div className="md:col-span-4">
             <p className="mb-5 font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground md:text-sm">
-              02 <span className="mx-2 text-border">/</span> Selected work
+              {number} <span className="mx-2 text-border">/</span> Selected work
             </p>
             <h2 id="selected-work-heading" className="max-w-sm text-3xl leading-tight md:text-4xl">
-              Published projects, selected from the portfolio.
+              Engineering ideas into working products.
             </h2>
             <Link href="/projects" className="link-underline mt-7 inline-flex min-h-11 items-center gap-3 font-mono text-xs uppercase tracking-[0.13em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
               Browse all projects <span aria-hidden="true">↗</span>

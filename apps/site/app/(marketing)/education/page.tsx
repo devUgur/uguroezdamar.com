@@ -1,9 +1,9 @@
+import type { Metadata } from "next";
+
 import { Education } from "@/src/features/marketing/Education";
 
-export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Education" };
 
-export default async function EducationPage() {
-  return (
-    <Education />
-  );
+export default function EducationPage() {
+  return <Education />;
 }

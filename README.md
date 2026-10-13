@@ -18,7 +18,7 @@ Portfolio und Admin-Portal als pnpm-/Turborepo-Monorepo.
 | `tooling/guards` | automatisierte Architekturregeln |
 | `docs` | Architektur, Standards, Sicherheit, Produkt und Betrieb |
 
-Site und Portal laufen serverseitig. Projekte, Profil, Karriere und Admin-Konten liegen in PostgreSQL (Neon, Drizzle), Blogartikel als MDX im Repository. Entscheidungen: [ADR 0013](docs/architecture/decisions/0013-cms-content-and-server-rendering.md) und [ADR 0016](docs/architecture/decisions/0016-postgres-neon-infisical-cli.md).
+Projekte, Profil und Werdegang sind Dateien unter `apps/site/content/`, Blogartikel MDX; die Inhaltsseiten werden beim Build erzeugt ([ADR 0019](docs/architecture/decisions/0019-content-from-git.md)). PostgreSQL (Neon, Drizzle) hält Kontaktanfragen und Admin-Konten ([ADR 0016](docs/architecture/decisions/0016-postgres-neon-infisical-cli.md)).
 
 ## Lokale Befehle
 

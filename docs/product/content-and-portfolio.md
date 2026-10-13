@@ -43,10 +43,10 @@ Zustände: `draft` (privat), `preview` (authentifiziert bzw. signiert und zeitli
 
 Audit und lokaler Code zeigten gemischte Quellen: MongoDB für Projekte/Profil/Karriere, lokale MDX-Dateien für Blog und Projekt-Fallbacks sowie statischer Export für die Site. [ADR 0013](../architecture/decisions/0013-cms-content-and-server-rendering.md) legt nun eine Quelle je Inhaltsbereich fest:
 
-- **Projekte, Profil, Karriere:** Das CMS (PostgreSQL, [ADR 0016](../architecture/decisions/0016-postgres-neon-infisical-cli.md)) ist die Quelle. Das Portal ist redaktioneller Schreibpfad; Entwürfe und als geheim markierte Projekte werden öffentlich nicht abgefragt.
-- **Blog:** MDX in Git ist die Quelle. Änderungen laufen durch Review und Deploy; das Portal darf diese Einträge nicht unabhängig überschreiben.
+- **Projekte, Profil, Werdegang:** Dateien im Repository sind die Quelle ([ADR 0019](../architecture/decisions/0019-content-from-git.md)): `apps/site/content/projects/<slug>.mdx` und `apps/site/content/profile.ts`. Änderungen laufen durch Pull Request und Deployment. Ein Projekt mit `draft: true` ist nur lokal sichtbar.
+- **Blog:** MDX in Git ist die Quelle. Änderungen laufen durch Review und Deploy.
 
-Keine stillen Fallbacks zwischen Datenquellen. Projekt-MDX-Fallbacks und Demo-Inhalte sind aus dem öffentlichen Pfad entfernt. Eine CMS-Veröffentlichung ist auf der dynamisch gerenderten Site mit der nächsten Anfrage sichtbar.
+Keine stillen Fallbacks zwischen Datenquellen. Ein ungültiger Inhalt lässt Build und Tests scheitern. Abschnitte ohne Inhalt entfallen auf der Startseite, statt einen Platzhalter zu zeigen.
 
 Die Site nutzt serverseitiges Next.js statt `output: "export"`. Produktion benötigt `DATABASE_URL` zur Laufzeit. Produktion läuft bei Render ([ADR 0018](../architecture/decisions/0018-render-hosting.md)); frühere Angabe: Netlify als Ziel, Render als Alternative mit eigener Konfiguration.
 
@@ -68,7 +68,7 @@ ViralSync, Video Lab und Pebblewick können Kandidaten sein. Ihre Repositories s
 - Jeder öffentliche Link zeigt auf eine existierende Route oder eine bewusst definierte Weiterleitung.
 - Platzhalter, Demo-Projekte und Hello-World-Artikel gehören nicht in den Produktionskatalog.
 - Bilder haben aussagekräftige Alt-Texte und sind für die Auslieferung optimiert.
-- CMS-Projekttexte sind nicht vertrauenswürdiger Inhalt und werden als Markdown ohne rohes HTML oder MDX-Ausdrücke gerendert. MDX-Ausführung ist ausschließlich für reviewte, Git-versionierte Blogdateien erlaubt.
+- Projekt- und Blogtexte sind reviewte, Git-versionierte MDX-Dateien; nur solche werden als MDX ausgeführt. Inhalte aus anderen Quellen dürfen nicht durch diese Pipeline laufen.
 - Design bleibt editorial und zurückhaltend; Fokus liegt auf realen Produkten, gut lesbarer Typografie und präziser Sprache.
 - Navigation ist responsiv und tastaturbedienbar; Bewegung respektiert `prefers-reduced-motion`.
 - Deutsch/Englisch wird nur zugesagt, wenn beide Fassungen aktuell und in der Navigation auffindbar sind.

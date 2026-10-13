@@ -1,8 +1,6 @@
 import { ScrollProgress } from "@ugur/ui";
 import { SiteHeader, SiteFooter } from "@/src/features/navigation";
 
-export const dynamic = "force-dynamic";
-
 export default function MarketingLayout({
   children,
 }: {
