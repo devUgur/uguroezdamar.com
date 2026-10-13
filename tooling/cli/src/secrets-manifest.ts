@@ -42,30 +42,30 @@ export const SECRETS: readonly SecretSpec[] = [
     { random: true },
   ),
   ...required("Bearer token for automated admin API access", ["ADMIN_API_KEY"], { random: true }),
-  ...required("Shared secret for on-demand revalidation of the site", ["REVALIDATE_SECRET"], {
-    random: true,
-  }),
 
   ...optional("Admin session lifetime in seconds (default 86400)", ["ADMIN_SESSION_TTL_SECONDS"]),
   ...optional("Admin invite lifetime in hours (default 72)", ["ADMIN_INVITE_EXPIRES_HOURS"]),
-  ...optional("Cloudflare R2 bucket for project media", [
-    "R2_ACCOUNT_ID",
-    "R2_ACCESS_KEY_ID",
-    "R2_SECRET_ACCESS_KEY",
-    "R2_BUCKET",
-    "R2_PUBLIC_BASE_URL",
-  ]),
-  ...optional("R2 overrides; the defaults fit Cloudflare", [
-    "R2_ENDPOINT",
-    "R2_REGION",
-    "R2_FORCE_PATH_STYLE",
-  ]),
-  ...optional("Where project preview screenshots are stored: none or r2", ["PREVIEW_USE_STORAGE"]),
-  ...optional("Screenshot service for project previews", ["SCREENSHOT_PROVIDER_URL", "SCREENSHOT_API_KEY"]),
 ];
 
 /** Keys that used to exist. `secrets audit` names them so they get removed, not re-declared. */
-export const RETIRED: readonly string[] = ["MONGODB_URI", "TEST_MONGODB_URI", "R2_PUBLIC_BASE"];
+export const RETIRED: readonly string[] = [
+  "MONGODB_URI",
+  "TEST_MONGODB_URI",
+  "R2_PUBLIC_BASE",
+  // The project CMS and its media storage are gone (ADR 0019).
+  "REVALIDATE_SECRET",
+  "R2_ACCOUNT_ID",
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
+  "R2_BUCKET",
+  "R2_PUBLIC_BASE_URL",
+  "R2_ENDPOINT",
+  "R2_REGION",
+  "R2_FORCE_PATH_STYLE",
+  "PREVIEW_USE_STORAGE",
+  "SCREENSHOT_PROVIDER_URL",
+  "SCREENSHOT_API_KEY",
+];
 
 export const isRetired = (key: string) => RETIRED.includes(key);
 
