@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "eslint app src --ext .ts,.tsx",
-    "typecheck": "next typegen && tsc -p tsconfig.json --noEmit",
+    "typecheck": "rimraf .next/types .next/dev/types && next typegen && tsc -p tsconfig.json --noEmit",
     "clean": "rimraf .next"
   },
   "dependencies": {
@@ -18,14 +18,11 @@
     "@ugur/core": "workspace:*",
     "@ugur/server": "workspace:*",
     "@ugur/ui": "workspace:*",
-    "lucide-react": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "server-only": "catalog:",
-    "tw-animate-css": "catalog:",
-    "yaml": "catalog:",
-    "zod": "catalog:"
+    "tw-animate-css": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "catalog:",

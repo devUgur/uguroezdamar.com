@@ -15,12 +15,15 @@ Dieses Dokument definiert Mindestanforderungen für Admin-Portal, Kontaktfluss, 
 ## API und Eingaben
 
 - Eingaben an jeder nicht vertrauenswürdigen Grenze mit Schema validieren; keine Client-Daten als Autorisierungsfakt verwenden.
-- Der Projektbild-Upload verlangt eine aktive Admin-Session, begrenzt Dateien auf 10 MiB, akzeptiert nur unterstützte Bildformate und gleicht MIME-Angabe mit Dateisignatur ab. Der Route-Test einschließlich übergroßer und gefälschter Dateien bleibt Release-Gate.
+- Das Portal nimmt keine Dateien mehr entgegen und ruft keine fremden Adressen mehr ab: Projektbild-Upload und Vorschau-Abruf sind mit dem Content-CMS entfernt ([ADR 0019](../architecture/decisions/0019-content-from-git.md)). Bilder kommen als reviewte Dateien über das Repository.
 - Methoden, Herkunft/CSRF-Schutz, Request-Größe und Rate-Limits anwendungsbezogen beschränken.
 - Responses geben keine internen Fehlerdetails, DB-Objekte oder Secrets preis.
 - Öffentliche Endpunkte veröffentlichen nur freigegebene Felder und veröffentlichte Inhalte.
 
 ## Uploads
+
+Derzeit gibt es keinen Upload-Endpunkt. Die folgenden Anforderungen gelten, falls wieder einer eingeführt wird.
+
 
 - Authentifizierung und Upload-Berechtigung vor Speicherung prüfen.
 - Größenlimit, erlaubte MIME-/Dateitypen und tatsächlichen Dateiinhalt prüfen; Dateinamen normalisieren und nie als Pfad verwenden.

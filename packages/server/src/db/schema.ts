@@ -88,6 +88,9 @@ export const contactRateLimits = pgTable(
 	(table) => [index("contact_rate_limits_expires_at_idx").on(table.expiresAt)],
 );
 
+// Retired with the content CMS (ADR 0019): no code reads or writes these three tables any more.
+// They stay defined until their data has been backed up and a restore has been tested; a
+// separate migration then drops them.
 export const profiles = pgTable("profiles", {
 	id: id(),
 	handle: text("handle").notNull().unique(),

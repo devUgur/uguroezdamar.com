@@ -18,7 +18,7 @@ export default async function RootPage() {
             Welcome to Ugur&apos;s Portal
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl">
-            The central hub for managing projects, timeline items, and more.
+            Contact requests and admin accounts for uguroezdamar.com.
           </p>
           <div className="flex gap-4">
             <Button asChild variant="primary">

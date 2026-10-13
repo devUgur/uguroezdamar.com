@@ -74,9 +74,9 @@ Lokale Läufe sind keine dritte Stage: Sie nutzen die Secrets und die Datenbank 
 
 ## Rotation und Vorfälle
 
-- Eigene Zufallswerte (`ADMIN_API_KEY`, `CONTACT_RATE_LIMIT_SECRET`, `REVALIDATE_SECRET`): `pnpm ugur secrets generate --rotate --apply`, je Stage. Laufende Deployments erhalten den neuen Wert beim nächsten Sync bzw. Deploy.
+- Eigene Zufallswerte (`ADMIN_API_KEY`, `CONTACT_RATE_LIMIT_SECRET`): `pnpm ugur secrets generate --rotate --apply`, je Stage. Laufende Deployments erhalten den neuen Wert beim nächsten Sync bzw. Deploy.
 - Datenbank: Passwort der Neon-Rolle in der Neon-Konsole zurücksetzen, danach `pnpm ugur db provision --apply --overwrite`.
-- R2: neues API-Token im Cloudflare-Dashboard erzeugen, mit `pnpm ugur secrets set R2_ACCESS_KEY_ID` und `R2_SECRET_ACCESS_KEY` eintragen, altes Token widerrufen.
+- R2, Screenshot-Dienst und `REVALIDATE_SECRET`: Der Code nutzt sie seit [ADR 0019](../architecture/decisions/0019-content-from-git.md) nicht mehr; das Manifest führt sie als zurückgezogen. Das R2-Token im Cloudflare-Dashboard widerrufen und die Schlüssel mit `pnpm ugur secrets prune --apply` je Stage entfernen.
 - Der frühere MongoDB-Atlas-Cluster existiert nicht mehr (Hostname löst nicht mehr auf). `MONGODB_URI` ist zurückgezogen; `secrets audit` meldet den Schlüssel, falls er wieder auftaucht.
 
 ## Hosting und CI
