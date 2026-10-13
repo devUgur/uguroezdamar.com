@@ -42,6 +42,8 @@ pnpm ugur admin create <email>        # erstes Owner-Konto, Passwort per verdeck
 
 Danach genügt `pnpm dev`. `pnpm ugur doctor` prüft Werkzeuge, Anmeldungen und Pflichtschlüssel.
 
+Die CLI gibt Secret-Werte nie aus und übergibt sie auch nicht als Prozessargument: `secrets set`, `generate`, `copy`, `import` und `db provision` schreiben den Wert in eine nur für den eigenen Benutzer lesbare Datei in einem privaten Temp-Verzeichnis, reichen sie als `KEY=@datei` an Infisical und löschen sie sofort wieder.
+
 ## Täglicher Gebrauch
 
 | Befehl | Wirkung |

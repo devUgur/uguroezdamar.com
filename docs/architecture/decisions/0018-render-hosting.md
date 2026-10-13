@@ -25,6 +25,6 @@ Die Dokumentation nannte Netlify als kanonisches Ziel und Render als Alternative
 ## Konsequenzen
 
 - Die Site muss bei Render von einer statischen Seite auf einen Node-Dienst umgestellt werden, bevor der aktuelle Code ausgeliefert wird.
-- Der Kontakt-Endpunkt wertet derzeit `x-nf-client-connection-ip` und `x-real-ip` aus; die Client-Adresse hinter Render und Cloudflare ist zu verifizieren und der Handler bei Bedarf anzupassen.
+- Der Kontakt-Endpunkt wertet `cf-connecting-ip` aus (`apps/site/src/lib/client-address.ts`); dass der Header hinter Render und Cloudflare ankommt, ist auf der Preview zu verifizieren und der Handler bei Bedarf anzupassen.
 - `main` ist seit dem 13.10.2026 durch ein Ruleset geschützt (nur Pull Requests, Pflicht-Check `validate`, kein Force-Push, keine Löschung). Code veröffentlichen, einen Pull Request mergen und Produktion ausliefern sind drei getrennte Entscheidungen.
 - Offen: Hosting-Inventar (Dienstnamen, Typ, Deploy-Branch, PR-Previews), Preview-Dienst, Rollback-Weg bei Render.

@@ -59,7 +59,7 @@ describe("POST /api/contact contract", () => {
           email: "jane@example.com",
           message: "Hello",
         }),
-        headers: { "Content-Type": "application/json", "x-nf-client-connection-ip": "198.51.100.10" },
+        headers: { "Content-Type": "application/json", "cf-connecting-ip": "198.51.100.10" },
       })
     );
     expect(res.status).toBe(200);
@@ -124,7 +124,7 @@ describe("POST /api/contact contract", () => {
     const { POST } = await import("../apps/site/app/api/contact/route");
     const res = await POST(new Request("https://site.example/api/contact", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-nf-client-connection-ip": "198.51.100.10" },
+      headers: { "Content-Type": "application/json", "cf-connecting-ip": "198.51.100.10" },
       body: JSON.stringify({ name: "Jane", email: "jane@example.com", message: "Hello" }),
     }));
     expect(res.status).toBe(500);
@@ -136,7 +136,7 @@ describe("POST /api/contact contract", () => {
     const { POST } = await import("../apps/site/app/api/contact/route");
     const res = await POST(new Request("https://site.example/api/contact", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-nf-client-connection-ip": "198.51.100.11" },
+      headers: { "Content-Type": "application/json", "cf-connecting-ip": "198.51.100.11" },
       body: JSON.stringify({ name: "Jane", email: "jane@example.com", message: "Hello" }),
     }));
     expect(res.status).toBe(429);
@@ -160,7 +160,7 @@ describe("POST /api/contact contract", () => {
     const { POST } = await import("../apps/site/app/api/contact/route");
     const res = await POST(new Request("https://site.example/api/contact", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-nf-client-connection-ip": "spoofed, 198.51.100.1" },
+      headers: { "Content-Type": "application/json", "cf-connecting-ip": "spoofed, 198.51.100.1" },
       body: JSON.stringify({ name: "Jane", email: "jane@example.com", message: "Hello" }),
     }));
     expect(res.status).toBe(503);
@@ -172,7 +172,7 @@ describe("POST /api/contact contract", () => {
     const { POST } = await import("../apps/site/app/api/contact/route");
     const res = await POST(new Request("https://site.example/api/contact", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-nf-client-connection-ip": "198.51.100.12" },
+      headers: { "Content-Type": "application/json", "cf-connecting-ip": "198.51.100.12" },
       body: JSON.stringify({ name: "Jane", email: "jane@example.com", message: "Hello" }),
     }));
     expect(res.status).toBe(503);

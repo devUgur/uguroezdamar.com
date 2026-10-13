@@ -20,7 +20,7 @@ Stand 13.10.2026, von außen geprüft:
 
 - Die Live-Site liefert den Stand `c8ff3a3` vom März 2026 aus und war als statische Seite eingerichtet. Der aktuelle Code braucht einen Node-Dienst; ein unverändertes Deploy würde scheitern oder die Seite beschädigen.
 - `portal.uguroezdamar.com` zeigt per DNS auf Render, lieferte am 13.10.2026 aber keine HTTP-Antwort.
-- Der Kontakt-Endpunkt liest die Client-Adresse aus `x-nf-client-connection-ip` oder `x-real-ip`. Welchen Header Render hinter Cloudflare zuverlässig setzt, ist nicht geprüft; ohne ihn antwortet der Endpunkt mit 503.
+- Der Kontakt-Endpunkt liest die Client-Adresse aus `cf-connecting-ip`, den Cloudflare vor Render selbst setzt und den ein Aufrufer nicht vorgeben kann; `x-forwarded-for` wird bewusst nicht ausgewertet. Dass der Header beim Dienst ankommt, ist auf der Preview noch zu bestätigen; ohne ihn antwortet der Endpunkt mit 503.
 
 Vor der Umstellung der Produktion: Diensttyp, Deploy-Branch, Auto-Deploy und PR-Previews im Dashboard erfassen und mit `render.yaml` abgleichen; Secret Sync für beide Dienste einrichten; eine getrennte Preview mit eigener URL gegen Neon `dev` aufbauen und den ausgelieferten Commit-SHA dokumentieren.
 
