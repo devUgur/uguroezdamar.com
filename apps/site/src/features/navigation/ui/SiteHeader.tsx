@@ -13,7 +13,9 @@ const NAV_LINKS = [
   { href: "/contact", label: "Contact" },
 ] as const;
 
-export function SiteHeader() {
+/** `showAbout` is false while the profile is empty: the header does not link to an empty page. */
+export function SiteHeader({ showAbout = true }: { showAbout?: boolean }) {
+  const links = NAV_LINKS.filter((item) => showAbout || item.href !== "/about");
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -67,7 +69,7 @@ export function SiteHeader() {
               className="hidden items-center gap-8 font-mono text-[13px] uppercase tracking-[0.08em] md:flex"
               aria-label="Main navigation"
             >
-              {NAV_LINKS.map((item) => {
+              {links.map((item) => {
                 const isActive = pathname?.startsWith(item.href);
 
                 return (
@@ -143,7 +145,7 @@ export function SiteHeader() {
           className={cn("md:hidden", mobileOpen ? "block" : "hidden")}
         >
           <ul className="site-container pb-6 pt-4">
-            {NAV_LINKS.map((item) => {
+            {links.map((item) => {
               const isActive = pathname?.startsWith(item.href);
 
               return (
