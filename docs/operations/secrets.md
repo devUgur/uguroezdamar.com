@@ -52,6 +52,7 @@ Die CLI gibt Secret-Werte nie aus und übergibt sie auch nicht als Prozessargume
 | `pnpm dev:portal`, `pnpm dev:all` | nur das Portal (Port 3101) bzw. beide Apps starten |
 | `pnpm ugur run -- <cmd>` | beliebigen Befehl genauso ausführen, z. B. `pnpm ugur run -- pnpm build:site` |
 | `pnpm ugur smoke --site <url> [--portal <url>]` | Deployment über HTTP prüfen: Commit, Datenbank, Client-Adresse, Ablehnungen; speichert nichts |
+| `pnpm ugur hosting status` / `setup` / `env` | Vercel-Projekte prüfen, einrichten und mit den Secrets einer Stage versorgen |
 | `pnpm ugur secrets audit [--stage prod]` | Infisical gegen das Manifest prüfen (nur Namen) |
 | `pnpm ugur secrets set <KEY>` | deklarierten Schlüssel per verdeckter Eingabe setzen |
 | `pnpm ugur secrets generate [--rotate] --apply` | zufällige Schlüssel anlegen bzw. rotieren |
@@ -82,5 +83,5 @@ Lokale Läufe sind keine dritte Stage: Sie nutzen die Secrets und die Datenbank 
 
 ## Hosting und CI
 
-- **Hosting:** Die Laufzeitumgebung bekommt ihre Variablen über einen Infisical *Secret Sync* zu Vercel ([ADR 0020](../architecture/decisions/0020-vercel-hosting.md)): `prod` in die Umgebung Production, `dev` in Preview. Der Sync wird einmalig in Infisical eingerichtet und ist noch offen.
+- **Hosting:** Die Laufzeitumgebung bei Vercel bekommt ihre Variablen aus Infisical über `pnpm ugur hosting env --stage <stage> --apply` ([ADR 0020](../architecture/decisions/0020-vercel-hosting.md)): `prod` in die Umgebung Production, `dev` in Preview, je App nur die Schlüssel, die sie liest. Nichts wird im Vercel-Dashboard von Hand gepflegt.
 - **CI:** Lint, Typecheck, Tests und Build brauchen keine Secrets. Die Tests laufen gegen ein In-Memory-Postgres (PGlite) mit den echten Migrationen. Erst ein Deploy-Workflow bräuchte Zugriff; dann per GitHub-OIDC-Login bei Infisical, ohne gespeicherte Tokens.

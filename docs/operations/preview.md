@@ -2,7 +2,7 @@
 
 **Zweck:** Wie Site und Portal bei Vercel eingerichtet werden, wie ein Stand vor dem Merge als Vorschau geprüft wird und wie er in die Produktion kommt. Entscheidung: [ADR 0020](../architecture/decisions/0020-vercel-hosting.md).
 
-**Stand 13.10.2026:** Im Repository vorbereitet, bei Vercel noch nichts angelegt. Lokal geprüft: Produktionsbuild beider Apps mit den `dev`-Secrets gestartet, `pnpm ugur smoke` gegen beide bestanden. Die Prüfungen zur Client-Adresse und zum ausgelieferten Commit laufen nur gegen ein Deployment und sind offen.
+**Stand 13.10.2026:** Beide Projekte sind angelegt und eingerichtet, die Umgebung Preview hat ihre Variablen. `pnpm ugur smoke` gegen die Vorschau des Commits `e821bec` hat alle 19 Prüfungen bestanden, einschließlich Client-Adresse und Commit. Die Umgebung Production ist noch leer und liefert auf den `vercel.app`-Adressen den alten Stand von `main` aus; die Domain zeigt weiter auf Render.
 
 ## Aufbau
 
@@ -11,7 +11,7 @@
 | Zwei Vercel-Projekte aus einem Repository | Root Directory `apps/site` bzw. `apps/portal`; `vercel.json` je App legt die Region `fra1` fest (nahe am Neon-Projekt) |
 | Vorschau | Vercel baut jeden Branch und jeden Pull Request als Preview mit eigener Adresse |
 | Produktion | `main`; ein Build geht erst nach manueller Freigabe live |
-| Secrets | Infisical: `prod` → Umgebung Production, `dev` → Umgebung Preview |
+| Secrets | Infisical bleibt die Quelle; `pnpm ugur hosting env` kopiert `prod` → Production und `dev` → Preview |
 | Health-Endpunkt | `/api/health` in beiden Apps: Commit, Datenbank, in der Site zusätzlich die erkannte Client-Adresse |
 | Prüfung über HTTP | `pnpm ugur smoke --site <url> --portal <url> [--commit <sha>]` |
 | DNS | bleibt bei Cloudflare, nur als DNS (ohne Proxy) |
@@ -26,30 +26,24 @@
 
 Veröffentlichen, Mergen und Ausliefern bleiben drei getrennte Entscheidungen.
 
-## Einmalig einrichten
+## Einrichtung
 
-1. **Projekte anlegen.** In Vercel *Add New → Project*, dieses Repository importieren, einmal mit Root Directory `apps/site`, einmal mit `apps/portal`. Framework wird als Next.js erkannt; Build- und Installationsbefehl bleiben auf dem Standard. Unter *Settings → Build and Deployment* prüfen, dass Node.js 24.x gewählt ist.
+Die zwei Projekte bestehen seit dem 13.10.2026: `uguroezdamar-com` (Root Directory `apps/site`) und `uguroezdamar-portal` (`apps/portal`), beide mit diesem Repository verbunden, Produktions-Branch `main`, Node.js 24.x. Die Namen stehen in `tooling/cli/src/lib/vercel.ts`.
 
-2. **Produktion nicht automatisch live schalten.** Je Projekt unter *Settings → Environments → Production → Branch Tracking* den Schalter **Auto-assign Custom Production Domains** ausschalten.
+Alles Weitere läuft über die CLI. Sie nutzt die angemeldete Vercel-CLI (`vercel login`) und zeigt nur Namen, nie Werte.
 
-3. **Secrets verbinden.** In Infisical je Projekt zwei *Secret Syncs* zu Vercel anlegen: Umgebung `prod` → Production, Umgebung `dev` → Preview. Welche Variablen eine App liest, steht in `tooling/cli/src/secrets-manifest.ts`. Die Adressvariablen (`NEXT_PUBLIC_SITE_URL`, `SITE_URL`, `APP_URL`) gibt es nur in `prod`; eine Vorschau nimmt ihre Adresse aus `VERCEL_URL`.
+| Befehl | Wirkung |
+| --- | --- |
+| `pnpm ugur hosting status` | vergleicht beide Projekte mit dem, was das Repository erwartet: Root Directory, Freigabe, Schutz, Variablen je Umgebung |
+| `pnpm ugur hosting setup --apply` | schaltet das automatische Live-Schalten aus und legt je Projekt ein Bypass-Secret für den Smoke-Lauf an (in Infisical `dev` als `VERCEL_BYPASS_SITE` / `VERCEL_BYPASS_PORTAL`) |
+| `pnpm ugur hosting env --stage dev --apply` | kopiert die Secrets, die eine App liest, aus Infisical `dev` in die Umgebung Preview |
+| `pnpm ugur hosting env --stage prod --apply` | dasselbe aus `prod` in die Umgebung Production |
 
-4. **Vorschau-Schutz für den Smoke-Lauf öffnen.** Vorschauen sind standardmäßig nur für angemeldete Vercel-Nutzer erreichbar; das soll so bleiben. Je Projekt unter *Settings → Deployment Protection → Protection Bypass for Automation* ein Secret erzeugen und in Infisical ablegen:
+Ohne `--apply` sind `setup` und `env` Probeläufe. Welche App welchen Schlüssel liest, steht im Feld `apps` in `tooling/cli/src/secrets-manifest.ts`; nur diese Schlüssel werden kopiert. `DATABASE_URL_DIRECT` (Migrationen) erreicht den Hoster nie.
 
-   ```bash
-   pnpm ugur secrets set VERCEL_BYPASS_SITE --stage dev
-   pnpm ugur secrets set VERCEL_BYPASS_PORTAL --stage dev
-   ```
+Infisical bleibt die Quelle. Nach einer Rotation `hosting env` erneut ausführen und neu ausliefern: Ein laufendes Deployment behält seine alten Werte.
 
-   Der Smoke-Lauf liest beide im Speicher aus Infisical und sendet sie als Header; sie erscheinen in keinem Befehl.
-
-5. **Erste Vorschau prüfen.** Einen Pull Request öffnen oder einen Branch pushen, die beiden Vorschau-Adressen aus dem Pull Request nehmen:
-
-   ```bash
-   pnpm ugur smoke --site https://<site-vorschau>.vercel.app --portal https://<portal-vorschau>.vercel.app --commit <sha>
-   ```
-
-6. **Domain umstellen, erst wenn die Produktion bei Vercel geprüft ist.** In Vercel `uguroezdamar.com` und `www` dem Site-Projekt, `portal.uguroezdamar.com` dem Portal-Projekt zuweisen. Bei Cloudflare die DNS-Einträge auf die von Vercel genannten Ziele ändern und den Proxy ausschalten (graue Wolke, *DNS only*). Danach den Smoke-Lauf gegen die echten Adressen wiederholen. Erst dann die Dienste bei Render löschen.
+**Domain umstellen, erst wenn die Produktion bei Vercel geprüft ist.** In Vercel `uguroezdamar.com` und `www` dem Site-Projekt, `portal.uguroezdamar.com` dem Portal-Projekt zuweisen. Bei Cloudflare die DNS-Einträge auf die von Vercel genannten Ziele ändern und den Proxy ausschalten (graue Wolke, *DNS only*). Danach den Smoke-Lauf gegen die echten Adressen wiederholen. Erst dann die Dienste bei Render löschen.
 
 ## Was der Smoke-Lauf belegt
 

@@ -32,7 +32,6 @@ export const LOCAL_ORIGINS = {
 export function localEnv(): Record<string, string> {
   return {
     NEXT_PUBLIC_SITE_URL: LOCAL_ORIGINS.site,
-    SITE_URL: LOCAL_ORIGINS.site,
     APP_URL: LOCAL_ORIGINS.portal,
   };
 }

@@ -15,10 +15,10 @@
 
 ## Entscheidung
 
-1. Site und Portal sind zwei Vercel-Projekte aus diesem Repository (Root Directory `apps/site` und `apps/portal`), Region `fra1`.
+1. Site und Portal sind zwei Vercel-Projekte aus diesem Repository: `uguroezdamar-com` (Root Directory `apps/site`) und `uguroezdamar-portal` (`apps/portal`), Region `fra1`.
 2. Jeder Pull Request bekommt eine Vorschau gegen die Stage `dev`. Vorschauen bleiben durch Vercel geschützt; der Smoke-Lauf nutzt ein Bypass-Secret aus Infisical.
 3. `main` ist der Produktions-Branch. Die automatische Zuweisung der Produktionsdomain ist aus: Ein Build von `main` geht erst nach manueller Freigabe (*Promote*) live.
-4. Secrets kommen per Infisical Secret Sync: `prod` → Production, `dev` → Preview.
+4. Secrets bleiben in Infisical. `pnpm ugur hosting env` kopiert je App nur die Schlüssel, die sie liest: `prod` → Production, `dev` → Preview. Die Werte gehen im Speicher und über stdin an die Vercel-API. Das folgt dem Vorgehen im Schwesterprojekt und braucht keine vier von Hand gepflegten Sync-Einträge.
 5. Die Domain bleibt bei Cloudflare, nur als DNS ohne Proxy.
 6. Die Client-Adresse für das Kontakt-Rate-Limit kommt aus `x-vercel-forwarded-for`.
 7. `render.yaml` und `render.preview.yaml` sind entfernt. Die Dienste bei Render laufen unverändert weiter, bis die Auslieferung bei Vercel geprüft und der DNS-Eintrag umgestellt ist.
@@ -38,6 +38,8 @@
 
 ## Verifikation und Rückprüfung
 
-Stand 13.10.2026: `pnpm check` und der Produktionsbuild beider Apps sind grün; der lokale Produktionsbuild gegen die Stage `dev` besteht den Smoke-Lauf. Bei Vercel ist noch nichts angelegt.
+Stand 13.10.2026: `pnpm check` und der Produktionsbuild beider Apps sind grün; der lokale Produktionsbuild gegen die Stage `dev` besteht den Smoke-Lauf. Beide Vercel-Projekte sind angelegt, das automatische Live-Schalten ist aus, die Preview-Umgebung hat ihre Variablen. Die Produktions-Umgebung ist noch leer.
 
-Offen und erst an einem Deployment prüfbar: dass `argon2` in der Funktion des Portals lädt (Login), dass die Client-Adresse ankommt und sich nicht fälschen lässt, dass Node.js 24 und pnpm 10 so gebaut werden wie in der CI, und dass die Bedingungen des Hobby-Plans zur Nutzung passen.
+An einer Vorschau beider Projekte geprüft (Commit `e821bec`, `pnpm ugur smoke`, 19 von 19 Prüfungen): Beide Apps melden den erwarteten Commit und erreichen Neon `dev`; die Funktionen laufen in `fra1`; das Portal lädt das native Modul `argon2`; die Site sieht die Client-Adresse, und selbst gesetzte Adress-Header werden nicht übernommen; ohne Bypass-Secret ist die Vorschau nicht erreichbar. Vercel baut mit Node.js 24 und pnpm aus dem Lockfile.
+
+Offen: Login, Einladung und eine echte Kontaktanfrage von Hand; die Produktions-Umgebung (noch ohne Variablen, liefert den alten Stand von `main` aus); die Umstellung der Domain; die Bedingungen des Hobby-Plans.
