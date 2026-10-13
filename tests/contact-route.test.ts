@@ -119,7 +119,7 @@ describe("POST /api/contact contract", () => {
     expect(mockCreateContactRequest).not.toHaveBeenCalled();
   });
 
-  it("returns an explicit storage failure when MongoDB persistence fails", async () => {
+  it("returns an explicit storage failure when persistence fails", async () => {
     mockCreateContactRequest.mockRejectedValueOnce(new Error("database unavailable"));
     const { POST } = await import("../apps/site/app/api/contact/route");
     const res = await POST(new Request("https://site.example/api/contact", {

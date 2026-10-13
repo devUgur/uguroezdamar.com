@@ -201,8 +201,8 @@ export default tseslint.config(
   {
     files: ["**/*.{ts,tsx}"],
     rules: {
-      // Legacy repository modules still contain untyped MongoDB document shapes.
-      // Keep them visible while preventing these warnings from blocking unrelated fixes.
+      // Some older UI and adapter modules still use `any`. Keep it visible without blocking
+      // unrelated fixes; new code must not add to it.
       "@typescript-eslint/no-explicit-any": "warn",
     },
   },
