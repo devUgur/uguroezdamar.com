@@ -1,3 +1,5 @@
+import { secretValues } from "../lib/infisical.ts";
+
 type Check = { name: string; ok: boolean; detail?: string };
 
 export interface SmokeOptions {
@@ -15,14 +17,18 @@ interface Health {
   client?: string | null;
 }
 
-/** A free preview instance sleeps when idle; its first answer can take a minute. */
-const TIMEOUT_MS = 90_000;
+const TIMEOUT_MS = 30_000;
 /** An address from a documentation range: no real client has it, so it can only come from us. */
 const FORGED_ADDRESS = "203.0.113.250";
 
+/** Per origin: the header that lets this run through Vercel's deployment protection. */
+const bypass = new Map<string, string>();
+
 async function request(url: string, init: RequestInit = {}): Promise<Response | Error> {
+  const secret = bypass.get(new URL(url).origin);
+  const headers = { ...(init.headers as Record<string, string> | undefined), ...(secret ? { "x-vercel-protection-bypass": secret } : {}) };
   try {
-    return await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(TIMEOUT_MS), ...init });
+    return await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(TIMEOUT_MS), ...init, headers });
   } catch (error) {
     return error as Error;
   }
@@ -63,7 +69,7 @@ const json = (body: unknown, headers: Record<string, string> = {}): RequestInit 
 
 async function smokeSite(origin: string, commit?: string): Promise<Check[]> {
   const report = await health(origin);
-  const forged = await health(origin, { "cf-connecting-ip": FORGED_ADDRESS });
+  const forged = await health(origin, { "x-vercel-forwarded-for": FORGED_ADDRESS, "x-forwarded-for": FORGED_ADDRESS, "x-real-ip": FORGED_ADDRESS });
   const sitemap = await request(`${origin}/sitemap.xml`);
   const sitemapText = sitemap instanceof Error ? "" : await sitemap.text();
   const contact = `${origin}/api/contact`;
@@ -73,11 +79,11 @@ async function smokeSite(origin: string, commit?: string): Promise<Check[]> {
   const addressChecks: Check[] = proxied
     ? [
         // The contact rate limit keys on this address; without it the form answers 503.
-        { name: "site: sees a client address", ok: Boolean(report?.client), detail: "cf-connecting-ip did not reach the app" },
+        { name: "site: sees a client address", ok: Boolean(report?.client), detail: "x-vercel-forwarded-for did not reach the app" },
         {
           name: "site: a client cannot choose its address",
           ok: Boolean(forged?.client) && forged?.client !== FORGED_ADDRESS,
-          detail: forged?.client === FORGED_ADDRESS ? "a forged cf-connecting-ip was accepted" : "no address seen",
+          detail: forged?.client === FORGED_ADDRESS ? "a forged address header was accepted" : "no address seen",
         },
       ]
     : [];
@@ -117,6 +123,14 @@ export async function smoke({ site, portal, commit }: SmokeOptions): Promise<num
     console.error("Usage: pnpm ugur smoke --site <url> [--portal <url>] [--commit <sha>]");
     return 1;
   }
+  // Previews are protected by default. The bypass secrets come from Infisical `dev`, in memory;
+  // without them a protected preview answers 401 and the checks say so.
+  for (const [url, key] of [[site, "VERCEL_BYPASS_SITE"], [portal, "VERCEL_BYPASS_PORTAL"]] as const) {
+    if (!url || isLocal(url)) continue;
+    const secret = secretValues("dev", [key])?.[key];
+    if (secret) bypass.set(origin(url), secret);
+  }
+
   const checks = [
     ...(site ? await smokeSite(origin(site), commit) : []),
     ...(portal ? await smokePortal(origin(portal), commit) : []),

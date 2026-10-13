@@ -27,14 +27,15 @@ export const SECRETS: readonly SecretSpec[] = [
   ...required("Postgres pooled (runtime) / direct (migrations)", ["DATABASE_URL", "DATABASE_URL_DIRECT"], {
     managedBy: "pnpm ugur db provision",
   }),
-  // Hosted addresses: production in `prod`, the preview deployment in `dev`. A local run never
-  // uses them; `localEnv()` in lib/stages.ts replaces them with localhost addresses.
+  // Hosted addresses exist in `prod` only. A preview deployment takes its address from Vercel
+  // (`VERCEL_URL`), and a local run gets localhost addresses from `localEnv()` in lib/stages.ts.
   ...required(
     "Public origin of the site: canonical URLs, sitemap, contact origin check",
     ["NEXT_PUBLIC_SITE_URL"],
+    { stages: ["prod"] },
   ),
-  ...required("Origin of the admin portal, used in invite links", ["APP_URL"]),
-  ...required("Site origin as the portal links to it", ["SITE_URL"]),
+  ...required("Origin of the admin portal, used in invite links", ["APP_URL"], { stages: ["prod"] }),
+  ...required("Site origin as the portal links to it", ["SITE_URL"], { stages: ["prod"] }),
   ...required(
     "HMAC key for the contact form rate limit (at least 32 characters)",
     ["CONTACT_RATE_LIMIT_SECRET"],
@@ -44,6 +45,11 @@ export const SECRETS: readonly SecretSpec[] = [
 
   ...optional("Admin session lifetime in seconds (default 86400)", ["ADMIN_SESSION_TTL_SECONDS"]),
   ...optional("Admin invite lifetime in hours (default 72)", ["ADMIN_INVITE_EXPIRES_HOURS"]),
+  ...optional(
+    "Vercel protection bypass per project, so `pnpm ugur smoke` can reach protected previews",
+    ["VERCEL_BYPASS_SITE", "VERCEL_BYPASS_PORTAL"],
+    { stages: ["dev"] },
+  ),
 ];
 
 /** Keys that used to exist. `secrets audit` names them so they get removed, not re-declared. */

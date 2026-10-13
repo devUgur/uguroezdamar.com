@@ -48,7 +48,7 @@ Audit und lokaler Code zeigten gemischte Quellen: MongoDB für Projekte/Profil/K
 
 Keine stillen Fallbacks zwischen Datenquellen. Ein ungültiger Inhalt lässt Build und Tests scheitern. Abschnitte ohne Inhalt entfallen auf der Startseite, statt einen Platzhalter zu zeigen.
 
-Die Site nutzt serverseitiges Next.js statt `output: "export"`. Produktion benötigt `DATABASE_URL` zur Laufzeit. Produktion läuft bei Render ([ADR 0018](../architecture/decisions/0018-render-hosting.md)); frühere Angabe: Netlify als Ziel, Render als Alternative mit eigener Konfiguration.
+Die Site nutzt serverseitiges Next.js statt `output: "export"`. Produktion benötigt `DATABASE_URL` zur Laufzeit. Hosting ist Vercel ([ADR 0020](../architecture/decisions/0020-vercel-hosting.md)); frühere Angabe: Netlify als Ziel, Render als Alternative mit eigener Konfiguration.
 
 ## Case-Study-Vorlage
 

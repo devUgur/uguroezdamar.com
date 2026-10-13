@@ -4,9 +4,9 @@ describe("health endpoints", () => {
   afterEach(() => vi.unstubAllEnvs());
 
   it("site: stays 200 without a database and reports commit and client address", async () => {
-    vi.stubEnv("RENDER_GIT_COMMIT", "0123456789abcdef");
+    vi.stubEnv("VERCEL_GIT_COMMIT_SHA", "0123456789abcdef");
     const { GET } = await import("../apps/site/app/api/health/route");
-    const response = await GET(new Request("http://localhost/api/health", { headers: { "cf-connecting-ip": "198.51.100.7" } }));
+    const response = await GET(new Request("http://localhost/api/health", { headers: { "x-vercel-forwarded-for": "198.51.100.7" } }));
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(await response.json()).toEqual({

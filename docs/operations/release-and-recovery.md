@@ -2,7 +2,7 @@
 
 ## Aktuell bekannte Ausgangslage
 
-Das Repository enthält GitHub Actions für Lint, Typecheck, Tests und Build. Die Site nutzt jetzt serverseitiges Next.js statt Static Export; CMS-Routen lesen veröffentlichte Inhalte zur Laufzeit. Produktion läuft bei Render ([ADR 0018](../architecture/decisions/0018-render-hosting.md)). Historische CI-Fehler aus dem Audit waren nicht mehr abrufbar.
+Das Repository enthält GitHub Actions für Lint, Typecheck, Tests und Build. Die Site nutzt jetzt serverseitiges Next.js statt Static Export; CMS-Routen lesen veröffentlichte Inhalte zur Laufzeit. Hosting ist Vercel ([ADR 0020](../architecture/decisions/0020-vercel-hosting.md)). Historische CI-Fehler aus dem Audit waren nicht mehr abrufbar.
 
 ## Umgebungen
 
@@ -10,19 +10,13 @@ Das Repository enthält GitHub Actions für Lint, Typecheck, Tests und Build. Di
 - **Preview:** getrennte Zugangsdaten und Testdaten, keine Kopie echter Kontakt-/Admin-Datensätze ohne begründete Schutzmaßnahmen.
 - **Produktion:** minimale DB-Rechte, verwaltete Secrets, Backups, Logs ohne PII/Secrets, definierter Rollback.
 
-### Hosting bei Render
+### Hosting bei Vercel
 
-Site (`uguroezdamar.com`) und Portal (`portal.uguroezdamar.com`) sind zwei Render-Dienste hinter Cloudflare. [`render.yaml`](../../render.yaml) beschreibt die Zielkonfiguration: zwei Node-Web-Dienste, Auto-Deploy aus (`autoDeployTrigger: off`), Variablen per Secret Sync aus Infisical. Das ist das Ziel, nicht der nachgewiesene Zustand: `sync: false` in der Datei ist kein Secret Sync, und die Auto-Deploy-Einstellung eines bestehenden Dienstes steht im Dashboard.
+Site und Portal sind zwei Vercel-Projekte aus diesem Repository ([ADR 0020](../architecture/decisions/0020-vercel-hosting.md)). Einrichtung, Vorschau je Pull Request, Smoke-Lauf, Freigabe in die Produktion und Rollback stehen in [preview.md](preview.md).
 
-`main` ist durch ein GitHub-Ruleset geschützt: Änderungen nur per Pull Request, Pflicht-Check `validate`, kein Force-Push, keine Löschung. Ein Merge ist keine Freigabe für die Produktion.
+Stand 13.10.2026: Bei Vercel ist noch nichts angelegt. `uguroezdamar.com` zeigt per DNS weiter auf Render und liefert dort den statischen Stand vom März 2026 aus; `portal.uguroezdamar.com` zeigt ebenfalls auf Render und antwortete nicht. Render bleibt unverändert, bis die neue Auslieferung geprüft und der DNS-Eintrag umgestellt ist.
 
-Stand 13.10.2026, von außen geprüft:
-
-- Die Live-Site liefert den Stand `c8ff3a3` vom März 2026 aus und war als statische Seite eingerichtet. Der aktuelle Code braucht einen Node-Dienst; ein unverändertes Deploy würde scheitern oder die Seite beschädigen.
-- `portal.uguroezdamar.com` zeigt per DNS auf Render, lieferte am 13.10.2026 aber keine HTTP-Antwort.
-- Der Kontakt-Endpunkt liest die Client-Adresse aus `cf-connecting-ip`, den Cloudflare vor Render selbst setzt und den ein Aufrufer nicht vorgeben kann; `x-forwarded-for` wird bewusst nicht ausgewertet. Dass der Header beim Dienst ankommt, ist auf der Preview noch zu bestätigen; ohne ihn antwortet der Endpunkt mit 503.
-
-Vor der Umstellung der Produktion: Diensttyp, Deploy-Branch, Auto-Deploy und PR-Previews im Dashboard erfassen und mit `render.yaml` abgleichen; Secret Sync für beide Dienste einrichten; eine getrennte Preview mit eigener URL gegen Neon `dev` aufbauen und den ausgelieferten Commit-SHA dokumentieren. Die Preview ist in [preview.md](preview.md) beschrieben.
+Der Kontakt-Endpunkt liest die Client-Adresse aus `x-vercel-forwarded-for` (`apps/site/src/lib/client-address.ts`). Das setzt voraus, dass die Domain direkt auf Vercel zeigt und kein weiterer Proxy davor liegt.
 
 ## Release-Ablauf
 
