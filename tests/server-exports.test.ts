@@ -11,8 +11,10 @@ describe("@ugur/server exports", () => {
   it("no longer carries the content CMS or its storage (ADR 0019)", () => {
     const names = Object.keys(server);
     expect(names.filter((name) => /project|career|profile|upload|deleteObject/i.test(name))).toEqual([]);
+    // careerEntries, profiles and projects are retired tables, kept until the drop migration is approved.
     expect(Object.keys(server.schema).sort()).toEqual([
-      "adminInvites", "adminLoginAttempts", "adminSessions", "admins", "contactRateLimits", "contactRequests",
+      "adminInvites", "adminLoginAttempts", "adminSessions", "admins", "careerEntries",
+      "contactRateLimits", "contactRequests", "profiles", "projects",
     ]);
   });
 });

@@ -34,7 +34,7 @@
 - Die Site zeigt ihre Inhalte auch ohne Datenbank; ein Datenbankausfall betrifft nur das Kontaktformular.
 - Bilder liegen unter `apps/site/public/projects/<slug>/` und laufen durch die Bildoptimierung von Next.js.
 - Das Projekt-, Karriere- und Profil-CMS im Portal, die Upload- und Vorschau-Routen, die Blog-Ansicht des Portals und die zugehörigen Server-Module sind entfernt. Das Portal verwaltet Admin-Konten und zeigt Kontaktanfragen.
-- Die Tabellen `projects`, `career_entries` und `profiles` entfallen mit der Migration `0001_retire_content_cms`. Sie ist zerstörend und wird je Stage erst nach Freigabe und mit Wiederherstellungspunkt angewendet; bis dahin bleiben die Tabellen ungenutzt bestehen.
+- Die Tabellen `projects`, `career_entries` und `profiles` bleiben zunächst bestehen und ungenutzt. Sie werden in einem eigenen Schritt gelöscht, nach Datensicherung und getestetem Restore; Code-Rückbau und Datenlöschung sind getrennte Freigaben.
 - `R2_*`, `PREVIEW_USE_STORAGE`, `SCREENSHOT_*` und `REVALIDATE_SECRET` sind im Secrets-Manifest zurückgezogen.
 - Die alte Weiterleitung `/projects/ViralSync` ist entfernt: Next.js vergleicht Weiterleitungsquellen ohne Rücksicht auf Groß- und Kleinschreibung, sie leitete `/projects/viralsync` auf sich selbst um.
 
