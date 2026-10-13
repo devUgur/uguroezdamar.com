@@ -40,4 +40,6 @@
 
 Stand 13.10.2026: `pnpm check` und der Produktionsbuild beider Apps sind grün; der lokale Produktionsbuild gegen die Stage `dev` besteht den Smoke-Lauf. Beide Vercel-Projekte sind angelegt, das automatische Live-Schalten ist aus, die Preview-Umgebung hat ihre Variablen. Die Produktions-Umgebung ist noch leer.
 
-Offen und erst an einem Deployment prüfbar: dass `argon2` in der Funktion des Portals lädt (Login), dass die Client-Adresse ankommt und sich nicht fälschen lässt, dass Node.js 24 und pnpm 10 so gebaut werden wie in der CI, und dass die Bedingungen des Hobby-Plans zur Nutzung passen.
+An einer Vorschau beider Projekte geprüft (Commit `e821bec`, `pnpm ugur smoke`, 19 von 19 Prüfungen): Beide Apps melden den erwarteten Commit und erreichen Neon `dev`; die Funktionen laufen in `fra1`; das Portal lädt das native Modul `argon2`; die Site sieht die Client-Adresse, und selbst gesetzte Adress-Header werden nicht übernommen; ohne Bypass-Secret ist die Vorschau nicht erreichbar. Vercel baut mit Node.js 24 und pnpm aus dem Lockfile.
+
+Offen: Login, Einladung und eine echte Kontaktanfrage von Hand; die Produktions-Umgebung (noch ohne Variablen, liefert den alten Stand von `main` aus); die Umstellung der Domain; die Bedingungen des Hobby-Plans.
