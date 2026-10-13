@@ -1,9 +1,11 @@
 ---
-# DRAFT — not part of a production build. Before publishing: confirm every statement,
+# DRAFT — not part of a production build. Statements were checked against the repository on
+# 2026-10-13 (README, docs/MVP.md, docs/CONNECTORS.md, package manifests); the product is
+# still being built, so re-check the status paragraph. Before publishing: confirm every statement,
 # add `role`, `contributions` and `period`, add a cover under public/projects/viralsync/,
 # then set `draft: false`.
 title: ViralSync
-summary: A social media operations platform — connect channels, keep finished media in a library, plan and publish posts and read their analytics, by hand, through an AI agent or through the API.
+summary: A social media operations platform in development — connect the channels of a brand, keep finished media in one library, plan and publish posts, and read their analytics from one place.
 category: SaaS platform
 status: active
 featured: true
@@ -16,6 +18,7 @@ technologies:
   - Hono
   - PostgreSQL (Neon)
   - Drizzle ORM
+  - Mastra
 links:
   live: https://viralsync.io
 repositoryVisibility: private
@@ -30,14 +33,20 @@ ViralSync puts the channels of a brand behind one workflow.
 
 ## Solution
 
-Accounts on YouTube, TikTok, Instagram and Facebook are connected once. Finished media lives in
-a library, posts are planned and published from there, and their analytics come back to the same
-place. Every action is available three ways: in the web app, through an AI agent, and through
-the API.
+Accounts on YouTube, TikTok, Instagram and Facebook are connected once and assigned to a brand.
+Finished media lives in a library, and posts are planned and published from there. The product
+is built in vertical phases, and each use case is meant to ship three ways: in the web app,
+through an API route, and as a tool of an AI agent that asks for approval before it acts.
+
+The work is in progress. Foundation, media library and channel connections are done. The agent
+has its tools but not yet its interface, analytics are synced from the providers but not yet
+shown, and the developer API is built but not yet proven on a deployed stage.
 
 ## Architecture
 
-The product is a monorepo with a Next.js web app and an API that runs as a Cloudflare Worker.
+The product is a monorepo with a Next.js web app and a Hono API that runs as a Cloudflare Worker.
+Each network sits behind one provider port with a manifest of its channel types and settings, so
+a fake provider can stand in for all of them in tests.
 Domain rules, application use cases, database access and the agent are separate packages, so
 the web app, the API and the agent share one implementation of each rule. Marketing site and
 user documentation are static sites of their own.
