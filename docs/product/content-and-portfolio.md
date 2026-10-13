@@ -48,7 +48,7 @@ Audit und lokaler Code zeigten gemischte Quellen: MongoDB für Projekte/Profil/K
 
 Keine stillen Fallbacks zwischen Datenquellen. Projekt-MDX-Fallbacks und Demo-Inhalte sind aus dem öffentlichen Pfad entfernt. Eine CMS-Veröffentlichung ist auf der dynamisch gerenderten Site mit der nächsten Anfrage sichtbar.
 
-Die Site nutzt serverseitiges Next.js statt `output: "export"`. Produktion benötigt `DATABASE_URL` zur Laufzeit. Netlify ist das kanonische Ziel; das Render-Blueprint ist eine Alternative mit eigener Konfiguration.
+Die Site nutzt serverseitiges Next.js statt `output: "export"`. Produktion benötigt `DATABASE_URL` zur Laufzeit. Produktion läuft bei Render ([ADR 0017](../architecture/decisions/0017-render-hosting.md)); frühere Angabe: Netlify als Ziel, Render als Alternative mit eigener Konfiguration.
 
 ## Case-Study-Vorlage
 

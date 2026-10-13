@@ -20,8 +20,6 @@ export {
 } from "./primitives/avatar";
 export { Container } from "./primitives/Container";
 export { Footer } from "./layout/Footer";
-export { Header } from "./layout/Header";
-export { Logo } from "./branding/Logo";
 export { ScrollProgress } from "./layout/ScrollProgress";
 export { Section } from "./primitives/Section";
 export { Tag } from "./primitives/Tag";

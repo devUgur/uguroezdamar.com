@@ -15,7 +15,7 @@ Admin ─────> apps/portal ───────────────
 CI: Guards → Lint → Typecheck → Tests → Build → Deploy (nach Freigabe)
 ```
 
-Die öffentliche Site und das Admin-Portal benötigen eine serverfähige Next.js-Laufzeit. Redaktionsverwaltete Profildaten, Karriere und Projekte liegen in PostgreSQL auf Neon ([ADR 0016](decisions/0016-postgres-neon-infisical-cli.md)); Blogartikel sind versionierte MDX-Dateien. Netlify ist die kanonisch konfigurierte Produktion; eine alternative Render-Konfiguration ist dokumentiert.
+Die öffentliche Site und das Admin-Portal benötigen eine serverfähige Next.js-Laufzeit. Redaktionsverwaltete Profildaten, Karriere und Projekte liegen in PostgreSQL auf Neon ([ADR 0016](decisions/0016-postgres-neon-infisical-cli.md)); Blogartikel sind versionierte MDX-Dateien. Produktion läuft bei Render ([ADR 0017](decisions/0017-render-hosting.md)).
 
 ## Verantwortlichkeiten
 
@@ -46,8 +46,8 @@ Die frühere Static-Export-Konfiguration wurde durch die in ADR 0013 beschlossen
 
 | Option | Geeignet, wenn | Konsequenzen |
 | --- | --- | --- |
-| Git/MDX als Quelle und statischer Export | Inhalte werden selten geändert und PR/Build ist der gewünschte Freigabeweg | MongoDB-Projekt-Publishing aus der Public Site entfernen oder klar auf statische Build-Eingaben abbilden; Kontakt an externen/serverfähigen Dienst anbinden |
-| CMS/MongoDB mit serverfähiger Site | Inhalte müssen im Portal direkt bearbeitet und gezielt veröffentlicht werden | Hosting mit Server-Runtime; Cache-/Revalidation-, Backup-, Preview- und Zugriffsmodell festlegen |
+| Git/MDX als Quelle und statischer Export (abgelehnt) | Inhalte werden selten geändert und PR/Build ist der gewünschte Freigabeweg | CMS-Projekt-Publishing aus der Public Site entfernen oder klar auf statische Build-Eingaben abbilden; Kontakt an externen/serverfähigen Dienst anbinden |
+| CMS-Datenbank mit serverfähiger Site (gewählt) | Inhalte müssen im Portal direkt bearbeitet und gezielt veröffentlicht werden | Hosting mit Server-Runtime; Cache-/Revalidation-, Backup-, Preview- und Zugriffsmodell festlegen |
 
 Die angenommene Entscheidung ist in [ADR 0013](decisions/0013-cms-content-and-server-rendering.md) festgehalten (Datenbank seit [ADR 0016](decisions/0016-postgres-neon-infisical-cli.md) PostgreSQL statt MongoDB): CMS für redaktionell verwaltete Profile, Karriere und Projekte; Blogbeiträge verbleiben als MDX in Git. Die Site liefert CMS-Routen serverseitig aus. Details stehen in [`../product/content-and-portfolio.md`](../product/content-and-portfolio.md).
 

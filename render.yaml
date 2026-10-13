@@ -1,17 +1,48 @@
-# Render Blueprint – server-rendered Next.js site (@ugur/site).
-# Netlify remains the canonical production deployment; use this only as an
-# explicitly configured alternative with its own MONGODB_URI and domain.
+# Render Blueprint: Zielkonfiguration für beide Dienste (ADR 0017).
+# Produktion läuft bei Render. Bis diese Datei mit dem Dashboard abgeglichen ist, gilt bei
+# Abweichungen das Dashboard; danach ist diese Datei die verbindliche Deployment-Quelle.
+#
+# Auto-Deploy ist aus: ausgeliefert wird nur ein freigegebener Commit.
+# Variablen mit `sync: false` kommen per Secret Sync aus Infisical (Stage prod), nie von Hand.
+
+# Der Dienstname der Site ist noch nicht gegen das Dashboard geprüft; der des Portals stammt
+# aus dem DNS-Eintrag von portal.uguroezdamar.com.
 
 services:
   - type: web
-    name: ugur-site
+    name: uguroezdamar-com
     runtime: node
+    autoDeploy: false
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm run build:site
     startCommand: pnpm --filter @ugur/site start
+    healthCheckPath: /
     envVars:
       - key: NODE_VERSION
         value: "24.21.0"
-      - key: MONGODB_URI
+      - key: DATABASE_URL
         sync: false
       - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      - key: CONTACT_RATE_LIMIT_SECRET
+        sync: false
+      - key: REVALIDATE_SECRET
+        sync: false
+
+  - type: web
+    name: portal-uguroezdamar-com
+    runtime: node
+    autoDeploy: false
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm exec turbo run build --filter=@ugur/portal
+    startCommand: pnpm --filter @ugur/portal start
+    healthCheckPath: /login
+    envVars:
+      - key: NODE_VERSION
+        value: "24.21.0"
+      - key: DATABASE_URL
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: SITE_URL
+        sync: false
+      - key: ADMIN_API_KEY
         sync: false

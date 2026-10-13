@@ -6,7 +6,7 @@ Diese Roadmap übersetzt die Audit-Befunde in eine umsetzbare Reihenfolge. Sie i
 
 ## Zielbild
 
-Ein zuverlässiges, sicheres und glaubwürdiges Entwicklerportfolio, das echte Arbeit zeigt und dessen Inhalte sicher veröffentlicht werden können. Die bestehende pnpm-/Turborepo-Monorepo-Basis mit Next.js, TypeScript und MongoDB wird zunächst stabilisiert. Es gibt keine geplante Neuentwicklung und keine Microservices.
+Ein zuverlässiges, sicheres und glaubwürdiges Entwicklerportfolio, das echte Arbeit zeigt und dessen Inhalte sicher veröffentlicht werden können. Die bestehende pnpm-/Turborepo-Monorepo-Basis mit Next.js, TypeScript und PostgreSQL wird zunächst stabilisiert. Es gibt keine geplante Neuentwicklung und keine Microservices.
 
 Das Zielsystem besteht aus einer öffentlichen Portfolio-/Blog-Anwendung, einem geschützten Admin-Portal, klar begrenzten gemeinsamen Paketen und einer nachvollziehbaren Inhalts- und Release-Pipeline. Welche Laufzeit- und Inhaltsquelle langfristig gilt, wird anhand der dokumentierten Entscheidungskriterien beschlossen, bevor davon abhängige Umbauten starten.
 
@@ -31,7 +31,7 @@ Phasen dürfen nur dann parallel laufen, wenn ihre Abhängigkeiten und Daten-/Ro
 - CI-Fehler reproduzieren und aktuelle Logs sichern; Ursache pro fehlgeschlagenem Check dokumentieren.
 - Produktionsrouten und Projektlinks mit Browser-Prüfung verifizieren, insbesondere `/projects`, `/projects/viralsync`, `/work`, Blog und Kontakt.
 - Admin-Rollenänderung, Invite-Aktivierung, Passwortspeicherung, Session-Validierung und Upload-Berechtigungen entlang der echten Request-Flows nachverfolgen.
-- Hosting-Konfiguration, Build-Ausgabe, Kontaktzustellung und MongoDB-Verfügbarkeit für Produktion feststellen.
+- Hosting-Konfiguration, Build-Ausgabe, Kontaktzustellung und Datenbank-Verfügbarkeit für Produktion feststellen.
 - Beispiel-/Platzhalterinhalte (`my-project.mdx`, `first-post.mdx`, CMS-Fallbacks) inventarisieren und entscheiden, ob sie entfernt, ersetzt oder ausdrücklich als Demo gekennzeichnet werden.
 
 **Abnahme**
@@ -64,12 +64,12 @@ Phasen dürfen nur dann parallel laufen, wenn ihre Abhängigkeiten und Daten-/Ro
 
 **Zweck:** Eine eindeutige Wahrheit darüber herstellen, welcher Inhalt veröffentlicht ist und wie er die öffentliche Website erreicht.
 
-**Entscheidung:** [ADR 0013](docs/architecture/decisions/0013-cms-content-and-server-rendering.md) legt das CMS für Portfolio-Daten und serverseitiges Next.js fest; die Datenbank ist seit [ADR 0016](docs/architecture/decisions/0016-postgres-neon-infisical-cli.md) PostgreSQL auf Neon. Netlify ist kanonisch; Render bleibt eine alternative Blueprint-Konfiguration. Blogartikel bleiben Git-/MDX.
+**Entscheidung:** [ADR 0013](docs/architecture/decisions/0013-cms-content-and-server-rendering.md) legt das CMS für Portfolio-Daten und serverseitiges Next.js fest; die Datenbank ist seit [ADR 0016](docs/architecture/decisions/0016-postgres-neon-infisical-cli.md) PostgreSQL auf Neon. Produktion läuft bei Render ([ADR 0017](docs/architecture/decisions/0017-render-hosting.md)). Blogartikel bleiben Git-/MDX.
 
 **Arbeitspakete nach Entscheidung**
 
 - Projekt-, Karriere-/Profil- und Blog-Inhalte mit klaren Eigentümern und Schemata abbilden; veröffentlichte Inhalte, Entwürfe und Vorschauen eindeutig trennen.
-- MongoDB/MDX-Fallbacks entfernen, sofern sie nicht bewusst als dokumentierter Import- oder Notfallpfad gebraucht werden. Fallbacks dürfen nie unveröffentlichte oder Demo-Inhalte stillschweigend öffentlich machen.
+- Datenbank-/MDX-Fallbacks entfernen, sofern sie nicht bewusst als dokumentierter Import- oder Notfallpfad gebraucht werden. Fallbacks dürfen nie unveröffentlichte oder Demo-Inhalte stillschweigend öffentlich machen.
 - Publish-Ablauf mit Validierung, Vorschau, Veröffentlichung, Cache-Invalidierung/Rebuild, Fehlerbehandlung und Rollback definieren.
 - Slugs kanonisieren und alte URLs gezielt weiterleiten oder mit einer echten 404 beantworten.
 - Kontaktformular-Endpunkt kompatibel zur gewählten Hosting-Laufzeit betreiben; Zustellung speichern/übermitteln und Fehler sichtbar behandeln. Datenschutz, Spam-Schutz und Aufbewahrung festlegen.
@@ -138,8 +138,8 @@ Ein öffentlicher Relaunch erfolgt erst, wenn Phase 1 und 2 abgenommen sind, kri
 | --- | --- | --- |
 | 0 — Verifizieren & stabilisieren | lokale Gates, Mobile-Smoke und Axe-Prüfung grün | Hosting-Preview, Kontaktzustellung und Live-Deploy bleiben zu verifizieren |
 | 1 — Security & CI-Fundament | umgesetzt; lokale und GitHub-CI-Nachweise grün | unabhängige Prüfung offen |
-| 2 — Content & Deployment | SSR/CMS lokal umgesetzt; CMS- und Rate-Limit-Integration ergänzt; Preview und Betreiberangaben offen | Netlify-Dashboard für beide Sites verifizieren; Preview-Commit-SHAs, isolierte DB/Accounts, Slug-Datenmigration, Kontaktaufbewahrung/-benachrichtigung sowie bestätigte Impressums-/Datenschutzangaben bleiben Release-Blocker |
-| Plattform — Datenbank und Secrets | MongoDB-Cluster existiert nicht mehr. Datenschicht auf PostgreSQL/Drizzle umgestellt, Tests gegen PGlite, Secrets-Manifest und `pnpm ugur`-CLI nach viralsync-Vorbild vorhanden (ADR 0016); lokale Gates grün | Infisical-Projekt anlegen und `pnpm ugur setup` ausführen; Neon-Projekt provisionieren; Migration und erstes Owner-Konto; Secret Sync zum Hosting; alte `.env`-Dateien löschen; Inhalte neu erfassen |
+| 2 — Content & Deployment | SSR/CMS lokal umgesetzt; CMS- und Rate-Limit-Integration ergänzt; Preview und Betreiberangaben offen | Render-Inventar für beide Dienste verifizieren (Typ, Deploy-Branch, Auto-Deploy), Secret Sync aus Infisical einrichten; Preview-Commit-SHAs, isolierte DB/Accounts, Slug-Datenmigration, Kontaktaufbewahrung/-benachrichtigung sowie bestätigte Impressums-/Datenschutzangaben bleiben Release-Blocker |
+| Plattform — Datenbank und Secrets | MongoDB-Cluster existiert nicht mehr. Datenschicht auf PostgreSQL/Drizzle umgestellt, Tests gegen PGlite, Secrets-Manifest und `pnpm ugur`-CLI nach viralsync-Vorbild vorhanden (ADR 0016). Infisical-Projekt verknüpft, Neon-Branches `dev` und `prod` provisioniert und migriert, Owner-Konto in `dev`; Site und Portal gegen `dev` geprüft. Konsolidiert im Draft-PR #9, CI grün. Regeln auf `AGENTS.md` reduziert, Hosting als Render festgehalten (ADR 0017), Doku-Drift per Test abgesichert | Render-Inventar und Abgleich mit `render.yaml`; Secret Sync aus Infisical; Preview-Dienst gegen `dev`; Owner-Konto in `prod`; Client-Adresse des Kontakt-Endpunkts hinter Render klären; Restore-Probe auf Neon; alte lokale `.env`-Dateien löschen; R2-Schlüssel rotieren; Inhalte neu erfassen |
 | 3 — Portfolio-Erlebnis | R2-A technisch umgesetzt, visuell vom Owner **nicht freigegeben** (Issue #8). R1- und R2-Branch sind lokal in `main` zusammengeführt. R2-A.1/A1 (Original-Logo, Header, Hero, Footer) umgesetzt; lokale Gates grün; Nachweise unter `docs/product/evidence/r2-a1/` | Visuelle Freigabe A1 durch den Owner; danach A2 (echte Projekte, ViralSync-Case-Study, DB-Fehler von leerem Zustand trennen) und A3 (Profil, Skills, Education). Kein Produktions-Deploy vor R1-Gates und Rotation der offengelegten Zugangsdaten |
 | 4 — Production Quality | geplant | nach stabiler Kernfunktion Messwerte und E2E-Scope festlegen |
 

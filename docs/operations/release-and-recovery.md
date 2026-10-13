@@ -2,7 +2,7 @@
 
 ## Aktuell bekannte Ausgangslage
 
-Das Repository enthält GitHub Actions für Lint, Typecheck, Tests und Build. Die Site nutzt jetzt serverseitiges Next.js statt Static Export; CMS-Routen lesen veröffentlichte Inhalte zur Laufzeit. Netlify ist primäres Ziel. Das Render-Blueprint ist auf denselben Serverbetrieb angepasst, aber als alternative Umgebung zu behandeln. Historische CI-Fehler aus dem Audit waren nicht mehr abrufbar.
+Das Repository enthält GitHub Actions für Lint, Typecheck, Tests und Build. Die Site nutzt jetzt serverseitiges Next.js statt Static Export; CMS-Routen lesen veröffentlichte Inhalte zur Laufzeit. Produktion läuft bei Render ([ADR 0017](../architecture/decisions/0017-render-hosting.md)). Historische CI-Fehler aus dem Audit waren nicht mehr abrufbar.
 
 ## Umgebungen
 
@@ -10,9 +10,17 @@ Das Repository enthält GitHub Actions für Lint, Typecheck, Tests und Build. Di
 - **Preview:** getrennte Zugangsdaten und Testdaten, keine Kopie echter Kontakt-/Admin-Datensätze ohne begründete Schutzmaßnahmen.
 - **Produktion:** minimale DB-Rechte, verwaltete Secrets, Backups, Logs ohne PII/Secrets, definierter Rollback.
 
-### Netlify-Monorepo-Konfiguration
+### Hosting bei Render
 
-Für öffentliche Site und Portal sind getrennte Netlify-Projekte vorgesehen. Bei beiden bleibt das Netlify-**Base directory** auf Repository-Root (leer); das jeweilige **Package directory** wird in der Netlify-UI auf `apps/site` bzw. `apps/portal` gesetzt. Damit installiert Netlify das pnpm-Workspace am Root und die app-spezifische `netlify.toml` steuert Build und Publish. Die Toolchain ist Node `24.21.0` und pnpm `10.34.2`. Next.js wird durch den von Netlify verwalteten OpenNext-Adapter konfiguriert; `@netlify/plugin-nextjs` wird nicht manuell gepinnt, damit automatische Adapter-Updates aktiv bleiben. Die Konfiguration im Repository belegt nicht, dass GitHub-Verbindung, Deploy-Previews oder Site-Variablen im Dashboard aktiv sind. Für Release R1 müssen Preview-URL und ausgelieferter Commit-SHA für beide Projekte dokumentiert werden.
+Site (`uguroezdamar.com`) und Portal (`portal.uguroezdamar.com`) sind zwei Render-Dienste hinter Cloudflare. [`render.yaml`](../../render.yaml) beschreibt die Zielkonfiguration: zwei Node-Web-Dienste, Auto-Deploy aus, Variablen per Secret Sync aus Infisical.
+
+Stand 13.10.2026, von außen geprüft:
+
+- Die Live-Site liefert den Stand `c8ff3a3` vom März 2026 aus und war als statische Seite eingerichtet. Der aktuelle Code braucht einen Node-Dienst; ein unverändertes Deploy würde scheitern oder die Seite beschädigen.
+- Das Live-Portal antwortet, zeigt aber noch auf die entfernte Datenbank des alten Stands.
+- Der Kontakt-Endpunkt liest die Client-Adresse aus `x-nf-client-connection-ip` oder `x-real-ip`. Welchen Header Render hinter Cloudflare zuverlässig setzt, ist nicht geprüft; ohne ihn antwortet der Endpunkt mit 503.
+
+Vor der Umstellung der Produktion: Diensttyp, Deploy-Branch, Auto-Deploy und PR-Previews im Dashboard erfassen und mit `render.yaml` abgleichen; Secret Sync für beide Dienste einrichten; eine getrennte Preview mit eigener URL gegen Neon `dev` aufbauen und den ausgelieferten Commit-SHA dokumentieren.
 
 ## Release-Ablauf
 
@@ -34,7 +42,7 @@ Jede Produktions-/Preview-Umgebung muss Server-Routen unterstützen und `DATABAS
 
 ## Kontakt- und Admin-Smoke-Checks
 
-- Kontakt-Endpunkt: valide Anfrage speichern, invalide Anfrage, Cross-Origin-/Content-Type-/Größenprüfung, Honeypot-Fall, 429/Retry-After und DB-Fehler prüfen. Das persistente Rate-Limit zählt höchstens fünf Anfragen pro pseudonymisiertem Client-IP-Schlüssel in zehn Minuten. Netlify muss `x-nf-client-connection-ip` an den Handler durchreichen; der Wert wird als IP-Adresse validiert. Das HMAC des Client-IP-Schlüssels wird nach maximal etwa 70 Minuten beim nächsten Zählvorgang entfernt; `CONTACT_RATE_LIMIT_SECRET` muss mindestens 32 Zeichen lang und je Umgebung getrennt sein. Der Request-Erfolg bestätigt ausschließlich die Speicherung in der Datenbank, keinen E-Mail-Versand.
+- Kontakt-Endpunkt: valide Anfrage speichern, invalide Anfrage, Cross-Origin-/Content-Type-/Größenprüfung, Honeypot-Fall, 429/Retry-After und DB-Fehler prüfen. Das persistente Rate-Limit zählt höchstens fünf Anfragen pro pseudonymisiertem Client-IP-Schlüssel in zehn Minuten. Der Proxy muss die Client-Adresse an den Handler durchreichen (siehe Hosting bei Render); der Wert wird als IP-Adresse validiert. Das HMAC des Client-IP-Schlüssels wird nach maximal etwa 70 Minuten beim nächsten Zählvorgang entfernt; `CONTACT_RATE_LIMIT_SECRET` muss mindestens 32 Zeichen lang und je Umgebung getrennt sein. Der Request-Erfolg bestätigt ausschließlich die Speicherung in der Datenbank, keinen E-Mail-Versand.
 - Das Rate-Limit liegt in der Tabelle `contact_rate_limits` und wird mit einem atomaren `INSERT … ON CONFLICT` gezählt; abgelaufene Einträge werden beim nächsten Zählvorgang gelöscht. Trusted Client-IP-Header und 429-Verhalten sind noch gegen die echte Preview zu verifizieren.
 - Kontaktanfragen selbst haben aktuell keine automatische Löschfrist. Betreiber und Datenschutzverantwortliche müssen eine Aufbewahrungs- und Löschregel festlegen, bevor das Formular produktiv freigegeben wird.
 - Admin: erlaubte Anmeldung, abgelehnte Rolle, abgelehntes unberechtigtes Update, Logout und Invite-Ablauf prüfen.

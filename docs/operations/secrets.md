@@ -78,5 +78,5 @@ Lokale Läufe sind keine dritte Stage: Sie nutzen die Secrets und die Datenbank 
 
 ## Hosting und CI
 
-- **Hosting:** Die Laufzeitumgebung bekommt ihre Variablen über einen Infisical *Secret Sync* (Netlify bzw. Render), nicht durch Eintippen im Dashboard. Der Sync wird einmalig in Infisical eingerichtet und ist für `prod` noch offen.
+- **Hosting:** Die Laufzeitumgebung bekommt ihre Variablen über einen Infisical *Secret Sync* zu Render ([ADR 0017](../architecture/decisions/0017-render-hosting.md)), nicht durch Eintippen im Dashboard. Der Sync wird einmalig in Infisical eingerichtet und ist für `prod` noch offen.
 - **CI:** Lint, Typecheck, Tests und Build brauchen keine Secrets. Die Tests laufen gegen ein In-Memory-Postgres (PGlite) mit den echten Migrationen. Erst ein Deploy-Workflow bräuchte Zugriff; dann per GitHub-OIDC-Login bei Infisical, ohne gespeicherte Tokens.
