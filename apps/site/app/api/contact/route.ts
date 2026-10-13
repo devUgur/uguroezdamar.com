@@ -60,10 +60,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Invalid input" }, { status: 400 });
   }
 
-  if (parsed.data.nickname) {
-    return NextResponse.json({ ok: true });
-  }
-
   const address = clientAddress(request.headers);
   if (!address) {
     return NextResponse.json({ ok: false, error: "Contact service temporarily unavailable" }, { status: 503 });

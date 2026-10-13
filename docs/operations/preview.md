@@ -2,7 +2,9 @@
 
 **Zweck:** Wie Site und Portal bei Vercel eingerichtet werden, wie ein Stand vor dem Merge als Vorschau geprüft wird und wie er in die Produktion kommt. Entscheidung: [ADR 0020](../architecture/decisions/0020-vercel-hosting.md).
 
-**Stand 13.10.2026:** Beide Projekte sind angelegt und eingerichtet, die Umgebung Preview hat ihre Variablen. `pnpm ugur smoke` gegen die Vorschau des Commits `e821bec` hat alle 19 Prüfungen bestanden, einschließlich Client-Adresse und Commit. Die Umgebung Production ist noch leer und liefert auf den `vercel.app`-Adressen den alten Stand von `main` aus; die Domain zeigt weiter auf Render.
+**Stand 13.10.2026:** Beide Projekte sind eingerichtet, beide Umgebungen haben ihre Variablen. `main` (`e8e9239`) ist für beide Projekte als Produktions-Deployment gebaut und nicht freigegeben (*Staged*); `pnpm ugur smoke` dagegen hat alle 19 Prüfungen bestanden, einschließlich Datenbank `prod`, Client-Adresse und Commit. Die Domain zeigt weiter auf Render.
+
+**Vor der Freigabe offen (inhaltlich, nicht technisch):** Impressum und Datenschutzerklärung sind Platzhaltertexte; es ist kein Projekt veröffentlicht (beide Case Studies sind Entwürfe) und `content/profile.ts` ist leer. Login, Einladung und eine echte Kontaktanfrage sind nicht von Hand geprüft.
 
 ## Aufbau
 
