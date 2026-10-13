@@ -25,7 +25,7 @@ Versionen, die mehr als ein Workspace nutzt, stehen einmal im pnpm-Catalog in `p
 
 ## Bewusst separat zu migrieren
 
-Major-Upgrades von MongoDB Node Driver 5 auf 7, TypeScript 5 auf 7, ESLint 9 auf 10, `framer-motion` 12 auf 14 und `lucide-react` 0 auf 1 werden nicht mit dem Release-Hardening gebündelt. Sie benötigen jeweils eine eigene Kompatibilitätsprüfung, gezielte Migration und Regression. Abhängigkeiten ohne aktive Nutzung sind vor einem Upgrade zu entfernen statt zu aktualisieren.
+Major-Upgrades von TypeScript 5 auf 7, ESLint 9 auf 10, `framer-motion` 12 auf 14 und `lucide-react` 0 auf 1 werden nicht mit dem Release-Hardening gebündelt. Sie benötigen jeweils eine eigene Kompatibilitätsprüfung, gezielte Migration und Regression. Abhängigkeiten ohne aktive Nutzung sind vor einem Upgrade zu entfernen statt zu aktualisieren.
 
 ## Pflegeprozess
 

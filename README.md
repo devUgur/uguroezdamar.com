@@ -49,4 +49,6 @@ Es gibt keine `.env`-Dateien: Alle Variablen liegen in Infisical und werden von 
 - [Release und Recovery](docs/operations/release-and-recovery.md)
 - [Audit-Zusammenfassung](docs/audits/2026-10-12-code-and-architecture-audit.md)
 
-`.cursor/` und `.github/instructions/` enthalten Tool-/Editor-Kontext. Diese Dateien verweisen auf die zentrale technische Dokumentation und dürfen ihr nicht widersprechen.
+- [Secrets und Entwicklungsumgebung](docs/operations/secrets.md)
+
+Die Arbeitsregeln für Menschen und Agenten stehen in [`AGENTS.md`](AGENTS.md). `CLAUDE.md`, `.github/copilot-instructions.md` und `.trae/rules/project.md` verweisen nur dorthin.
