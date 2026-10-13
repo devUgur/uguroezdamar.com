@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Topbar, Footer } from "@ugur/ui";
+import { Footer } from "./Footer";
+import { Topbar } from "./Topbar";
 
 /**
  * Layout for unauthenticated portal pages (e.g. public landing at "/").

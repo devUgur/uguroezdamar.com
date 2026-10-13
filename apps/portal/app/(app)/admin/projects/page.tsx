@@ -1,4 +1,4 @@
-import { getProjectsSnapshot } from "@/apps/portal/src/adapters/projects";
+import { getProjectsSnapshot } from "@/src/adapters/projects";
 import Link from "next/link";
 import { ProjectsTable } from "@/src/features/projects/ui/ProjectsTable";
 

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { canDelete, getCareerEntryById, updateCareerEntry, deleteCareerEntry, UpdateCareerEntrySchema } from "@ugur/server";
-import { requireAdmin } from "@/apps/portal/src/adapters/auth/utils";
+import { requireAdmin } from "@/src/adapters/auth/utils";
 
 export const runtime = "nodejs";
 

@@ -12,6 +12,7 @@ Portfolio und Admin-Portal als pnpm-/Turborepo-Monorepo.
 | `apps/portal` | geschütztes CMS/Admin-Portal |
 | `packages/server` | serverseitige Use Cases, Validierung und Datenzugriff |
 | `packages/ui` | gemeinsame UI-Komponenten |
+| `tooling/cli` | `pnpm ugur`: Dev-Start, Secrets, Datenbank, Admin-Konten |
 | `packages/core` | frameworkunabhängige gemeinsame Hilfsfunktionen |
 | `tests` | Vitest-Unit- und Integrationstests |
 | `tooling/guards` | automatisierte Architekturregeln |
@@ -23,13 +24,17 @@ Site und Portal laufen serverseitig. Projekte, Profil, Karriere und Admin-Konten
 
 ```sh
 pnpm install
-pnpm dev
+pnpm dev          # Site auf :3100
+pnpm dev:portal   # Portal auf :3101
+pnpm dev:all      # beide
 pnpm guard
 pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
 ```
+
+Die Pakete unter `packages/` werden als TypeScript-Quellcode eingebunden und nicht gebaut ([ADR 0017](docs/architecture/decisions/0017-source-first-workspace-packages.md)).
 
 Es gibt keine `.env`-Dateien: Alle Variablen liegen in Infisical und werden von `pnpm dev` injiziert. Einmalig `pnpm ugur setup` ausführen; Details in [docs/operations/secrets.md](docs/operations/secrets.md).
 

@@ -1,5 +1,5 @@
 import ProjectForm from "@/src/features/projects/ui/ProjectForm";
-import { getProjectByIdAdapter } from "@/apps/portal/src/adapters/projects";
+import { getProjectByIdAdapter } from "@/src/adapters/projects";
 
 export default async function ProjectEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

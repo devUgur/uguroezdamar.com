@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { env, getProjectById, updateProject, uploadBuffer } from "@ugur/server";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/apps/portal/src/adapters/auth/utils";
+import { requireAdmin } from "@/src/adapters/auth/utils";
 
 const BodySchema = z.object({ mode: z.enum(["og", "screenshot"]).optional() });
 

@@ -1,4 +1,4 @@
-import { getAdminDetail } from "@/apps/portal/src/adapters/admin";
+import { getAdminDetail } from "@/src/adapters/admin";
 import { notFound } from "next/navigation";
 import { Card } from "@ugur/ui";
 import Link from "next/link";

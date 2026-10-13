@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { getCurrentSession } from "@/apps/portal/src/adapters/auth";
+import { getCurrentSession } from "@/src/adapters/auth";
 import { AppShell, PublicLayout, RedirectIfNotHome } from "@/src/features/shell";
 
 /**

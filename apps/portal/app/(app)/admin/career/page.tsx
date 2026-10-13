@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCareerEntriesSnapshot, type CareerEntry } from "@/apps/portal/src/adapters/career";
+import { getCareerEntriesSnapshot, type CareerEntry } from "@/src/adapters/career";
 
 function visibilityLabel(item: CareerEntry) {
   const visibility = item.visibility;

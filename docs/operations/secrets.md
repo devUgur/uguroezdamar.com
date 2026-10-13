@@ -46,7 +46,8 @@ Danach genügt `pnpm dev`. `pnpm ugur doctor` prüft Werkzeuge, Anmeldungen und 
 
 | Befehl | Wirkung |
 | --- | --- |
-| `pnpm dev`, `pnpm dev:site`, `pnpm dev:portal` | Apps mit `dev`-Secrets und localhost-Adressen starten |
+| `pnpm dev` | Site (Port 3100) mit `dev`-Secrets und localhost-Adressen starten |
+| `pnpm dev:portal`, `pnpm dev:all` | nur das Portal (Port 3101) bzw. beide Apps starten |
 | `pnpm ugur run -- <cmd>` | beliebigen Befehl genauso ausführen, z. B. `pnpm ugur run -- pnpm build:site` |
 | `pnpm ugur secrets audit [--stage prod]` | Infisical gegen das Manifest prüfen (nur Namen) |
 | `pnpm ugur secrets set <KEY>` | deklarierten Schlüssel per verdeckter Eingabe setzen |

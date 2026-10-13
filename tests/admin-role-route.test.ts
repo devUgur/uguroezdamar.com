@@ -16,7 +16,7 @@ vi.mock("@ugur/server", () => ({
   deleteAdminById: mocks.deleteAdminById,
 }));
 
-vi.mock("@/apps/portal/src/adapters/auth/utils", () => ({
+vi.mock("../apps/portal/src/adapters/auth/utils", () => ({
   requireAdmin: mocks.requireAdmin,
 }));
 

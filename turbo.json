@@ -1,5 +1,9 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    "tsconfig.json",
+    "eslint.config.mjs"
+  ],
   "globalPassThroughEnv": [
     "DATABASE_URL",
     "DATABASE_URL_DIRECT",
@@ -23,18 +27,19 @@
     "SCREENSHOT_API_KEY"
   ],
   "tasks": {
-    "guard": {
-      "outputs": []
+    "transit": {
+      "dependsOn": [
+        "^transit"
+      ]
     },
     "build": {
       "dependsOn": [
-        "guard",
-        "^build"
+        "transit"
       ],
       "outputs": [
-        "dist/**",
         ".next/**",
-        "out/**"
+        "!.next/cache/**",
+        "!.next/dev/**"
       ],
       "env": [
         "NEXT_PUBLIC_SITE_URL"
@@ -48,20 +53,11 @@
       ]
     },
     "lint": {
-      "dependsOn": [
-        "guard"
-      ],
       "outputs": []
     },
     "typecheck": {
       "dependsOn": [
-        "guard"
-      ],
-      "outputs": []
-    },
-    "test": {
-      "dependsOn": [
-        "^build"
+        "transit"
       ],
       "outputs": []
     },

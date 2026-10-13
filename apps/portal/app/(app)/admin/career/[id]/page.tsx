@@ -1,5 +1,5 @@
-import { getCareerEntryByIdAdapter } from "@/apps/portal/src/adapters/career";
-import { CareerEntryForm } from "@/apps/portal/src/features/career/ui/CareerEntryForm";
+import { getCareerEntryByIdAdapter } from "@/src/adapters/career";
+import { CareerEntryForm } from "@/src/features/career/ui/CareerEntryForm";
 import { notFound } from "next/navigation";
 
 export default async function CareerEditPage({ params }: { params: Promise<{ id: string }> }) {

@@ -2,7 +2,7 @@
 
 ## Architekturabsicht
 
-Das Repository ist ein pnpm-/Turborepo-Monorepo. Der derzeitige lokale Quellbaum enthält zwei Next.js-Anwendungen (`apps/site`, `apps/portal`), drei gemeinsam genutzte Pakete (`packages/core`, `packages/server`, `packages/ui`), Tests, Tooling und GitHub Actions. Die bevorzugte Weiterentwicklung ist ein modularer Monolith mit wenigen klaren Grenzen. Es gibt keinen Grund, allein wegen des Audits neue Services oder Pakete einzuführen.
+Das Repository ist ein pnpm-/Turborepo-Monorepo. Die gemeinsamen Pakete werden als TypeScript-Quellcode konsumiert und von den Apps kompiliert; sie haben keinen eigenen Build ([ADR 0017](decisions/0017-source-first-workspace-packages.md)). Der derzeitige lokale Quellbaum enthält zwei Next.js-Anwendungen (`apps/site`, `apps/portal`), drei gemeinsam genutzte Pakete (`packages/core`, `packages/server`, `packages/ui`), Tests, Tooling und GitHub Actions. Die bevorzugte Weiterentwicklung ist ein modularer Monolith mit wenigen klaren Grenzen. Es gibt keinen Grund, allein wegen des Audits neue Services oder Pakete einzuführen.
 
 ```text
 Besucher ──> apps/site ───────────────> @ugur/server ──> PostgreSQL (Neon)
@@ -38,7 +38,8 @@ Die öffentliche Site und das Admin-Portal benötigen eine serverfähige Next.js
 3. `packages/ui` bleibt frei von `@ugur/server`, DB-Zugriff und Admin-Cookies. Serverabhängige Layoutentscheidungen liegen in der jeweiligen App.
 4. `packages/server` bleibt server-only und frameworkarm; Next.js-spezifische Cache- oder Revalidierungsmechanik liegt an einem Adapter der App-Grenze.
 5. Features besitzen ihre UI, Queries und Use-Case-Anbindung. Gemeinsame Abstraktionen entstehen aus tatsächlicher Wiederverwendung.
-6. Guards codifizieren Regeln, die stabil und automatisiert prüfbar sind. Ausnahmen erhalten Begründung und Ablaufdatum.
+6. Gemeinsame Pakete exportieren nur Dateien aus `src`, haben kein `build`-/`dev`-Skript und importieren keinen App-Code. `@/…` ist in jeder App ein Alias auf die eigene Wurzel.
+7. Guards codifizieren Regeln, die stabil und automatisiert prüfbar sind. Ausnahmen erhalten Begründung und Ablaufdatum.
 
 ## Laufzeit- und Inhaltsentscheidung
 

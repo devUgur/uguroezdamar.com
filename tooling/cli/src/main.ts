@@ -21,7 +21,8 @@ const HELP = `uguroezdamar.com CLI — pnpm ugur <command>
   setup [--relink]           One-time: sign in to Infisical and Neon in the browser, link the project
                              (--relink chooses a different Infisical project)
   doctor                     Check tools, logins and required secrets
-  dev [--filter site|portal] Run the apps with dev secrets injected and localhost addresses
+  dev [--filter site|portal] Run the site with dev secrets injected and localhost addresses
+      [--all]                (--filter portal for the portal, --all for both)
   run -- <cmd>               Run a command with secrets and localhost addresses (e.g. a local build)
   secrets audit              Compare Infisical with the secrets manifest (names only)
   secrets set <KEY>          Set a declared key from a hidden prompt (both stages unless --stage)
@@ -56,6 +57,7 @@ const { values, positionals } = parseArgs({
     overwrite: { type: "boolean", default: false },
     rotate: { type: "boolean", default: false },
     relink: { type: "boolean", default: false },
+    all: { type: "boolean", default: false },
     apply: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
   },
@@ -75,7 +77,7 @@ async function main(): Promise<number> {
     case "doctor":
       return doctor(stage);
     case "dev":
-      return dev(values.filter ?? []);
+      return dev(values.filter ?? [], { all: values.all });
     case "run":
       return localRun(stage, passthrough);
     case "secrets audit":

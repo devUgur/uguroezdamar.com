@@ -9,7 +9,7 @@ import {
   deleteObjectsByUrls,
   type ProjectRecord
 } from "@ugur/server";
-import { requireAdmin } from "@/apps/portal/src/adapters/auth/utils";
+import { requireAdmin } from "@/src/adapters/auth/utils";
 
 export const runtime = "nodejs";
 

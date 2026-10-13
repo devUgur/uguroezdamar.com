@@ -9,7 +9,7 @@ const alwaysRestrictedPatterns = [
     message: "Legacy UI imports are forbidden. Use @ugur/ui entrypoint imports.",
   },
   {
-    group: ["@ugur/*/src/*", "@ugur/*/dist/*"],
+    group: ["@ugur/*/src/*"],
     message: "Deep imports are forbidden. Import from the package entrypoint only.",
   },
 ];
@@ -28,7 +28,7 @@ const portalRestrictedPatterns = [
     message: "Portal must not import shared/lib directly. Use @ugur/server or apps/portal/src/server loaders.",
   },
   {
-    group: ["@ugur/ui/src/*", "@ugur/ui/dist/*", "@ugur/server/src/*", "@ugur/server/dist/*"],
+    group: ["@ugur/ui/src/*", "@ugur/server/src/*"],
     message: "Deep imports are forbidden. Import from the package entrypoint only.",
   },
 ];

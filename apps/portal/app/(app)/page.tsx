@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { getAdminOverview } from "@/apps/portal/src/adapters/admin";
-import { getCurrentSession } from "@/apps/portal/src/adapters/auth";
+import { getAdminOverview } from "@/src/adapters/admin";
+import { getCurrentSession } from "@/src/adapters/auth";
 import { Button, Container, Section } from "@ugur/ui";
 
 /**

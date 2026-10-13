@@ -10,5 +10,3 @@ export function Topbar() {
     </nav>
   );
 }
-
-export default Topbar;

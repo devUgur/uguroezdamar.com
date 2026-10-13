@@ -4,7 +4,7 @@ import path from "node:path";
 const rootDir = process.cwd();
 const appsDir = path.join(rootDir, "apps");
 const allowedExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"]);
-const ignoredDirs = new Set([".git", "node_modules", ".next", ".turbo", "dist", "coverage", ".repoan"]);
+const ignoredDirs = new Set([".git", "node_modules", ".next", ".turbo", "dist", "coverage", ".repoan", ".claude"]);
 
 const forbiddenPatterns = [
 	/from\s+["']@\/features\/(?:[^"']*)["']/g,

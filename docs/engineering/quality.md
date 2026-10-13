@@ -6,6 +6,8 @@ Jeder Merge soll reproduzierbar baubar sein und die betroffenen Risiken durch pa
 
 **Letzter Nachweis (12.10.2026):** `pnpm install --frozen-lockfile`, `pnpm audit --prod`, `pnpm guard`, `pnpm lint`, `pnpm typecheck`, `pnpm test` und `pnpm build` liefen lokal erfolgreich. GitHub Actions CI lief für PR #2 mit allen fünf Checks (Install, Lint, Typecheck, Tests, Build) erfolgreich. Der lokale Testlauf meldete 11 Dateien erfolgreich, eine übersprungen; 38 Tests erfolgreich und zwei MongoDB-Integrationstests übersprungen, weil lokal `TEST_MONGODB_URI` nicht gesetzt war. CI stellte dafür einen isolierten MongoDB-Service bereit. Der mobile Browser-Smoke lief bei 390×844 für Startseite, Blog, Projekte und Kontakt; das Hamburger-Menü lässt sich öffnen und mit Escape schließen. Axe/WCAG-Prüfung auf den vier Routen meldete nach Korrekturen null Verstöße. Eine Hosting-Preview mit den tatsächlichen Laufzeitvariablen steht noch aus. Lint weist bestehende Warnungen zu `any` und `<img>` aus.
 
+**Nachweis 13.10.2026 (ADR 0017):** `pnpm guard`, `pnpm lint`, `pnpm typecheck`, `pnpm test` (18 Dateien, 78 Tests gegen PGlite, kein Build davor) und `pnpm build` liefen lokal ohne `dist`-Ordner erfolgreich.
+
 ## Pflichtprüfungen
 
 Die Zielreihenfolge für Pull Requests:
@@ -26,13 +28,14 @@ Alle Prüfungen erhalten eindeutige Exit-Codes. Keine Erfolgsskripte, die ledigl
 | --- | --- | --- |
 | Unit | reine Regeln und Transformationen | Zod-Validierung, Slug-Normalisierung, Rollenmatrix |
 | Integration | Use Cases, Repositories, API-Routen und Grenzen | Admin-PATCH, Login/Invite, Kontakt-POST, veröffentlichte Projekte |
-| Architektur | Importregeln und Build-/Exportverträge | keine Serverimporte im UI, keine Next-Imports im Server-Paket |
+| Architektur | Importregeln und Build-/Exportverträge | keine Serverimporte im UI, keine Next-Imports im Server-Paket, Pakete bleiben source-first (`guard:package-boundaries`) |
 | E2E | kritische Abläufe aus Sicht des Nutzers | Navigation, Kontakt, Admin-Veröffentlichung und Vorschau |
 
 Tests verwenden isolierte Fixtures, deterministische Uhr/IDs und Stubs für externe Systeme. Sie prüfen auch abgelehnte Aktionen. Keine produktiven Konten, Schlüssel oder persönlichen Kontaktdaten.
 
 ## Lokale Entwicklung
 
+- `pnpm dev` startet nur die Site, `pnpm dev:portal` nur das Portal, `pnpm dev:all` beide. Pakete werden nicht gebaut; Tests und Typecheck laufen direkt gegen den Quellcode ([ADR 0017](../architecture/decisions/0017-source-first-workspace-packages.md)).
 - Änderungen klein halten und betroffene Checks ausführen.
 - Vor einem PR `pnpm guard`, `pnpm lint`, `pnpm typecheck`, `pnpm test` und den relevanten Build ausführen.
 - PR-Beschreibung nennt Problem, Verhalten, Sicherheits-/Datenfolgen und Verifikation.
