@@ -11,6 +11,7 @@ import {
   secretsRun,
   secretsSet,
 } from "./commands/secrets.ts";
+import { hostingEnv, hostingSetup, hostingStatus } from "./commands/hosting.ts";
 import { setup } from "./commands/setup.ts";
 import { smoke } from "./commands/smoke.ts";
 import { run } from "./lib/exec.ts";
@@ -27,6 +28,9 @@ const HELP = `uguroezdamar.com CLI — pnpm ugur <command>
   run -- <cmd>               Run a command with secrets and localhost addresses (e.g. a local build)
   smoke --site <url>         Check a deployment over HTTP: commit, database, client address,
       [--portal <url>]       refusals. Stores nothing. --commit <sha> pins the expected commit
+  hosting status             Compare the two Vercel projects with what the repository expects
+  hosting setup [--apply]    Manual go-live for production, protection bypass for the smoke run
+  hosting env [--apply]      Copy an app's secrets from Infisical --stage to its Vercel environment
   secrets audit              Compare Infisical with the secrets manifest (names only)
   secrets set <KEY>          Set a declared key from a hidden prompt (both stages unless --stage)
   secrets generate [--apply] Create missing random keys and tokens; --rotate replaces existing ones
@@ -88,6 +92,12 @@ async function main(): Promise<number> {
       return smoke({ site: values.site, portal: values.portal, commit: values.commit });
     case "run":
       return localRun(stage, passthrough);
+    case "hosting status":
+      return hostingStatus();
+    case "hosting setup":
+      return hostingSetup(values.apply);
+    case "hosting env":
+      return hostingEnv(stage, values.apply);
     case "secrets audit":
       return secretsAudit(stage);
     case "secrets prune":

@@ -37,6 +37,7 @@ pnpm dev:all        # beide
 pnpm check          # Lint, Migrationscheck, Typecheck, Tests
 pnpm build          # Produktionsbuild beider Apps
 pnpm ugur smoke --site <url> --portal <url>   # Deployment über HTTP prüfen
+pnpm ugur hosting status                      # Vercel-Projekte gegen das Repository prüfen
 pnpm ugur --help    # Secrets, Datenbank, Admin-Konten
 ```
 
