@@ -27,15 +27,14 @@ export const SECRETS: readonly SecretSpec[] = [
   ...required("Postgres pooled (runtime) / direct (migrations)", ["DATABASE_URL", "DATABASE_URL_DIRECT"], {
     managedBy: "pnpm ugur db provision",
   }),
-  // Hosted addresses. `dev` has no hosted deployment: local runs get localhost addresses from
-  // `localEnv()` in lib/stages.ts, so these exist in `prod` only.
+  // Hosted addresses: production in `prod`, the preview deployment in `dev`. A local run never
+  // uses them; `localEnv()` in lib/stages.ts replaces them with localhost addresses.
   ...required(
     "Public origin of the site: canonical URLs, sitemap, contact origin check",
     ["NEXT_PUBLIC_SITE_URL"],
-    { stages: ["prod"] },
   ),
-  ...required("Origin of the admin portal, used in invite links", ["APP_URL"], { stages: ["prod"] }),
-  ...required("Site origin as the portal links to it", ["SITE_URL"], { stages: ["prod"] }),
+  ...required("Origin of the admin portal, used in invite links", ["APP_URL"]),
+  ...required("Site origin as the portal links to it", ["SITE_URL"]),
   ...required(
     "HMAC key for the contact form rate limit (at least 32 characters)",
     ["CONTACT_RATE_LIMIT_SECRET"],

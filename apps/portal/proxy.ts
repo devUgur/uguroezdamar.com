@@ -16,7 +16,8 @@ export async function proxy(request: NextRequest) {
   const isApi = pathname.startsWith("/api/");
   const isPublicApi = 
     pathname.startsWith("/api/auth/login") || 
-    pathname.startsWith("/api/auth/invites/accept");
+    pathname.startsWith("/api/auth/invites/accept") ||
+    pathname === "/api/health";
 
   // UI guard: Redirect to login if no cookie
   if (!isPublic && !isApi) {

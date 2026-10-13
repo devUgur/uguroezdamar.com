@@ -12,6 +12,7 @@ import {
   secretsSet,
 } from "./commands/secrets.ts";
 import { setup } from "./commands/setup.ts";
+import { smoke } from "./commands/smoke.ts";
 import { run } from "./lib/exec.ts";
 import { accessHint, withSecrets } from "./lib/infisical.ts";
 import { parseStage, STAGES, type Stage } from "./lib/stages.ts";
@@ -24,6 +25,8 @@ const HELP = `uguroezdamar.com CLI — pnpm ugur <command>
   dev [--filter site|portal] Run the site with dev secrets injected and localhost addresses
       [--all]                (--filter portal for the portal, --all for both)
   run -- <cmd>               Run a command with secrets and localhost addresses (e.g. a local build)
+  smoke --site <url>         Check a deployment over HTTP: commit, database, client address,
+      [--portal <url>]       refusals. Stores nothing. --commit <sha> pins the expected commit
   secrets audit              Compare Infisical with the secrets manifest (names only)
   secrets set <KEY>          Set a declared key from a hidden prompt (both stages unless --stage)
   secrets generate [--apply] Create missing random keys and tokens; --rotate replaces existing ones
@@ -58,6 +61,9 @@ const { values, positionals } = parseArgs({
     rotate: { type: "boolean", default: false },
     relink: { type: "boolean", default: false },
     all: { type: "boolean", default: false },
+    site: { type: "string" },
+    portal: { type: "string" },
+    commit: { type: "string" },
     apply: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
   },
@@ -78,6 +84,8 @@ async function main(): Promise<number> {
       return doctor(stage);
     case "dev":
       return dev(values.filter ?? [], { all: values.all });
+    case "smoke":
+      return smoke({ site: values.site, portal: values.portal, commit: values.commit });
     case "run":
       return localRun(stage, passthrough);
     case "secrets audit":

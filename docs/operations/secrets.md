@@ -51,6 +51,7 @@ Die CLI gibt Secret-Werte nie aus und übergibt sie auch nicht als Prozessargume
 | `pnpm dev` | Site (Port 3100) mit `dev`-Secrets und localhost-Adressen starten |
 | `pnpm dev:portal`, `pnpm dev:all` | nur das Portal (Port 3101) bzw. beide Apps starten |
 | `pnpm ugur run -- <cmd>` | beliebigen Befehl genauso ausführen, z. B. `pnpm ugur run -- pnpm build:site` |
+| `pnpm ugur smoke --site <url> [--portal <url>]` | Deployment über HTTP prüfen: Commit, Datenbank, Client-Adresse, Ablehnungen; speichert nichts |
 | `pnpm ugur secrets audit [--stage prod]` | Infisical gegen das Manifest prüfen (nur Namen) |
 | `pnpm ugur secrets set <KEY>` | deklarierten Schlüssel per verdeckter Eingabe setzen |
 | `pnpm ugur secrets generate [--rotate] --apply` | zufällige Schlüssel anlegen bzw. rotieren |

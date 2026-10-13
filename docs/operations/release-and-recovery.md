@@ -22,7 +22,7 @@ Stand 13.10.2026, von außen geprüft:
 - `portal.uguroezdamar.com` zeigt per DNS auf Render, lieferte am 13.10.2026 aber keine HTTP-Antwort.
 - Der Kontakt-Endpunkt liest die Client-Adresse aus `cf-connecting-ip`, den Cloudflare vor Render selbst setzt und den ein Aufrufer nicht vorgeben kann; `x-forwarded-for` wird bewusst nicht ausgewertet. Dass der Header beim Dienst ankommt, ist auf der Preview noch zu bestätigen; ohne ihn antwortet der Endpunkt mit 503.
 
-Vor der Umstellung der Produktion: Diensttyp, Deploy-Branch, Auto-Deploy und PR-Previews im Dashboard erfassen und mit `render.yaml` abgleichen; Secret Sync für beide Dienste einrichten; eine getrennte Preview mit eigener URL gegen Neon `dev` aufbauen und den ausgelieferten Commit-SHA dokumentieren.
+Vor der Umstellung der Produktion: Diensttyp, Deploy-Branch, Auto-Deploy und PR-Previews im Dashboard erfassen und mit `render.yaml` abgleichen; Secret Sync für beide Dienste einrichten; eine getrennte Preview mit eigener URL gegen Neon `dev` aufbauen und den ausgelieferten Commit-SHA dokumentieren. Die Preview ist in [preview.md](preview.md) beschrieben.
 
 ## Release-Ablauf
 
