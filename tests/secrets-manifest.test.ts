@@ -6,7 +6,7 @@ import { RETIRED, SECRETS, secretsFor } from "../tooling/cli/src/secrets-manifes
 
 const root = resolve(import.meta.dirname, "..");
 /** Set by the platform or the toolchain, not by us. */
-const PLATFORM = new Set(["NODE_ENV", "NEXT_TELEMETRY_DISABLED", "NEON_ORG_ID"]);
+const PLATFORM = new Set(["NODE_ENV", "NEXT_TELEMETRY_DISABLED", "NEON_ORG_ID", "RENDER_GIT_COMMIT"]);
 
 function sources(dir: string): string[] {
   return readdirSync(join(root, dir), { withFileTypes: true }).flatMap((entry) => {

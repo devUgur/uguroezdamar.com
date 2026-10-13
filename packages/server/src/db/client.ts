@@ -1,4 +1,5 @@
 import "server-only";
+import { sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -34,6 +35,16 @@ export function getDb(): Database {
 	});
 	g.__ugurDb = drizzle(client, { schema });
 	return g.__ugurDb;
+}
+
+/** Whether the database answers a trivial query. Never throws: a health check must not. */
+export async function pingDatabase(): Promise<boolean> {
+	try {
+		await getDb().execute(sql`select 1`);
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 /** Replaces the process-wide database, e.g. with an in-memory PGlite instance in tests. */
