@@ -62,7 +62,7 @@ or unneeded service is necessary. Git/MDX remains canonical (ADR 0019).
    maturity and a clear detail link. Approved real screenshots only; show editorial
    text composition otherwise. Until approved, no placeholder screenshot.
 5. **Capabilities:** three substantive pillars: Interface & Experience
-   (React/Next, Vue/Nuxt), Systems & Data (Node/Python, REST, PostgreSQL/MongoDB),
+   (React/Next, Vue/Nuxt), Systems & Data (Node/Python, REST APIs and relational persistence),
    Shipping & Infrastructure (Linux, CI/CD, Docker, Cloudflare). Avoid isolated
    ungraded logo walls. Each pillar links to a concrete case-study example when ready.
 6. **Experience:** a 2-entry chronological preview (Cherry Communication and
