@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { compileMdx } from "@/src/content/mdx";
+import { ArticleShell } from "@/src/components/public/ArticleShell";
 import { formatPeriod, getProjectBySlug, getProjects, projectLinks } from "@/src/content/projects";
 
 type Params = { params: Promise<{ slug: string }> };
@@ -45,19 +46,19 @@ export default async function ProjectDetailPage({ params }: Params) {
 
   return (
     <article className="site-container py-16 md:py-24">
-      <header className="max-w-3xl">
-        <p className="mb-4 font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground">
+      <header className="page-intro">
+        <p className="page-eyebrow">
           <Link href="/projects" className="link-underline">Projects</Link>
           <span className="mx-2 text-border">/</span>
           {project.category}
           {project.draft ? <span className="ml-3 rounded-xs border border-foreground/30 px-2 py-0.5 text-foreground">Draft</span> : null}
         </p>
-        <h1 className="font-serif text-[clamp(2.5rem,5vw+0.5rem,4rem)] leading-tight tracking-tight">{project.title}</h1>
-        <p className="mt-5 text-lg leading-8 text-muted-foreground">{project.summary}</p>
+        <h1 className="page-title">{project.title}</h1>
+        <p className="page-lede">{project.summary}</p>
       </header>
 
       {project.cover ? (
-        <div className="relative mt-10 aspect-video overflow-hidden rounded-lg border border-border/60 bg-surface md:mt-14">
+        <div className="relative mt-10 aspect-video overflow-hidden border-y border-border bg-surface md:mt-14">
           <Image src={project.cover.src} alt={project.cover.alt} fill priority sizes="(max-width: 1280px) 100vw, 1200px" className="object-cover" />
         </div>
       ) : null}
@@ -66,7 +67,7 @@ export default async function ProjectDetailPage({ params }: Params) {
         <aside className="md:col-span-4" aria-label="Project facts">
           <dl className="border-t border-border">
             {facts.map((fact) => (
-              <div key={fact.label} className="grid grid-cols-[6rem_minmax(0,1fr)] gap-4 border-b border-border py-4">
+                <div key={fact.label} className="grid grid-cols-[6rem_minmax(0,1fr)] gap-4 border-b border-border py-4">
                 <dt className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">{fact.label}</dt>
                 <dd className="text-sm leading-6">{fact.value}</dd>
               </div>
@@ -104,7 +105,7 @@ export default async function ProjectDetailPage({ params }: Params) {
               </ul>
             </section>
           ) : null}
-          <div className="prose prose-zinc max-w-none">{body}</div>
+          <ArticleShell>{body}</ArticleShell>
         </div>
       </div>
     </article>
