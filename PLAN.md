@@ -22,6 +22,8 @@ Das Zielsystem besteht aus einer öffentlichen Portfolio-/Blog-Anwendung, einem 
 
 Phasen dürfen nur dann parallel laufen, wenn ihre Abhängigkeiten und Daten-/Routenverträge stabil sind. Jede Änderung wird als kleiner, überprüfbarer PR umgesetzt. Für jede Phase gibt es ein eigenes Backlog; dieser Plan ersetzt keine Aufgaben- und PR-Beschreibung.
 
+Der ausführbare Detailplan für Portfolio-Design, GitHub-Projektimport, Medien/Drafts sowie getrennte Site-/ViralSync-Releases steht in [Portfolio, GitHub-Import und Live-Release](docs/product/portfolio-live-and-import-plan.md). Dieser Detailplan hält auch die konkreten Preview-, Datenbank- und Produktionsgates fest.
+
 ## Phase 0 — Verifizieren & stabilisieren
 
 **Zweck:** Audit-Aussagen gegen den aktuellen Code und die tatsächlich betriebenen Umgebungen prüfen. Der Audit-Bericht hält fest, dass historische CI-Logs nicht verfügbar waren und kein vollständiger Browser-, Security- oder Performance-Lauf durchgeführt wurde.
