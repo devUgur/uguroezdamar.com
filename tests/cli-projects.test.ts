@@ -39,3 +39,21 @@ describe("ugur projects discover", () => {
 		expect(withSecrets).toHaveBeenCalledWith("dev", ["pnpm", "--filter", "@ugur/server", "projects:discover", "--", "--apply"]);
 	});
 });
+
+describe("ugur projects inspect", () => {
+	it("rejects malformed repositories before invoking GitHub CLI", async () => {
+		run.mockClear();
+		const { inspectProject } = await import("../tooling/cli/src/commands/projects.ts");
+		expect(inspectProject("--help/other")).toBe(1);
+		expect(run).not.toHaveBeenCalled();
+	});
+
+	it("runs the selected repository inspection without database secrets", async () => {
+		run.mockClear();
+		withSecrets.mockClear();
+		const { inspectProject } = await import("../tooling/cli/src/commands/projects.ts");
+		expect(inspectProject("devUgur/portfolio-demo")).toBe(0);
+		expect(run).toHaveBeenCalledWith("pnpm", ["--filter", "@ugur/server", "projects:inspect", "devUgur", "portfolio-demo"]);
+		expect(withSecrets).not.toHaveBeenCalled();
+	});
+});

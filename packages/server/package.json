@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
     "projects:discover": "node --conditions=react-server --import tsx src/scripts/discover-github-projects.ts",
+    "projects:inspect": "node --conditions=react-server --import tsx src/scripts/inspect-github-project.ts",
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
     "db:migrate": "drizzle-kit migrate",

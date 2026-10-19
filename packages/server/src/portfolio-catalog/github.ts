@@ -22,6 +22,13 @@ const RepositorySchema = z.object({
 });
 
 const GitHubPageSchema = z.array(RepositorySchema);
+const ReadmeSchema = z.object({
+	name: z.string().max(255),
+	path: z.string().max(1024),
+	sha: z.string().regex(/^[a-f0-9]{40}$/i),
+	encoding: z.literal("base64"),
+	content: z.string().max(1_500_000),
+});
 
 const GITHUB_CLI_ENVIRONMENT_KEYS = new Set([
 	"PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "USERPROFILE", "HOMEDRIVE", "HOMEPATH",
@@ -41,6 +48,78 @@ export type DiscoveredGitHubRepository = {
 	isArchived: boolean;
 	remoteUpdatedAt: Date;
 };
+
+export type GitHubRepositoryInspection = {
+	repository: DiscoveredGitHubRepository;
+	readme: { path: string; sha: string; excerpt: string } | null;
+	sourceRevision: string;
+};
+
+function runGitHubApi(endpoint: string): string {
+	const result = spawnSync("gh", ["api", endpoint], {
+		encoding: "utf8",
+		maxBuffer: 2 * 1024 * 1024,
+		windowsHide: true,
+		env: githubCliEnvironment(),
+	});
+	if (result.error || result.status !== 0) {
+		throw new Error("Could not read the selected public GitHub repository. Confirm its owner/name and `gh auth status`.");
+	}
+	return result.stdout;
+}
+
+export function readmeExcerpt(markdown: string): string {
+	return markdown
+		.replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, " ")
+		.replace(/<!--[\s\S]*?-->/g, " ")
+		.replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+		.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+		.replace(/^\s{0,3}#{1,6}\s*/gm, "")
+		.replace(/[`*_>~]/g, " ")
+		.replace(/<[^>]*>/g, " ")
+		.replace(/\s+/g, " ")
+		.trim()
+		.slice(0, 1200);
+}
+
+/** Inspect one explicit repository. Reads only public metadata and README; never executes or stores repository content. */
+export function inspectPublicGitHubRepository(owner: string, name: string): GitHubRepositoryInspection {
+	if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(owner) || !/^[A-Za-z0-9._-]{1,100}$/.test(name) || name === "." || name === "..") {
+		throw new Error("Use a valid public repository in the form <owner>/<repo>.");
+	}
+	const authenticatedOwner = runGitHubApi("user").trim();
+	let parsedOwner: unknown;
+	try { parsedOwner = JSON.parse(authenticatedOwner); } catch {
+		throw new Error("Could not verify the authenticated GitHub account; no data was saved.");
+	}
+	const account = z.object({ login: z.string().min(1).max(39) }).safeParse(parsedOwner);
+	if (!account.success || account.data.login.toLowerCase() !== owner.toLowerCase()) {
+		throw new Error("Inspection is limited to repositories owned by the authenticated GitHub account.");
+	}
+	const rawRepository = runGitHubApi(`repos/${owner}/${name}`);
+	let parsedRepository: unknown;
+	try { parsedRepository = JSON.parse(rawRepository); } catch {
+		throw new Error("GitHub returned unreadable repository metadata; no data was saved.");
+	}
+	const safeRepository = RepositorySchema.safeParse(parsedRepository);
+	if (!safeRepository.success) throw new Error("GitHub repository metadata did not match the expected schema; no data was saved.");
+	const repository = toDiscoveredRepository(safeRepository.data);
+	if (!repository) throw new Error("The selected repository is private; inspection supports public repositories only.");
+
+	let readme: GitHubRepositoryInspection["readme"] = null;
+	try {
+		const rawReadme = runGitHubApi(`repos/${owner}/${name}/readme`);
+		const parsedReadme = ReadmeSchema.safeParse(JSON.parse(rawReadme));
+		if (parsedReadme.success) {
+			const markdown = Buffer.from(parsedReadme.data.content, "base64").toString("utf8");
+			readme = { path: parsedReadme.data.path, sha: parsedReadme.data.sha, excerpt: readmeExcerpt(markdown) };
+		}
+	} catch {
+		// A missing or unreadable README is non-fatal; metadata inspection remains useful.
+	}
+
+	return { repository, readme, sourceRevision: safeRepository.data.updated_at };
+}
 
 function safeHomepage(value: string | null): string | null {
 	if (!value) return null;

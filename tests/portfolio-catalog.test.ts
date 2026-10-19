@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { githubCliEnvironment, syncPublicGitHubRepositories, toDiscoveredRepository } from "../packages/server/src/portfolio-catalog/github";
+import { githubCliEnvironment, readmeExcerpt, syncPublicGitHubRepositories, toDiscoveredRepository } from "../packages/server/src/portfolio-catalog/github";
 import { useTestDatabase } from "./_helpers/test-db";
 
 const sourceRepository = {
@@ -64,6 +64,14 @@ describe("GitHub portfolio catalog", () => {
 			PATH: "C:/tools",
 			APPDATA: "C:/Users/test/AppData/Roaming",
 		});
+	});
+
+	it("keeps README inspection bounded and removes code and markup before showing evidence", () => {
+		const excerpt = readmeExcerpt("# Demo\n\nA public project. [Docs](https://example.com)\n\n```sh\necho secret\n```\n\n<!-- hidden -->");
+		expect(excerpt).toContain("Demo A public project. Docs");
+		expect(excerpt).not.toContain("echo secret");
+		expect(excerpt).not.toContain("hidden");
+		expect(readmeExcerpt("a".repeat(2000))).toHaveLength(1200);
 	});
 
 	it("upserts by immutable GitHub ID and preserves the original discovery timestamp", async () => {
