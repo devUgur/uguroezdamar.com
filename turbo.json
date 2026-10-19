@@ -13,10 +13,7 @@
     "ADMIN_SESSION_TTL_SECONDS",
     "ADMIN_INVITE_EXPIRES_HOURS",
     "VERCEL_BYPASS_SITE",
-    "VERCEL_BYPASS_PORTAL",
-    "VERCEL_ENV",
-    "VERCEL_URL",
-    "VERCEL_GIT_COMMIT_SHA"
+    "VERCEL_BYPASS_PORTAL"
   ],
   "tasks": {
     "transit": {
@@ -34,7 +31,10 @@
         "!.next/dev/**"
       ],
       "env": [
-        "NEXT_PUBLIC_SITE_URL"
+        "NEXT_PUBLIC_SITE_URL",
+        "VERCEL_ENV",
+        "VERCEL_URL",
+        "VERCEL_GIT_COMMIT_SHA"
       ]
     },
     "dev": {

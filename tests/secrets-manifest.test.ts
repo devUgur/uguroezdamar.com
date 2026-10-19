@@ -51,7 +51,18 @@ describe("secrets manifest", () => {
     };
     const passed = new Set([...turbo.globalPassThroughEnv, ...(turbo.tasks.build?.env ?? [])]);
     expect([...declared].filter((key) => !passed.has(key))).toEqual([]);
-    expect(turbo.tasks.dev?.env).toEqual(turbo.tasks.build?.env);
+    expect(turbo.tasks.dev?.env).toEqual(["NEXT_PUBLIC_SITE_URL"]);
+  });
+
+  it("hashes deployment-specific Vercel variables for build output", () => {
+    const turbo = JSON.parse(readFileSync(join(root, "turbo.json"), "utf8")) as {
+      globalPassThroughEnv: string[];
+      tasks: Record<string, { env?: string[] }>;
+    };
+    expect(turbo.tasks.build?.env).toEqual(expect.arrayContaining(["VERCEL_ENV", "VERCEL_URL", "VERCEL_GIT_COMMIT_SHA"]));
+    for (const key of ["VERCEL_ENV", "VERCEL_URL", "VERCEL_GIT_COMMIT_SHA"]) {
+      expect(turbo.globalPassThroughEnv).not.toContain(key);
+    }
   });
 
   it("keeps .env files and the retired database out of the repository", () => {
