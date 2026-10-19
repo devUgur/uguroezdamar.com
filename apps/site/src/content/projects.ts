@@ -103,6 +103,9 @@ export function formatPeriod(period: Project["period"]): string | null {
 const LINK_LABELS = { live: "Live", github: "GitHub", documentation: "Docs" } as const;
 
 export function projectLinks(project: Project): Array<{ label: string; url: string }> {
+  // Local draft previews are for editorial review. They must not act as an
+  // endorsement or route visitors to unapproved external project surfaces.
+  if (project.draft) return [];
   return (Object.keys(LINK_LABELS) as Array<keyof typeof LINK_LABELS>).flatMap((key) => {
     const url = project.links[key];
     return url ? [{ label: LINK_LABELS[key], url }] : [];

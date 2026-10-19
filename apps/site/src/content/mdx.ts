@@ -34,19 +34,32 @@ export interface ContentFile {
   content: string;
 }
 
+function isMissingPath(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
+}
+
 /** Reads `<dir>/<slug>.mdx`. A slug that is not a plain file name in `dir` yields `null`. */
 export async function readContentFile(dir: string, slug: string): Promise<ContentFile | null> {
   if (!isValidSlug(slug)) return null;
   const filePath = path.join(dir, `${slug}.mdx`);
-  const info = await fs.lstat(filePath).catch(() => null);
+  const info = await fs.lstat(filePath).catch((error: unknown) => {
+    if (isMissingPath(error)) return null;
+    throw error;
+  });
   if (!info?.isFile() || info.isSymbolicLink()) return null;
-  const raw = await fs.readFile(filePath, "utf8");
+  const raw = await fs.readFile(filePath, "utf8").catch((error: unknown) => {
+    // The file may have been removed between lstat and readFile. Other I/O errors
+    // must remain visible so a broken content source cannot masquerade as empty.
+    if (isMissingPath(error)) return null;
+    throw error;
+  });
+  if (raw === null) return null;
   return { slug, ...parseFrontmatter(raw) };
 }
 
-/** Every `<slug>.mdx` in `dir`; a missing directory is an empty collection. */
+/** Every `<slug>.mdx` in `dir`; an existing empty directory is an empty collection. */
 export async function readContentFiles(dir: string): Promise<ContentFile[]> {
-  const entries = await fs.readdir(dir).catch(() => [] as string[]);
+  const entries = await fs.readdir(dir);
   const slugs = entries.filter((entry) => entry.endsWith(".mdx")).map((entry) => entry.slice(0, -4));
   const files = await Promise.all(slugs.map((slug) => readContentFile(dir, slug)));
   return files.flatMap((file) => (file ? [file] : []));

@@ -1,6 +1,6 @@
 # Projekt-Roadmap
 
-> **Status:** Umsetzung Release R1 · **Grundlage:** Code- und Architektur-Audit vom 12.10.2026 sowie Abgleich mit dem lokalen Repository · **Letzte Pflege:** 12.10.2026
+> **Status:** Portfolio Phase 3 · **Grundlage:** Code- und Architektur-Audit vom 12.10.2026 sowie nachfolgende Architekturentscheidungen · **Letzte Pflege:** 19.10.2026
 
 Diese Roadmap übersetzt die Audit-Befunde in eine umsetzbare Reihenfolge. Sie ist ein Arbeitsplan, kein Nachweis, dass die beschriebenen Probleme bereits behoben oder die Qualitätsziele erreicht sind. Die Audit-Zusammenfassung und die dauerhaft geltenden Engineering-Regeln liegen unter [`docs/`](docs/README.md).
 
@@ -8,7 +8,7 @@ Diese Roadmap übersetzt die Audit-Befunde in eine umsetzbare Reihenfolge. Sie i
 
 Ein zuverlässiges, sicheres und glaubwürdiges Entwicklerportfolio, das echte Arbeit zeigt und dessen Inhalte sicher veröffentlicht werden können. Die bestehende pnpm-/Turborepo-Monorepo-Basis mit Next.js, TypeScript und PostgreSQL wird zunächst stabilisiert. Es gibt keine geplante Neuentwicklung und keine Microservices.
 
-Das Zielsystem besteht aus einer öffentlichen Portfolio-/Blog-Anwendung, einem geschützten Admin-Portal, klar begrenzten gemeinsamen Paketen und einer nachvollziehbaren Inhalts- und Release-Pipeline. Welche Laufzeit- und Inhaltsquelle langfristig gilt, wird anhand der dokumentierten Entscheidungskriterien beschlossen, bevor davon abhängige Umbauten starten.
+Das Zielsystem besteht aus einer öffentlichen Portfolio-/Blog-Anwendung, einem geschützten Admin-Portal, klar begrenzten gemeinsamen Paketen und einer nachvollziehbaren Inhalts- und Release-Pipeline. Gültige Architekturentscheidungen legen Git/MDX als Quelle für Portfolio-Inhalte fest (ADR 0019) und Vercel als Hosting für Site und Portal (ADR 0020).
 
 ## Priorität und Reihenfolge
 
@@ -64,21 +64,21 @@ Phasen dürfen nur dann parallel laufen, wenn ihre Abhängigkeiten und Daten-/Ro
 
 **Zweck:** Eine eindeutige Wahrheit darüber herstellen, welcher Inhalt veröffentlicht ist und wie er die öffentliche Website erreicht.
 
-**Entscheidung:** [ADR 0013](docs/architecture/decisions/0013-cms-content-and-server-rendering.md) legt das CMS für Portfolio-Daten und serverseitiges Next.js fest; die Datenbank ist seit [ADR 0016](docs/architecture/decisions/0016-postgres-neon-infisical-cli.md) PostgreSQL auf Neon. Produktion läuft bei Render ([ADR 0018](docs/architecture/decisions/0018-render-hosting.md)). Blogartikel bleiben Git-/MDX.
+**Entscheidung:** Portfolio-Projekte, Profil und Werdegang liegen als Git/MDX bzw. TypeScript vor (ADR 0019); Blogartikel bleiben MDX in Git. PostgreSQL auf Neon dient den verbleibenden dynamischen Funktionen (ADR 0016). Site und Portal laufen als getrennte Vercel-Projekte (ADR 0020). Die früheren CMS-/Render-Annahmen aus ADR 0013 und ADR 0018 sind ersetzt.
 
 **Arbeitspakete nach Entscheidung**
 
-- Projekt-, Karriere-/Profil- und Blog-Inhalte mit klaren Eigentümern und Schemata abbilden; veröffentlichte Inhalte, Entwürfe und Vorschauen eindeutig trennen.
-- Datenbank-/MDX-Fallbacks entfernen, sofern sie nicht bewusst als dokumentierter Import- oder Notfallpfad gebraucht werden. Fallbacks dürfen nie unveröffentlichte oder Demo-Inhalte stillschweigend öffentlich machen.
-- Publish-Ablauf mit Validierung, Vorschau, Veröffentlichung, Cache-Invalidierung/Rebuild, Fehlerbehandlung und Rollback definieren.
+- Projekt- und Profiländerungen über Schema-validierte Dateien und Pull Requests pflegen; unverifizierte Projekte als lokale Drafts halten.
+- Sicherstellen, dass fehlende Inhalte, leere Inhaltsverzeichnisse und Dateisystemfehler unterscheidbar bleiben; keine stillen Datenquellen-Fallbacks.
+- Vercel-Preview je Pull Request prüfen und den manuellen Produktions-Promote als getrennte Freigabe dokumentieren.
 - Slugs kanonisieren und alte URLs gezielt weiterleiten oder mit einer echten 404 beantworten.
 - Kontaktformular-Endpunkt kompatibel zur gewählten Hosting-Laufzeit betreiben; Zustellung speichern/übermitteln und Fehler sichtbar behandeln. Datenschutz, Spam-Schutz und Aufbewahrung festlegen.
 - Öffentliche Demo-Datensätze und Platzhalter-Inhalte löschen oder durch freigegebene Inhalte ersetzen.
 
 **Abnahme**
 
-- Eine veröffentlichte Änderung wird im festgelegten Zeitfenster zuverlässig öffentlich sichtbar; Entwürfe bleiben privat.
-- Build/Deploy, Vorschau und Rollback sind dokumentiert und reproduzierbar.
+- Eine Inhaltsänderung ist durch Schema und Pull Request reviewbar; Drafts sind weder in Produktionsbuilds noch in der Sitemap.
+- Build/Preview, manuelle Produktionsfreigabe und Rollback sind dokumentiert und reproduzierbar.
 - Alle verlinkten Projekt- und Kontaktpfade liefern erwartete Statuscodes und Inhalte.
 - Keine nicht freigegebenen Platzhalter, privaten Projektdetails oder vertraulichen Arbeitgeberinformationen erscheinen öffentlich.
 
@@ -138,12 +138,12 @@ Ein öffentlicher Relaunch erfolgt erst, wenn Phase 1 und 2 abgenommen sind, kri
 | --- | --- | --- |
 | 0 — Verifizieren & stabilisieren | lokale Gates, Mobile-Smoke und Axe-Prüfung grün | Hosting-Preview, Kontaktzustellung und Live-Deploy bleiben zu verifizieren |
 | 1 — Security & CI-Fundament | umgesetzt; lokale und GitHub-CI-Nachweise grün | unabhängige Prüfung offen |
-| 2 — Content & Deployment | SSR/CMS lokal umgesetzt; CMS- und Rate-Limit-Integration ergänzt; Preview und Betreiberangaben offen | Render-Inventar für beide Dienste verifizieren (Typ, Deploy-Branch, Auto-Deploy), Secret Sync aus Infisical einrichten; Preview-Commit-SHAs, isolierte DB/Accounts, Slug-Datenmigration, Kontaktaufbewahrung/-benachrichtigung sowie bestätigte Impressums-/Datenschutzangaben bleiben Release-Blocker |
+| 2 — Content & Deployment | Portfolio-Inhalte sind Git/MDX (ADR 0019); Hosting ist Vercel mit PR-Previews und manueller Produktionsfreigabe (ADR 0020) | Rechtstexte, Produktionskonfiguration und Betreiberangaben bleiben vor einer öffentlichen Freigabe zu bestätigen; kein Produktions-Promote ohne Owner-Freigabe |
 | Plattform — Datenbank und Secrets | MongoDB-Cluster existiert nicht mehr. Datenschicht auf PostgreSQL/Drizzle umgestellt, Tests gegen PGlite, Secrets-Manifest und `pnpm ugur`-CLI nach viralsync-Vorbild vorhanden (ADR 0016). Infisical-Projekt verknüpft, Neon-Branches `dev` und `prod` provisioniert und migriert, Owner-Konto in `dev`; Site und Portal gegen `dev` geprüft. Konsolidiert im Draft-PR #9, CI grün. Regeln auf `AGENTS.md` reduziert, Hosting als Render festgehalten (ADR 0018), Doku-Drift per Test abgesichert | Render-Inventar und Abgleich mit `render.yaml`; Secret Sync aus Infisical; Preview-Dienst gegen `dev`; Owner-Konto in `prod`; Client-Adresse des Kontakt-Endpunkts hinter Render klären; Restore-Probe auf Neon; alte lokale `.env`-Dateien löschen; R2-Schlüssel rotieren; Inhalte neu erfassen |
 | Plattform — Entwicklungsworkflow | Pakete source-first ohne `tsup`/`dist`, `pnpm dev` startet nur die Site, Tests ohne Vorab-Build, pnpm-Catalog, Guard für Paketgrenzen (ADR 0017); lokale Gates und beide Produktionsbuilds grün | GitHub-CI für `f60a1a4` grün. `Ctrl+C`-Shutdown und Browser-Hot-Reload interaktiv bestätigen |
-| Plattform — Inhalte | Projekte, Profil und Werdegang als Dateien im Repository, Inhaltsseiten statisch (ADR 0019); Entwürfe für ViralSync und Video Lab angelegt, nur lokal sichtbar | Owner liefert Profil, Rolle, Beiträge, Zeiträume und Screenshots und gibt die Texte frei; danach `draft: false`. CMS-Rückbau: alte Tabellen erst nach Backup und Restore-Test in eigenem PR löschen, R2-Token widerrufen, `pnpm ugur secrets prune --apply` |
-| Plattform — Hosting | Vercel (ADR 0020): zwei Projekte angelegt und über `pnpm ugur hosting` eingerichtet; Vorschau je Pull Request gegen Stage `dev`; Smoke-Lauf gegen eine Vorschau bestanden (19 von 19) | Stack mergen; `pnpm ugur hosting env --stage prod --apply`; Produktions-Deployment prüfen und freigeben; Login und Kontakt von Hand prüfen; DNS umstellen, Render kündigen |
-| 3 — Portfolio-Erlebnis | R2-A technisch umgesetzt, visuell vom Owner **nicht freigegeben** (Issue #8). R1- und R2-Branch sind lokal in `main` zusammengeführt. R2-A.1/A1 (Original-Logo, Header, Hero, Footer) umgesetzt; lokale Gates grün; Nachweise unter `docs/product/evidence/r2-a1/` | Visuelle Freigabe A1 durch den Owner; danach A2 (echte Projekte, ViralSync-Case-Study, DB-Fehler von leerem Zustand trennen) und A3 (Profil, Skills, Education). Kein Produktions-Deploy vor R1-Gates und Rotation der offengelegten Zugangsdaten |
+| Plattform — Inhalte | Projekte, Profil und Werdegang sind Dateien im Repository, Inhaltsseiten statisch (ADR 0019); ViralSync und Video Lab bleiben `draft: true` und lokal sichtbar | Rolle, eigene Beiträge, Zeitraum, Medien und Veröffentlichungstexte erst nach Owner-Bestätigung ergänzen; keine privaten Links oder nicht freigegebenen Details |
+| Plattform — Hosting | Vercel (ADR 0020): getrennte Site-/Portal-Projekte; Vorschauen pro Pull Request, Produktion nur nach manuellem Promote | Produktionskonfiguration, Live-Login/Kontakt, DNS und Betreiberangaben bleiben eigene Release-Freigaben; keine automatische Promotion |
+| 3 — Portfolio-Erlebnis | A1 (Logo, Header, Hero, Footer und lokale Draft-Beispielkarte) am 19.10.2026 visuell vom Owner freigegeben; Nachweise unter `docs/product/evidence/r2-a1/` | A2: Case-Study-Inhalt nur anhand bestätigter Fakten ausarbeiten, Draft-Links und Dateisystemfehler sicher behandeln. A3: responsive/a11y/SEO- und Produktionsbuild-QA dokumentieren. Kein Produktions-Promote ohne Owner-Freigabe |
 | 4 — Production Quality | geplant | nach stabiler Kernfunktion Messwerte und E2E-Scope festlegen |
 
 ## Weiterführende Dokumentation

@@ -17,7 +17,7 @@ Die Website soll anhand echter Arbeit zeigen, wie Ugur Özdamar Software konzipi
 | `/contact` | zugängliche Kontaktoption mit nachweisbarer Zustellung |
 | `/imprint`, `/privacy` | rechtlich gepflegte Informationen passend zum tatsächlichen Betrieb |
 
-**Release-Blocker (12.10.2026):** Beide Seiten enthalten noch Platzhalter und sind nicht zur Veröffentlichung freigegeben. Vor dem Live-Release müssen die verantwortliche Person/Firma, ladungsfähige Anschrift, Kontaktweg, tatsächliche Hosting-/Datenverarbeitung, verwendete Dienste und Aufbewahrungsfristen vom Betreiber bestätigt und in passende Rechtstexte überführt werden. Diese Tatsachen werden nicht aus dem Code oder aus Annahmen erfunden.
+**Release-Blocker:** Vor einem öffentlichen Relaunch müssen die verantwortliche Person/Firma, ladungsfähige Anschrift, Kontaktweg, tatsächliche Hosting-/Datenverarbeitung, verwendete Dienste und Aufbewahrungsfristen vom Betreiber bestätigt und in passende Rechtstexte überführt werden. Diese Tatsachen werden nicht aus dem Code oder aus Annahmen erfunden.
 
 Der Kontaktendpunkt speichert aktuell Name, E-Mail-Adresse, Nachricht und Zeitstempel in PostgreSQL ohne automatische Löschfrist. Für das Rate-Limit wird ein HMAC-basierter, zeitlich begrenzter IP-Schlüssel verwendet, der nach ungefähr 70 Minuten per TTL entfernt wird. Beide Datenflüsse sowie die bestätigte Aufbewahrungsregel müssen in der Datenschutzerklärung zutreffend abgebildet werden.
 
@@ -41,14 +41,14 @@ Zustände: `draft` (privat), `preview` (authentifiziert bzw. signiert und zeitli
 
 ## Single Source of Truth
 
-Audit und lokaler Code zeigten gemischte Quellen: MongoDB für Projekte/Profil/Karriere, lokale MDX-Dateien für Blog und Projekt-Fallbacks sowie statischer Export für die Site. [ADR 0013](../architecture/decisions/0013-cms-content-and-server-rendering.md) legt nun eine Quelle je Inhaltsbereich fest:
+Die Portfolio-Inhalte haben eine eindeutige Quelle:
 
-- **Projekte, Profil, Werdegang:** Dateien im Repository sind die Quelle ([ADR 0019](../architecture/decisions/0019-content-from-git.md)): `apps/site/content/projects/<slug>.mdx` und `apps/site/content/profile.ts`. Änderungen laufen durch Pull Request und Deployment. Ein Projekt mit `draft: true` ist nur lokal sichtbar.
+- **Projekte, Profil, Werdegang:** Dateien im Repository sind die Quelle ([ADR 0019](../architecture/decisions/0019-content-from-git.md)): `apps/site/content/projects/<slug>.mdx` und `apps/site/content/profile.ts`. Änderungen laufen durch Pull Request und Deployment. Ein Projekt mit `draft: true` ist nur lokal sichtbar; externe Projektlinks werden in Draft-Vorschauen nicht ausgegeben.
 - **Blog:** MDX in Git ist die Quelle. Änderungen laufen durch Review und Deploy.
 
-Keine stillen Fallbacks zwischen Datenquellen. Ein ungültiger Inhalt lässt Build und Tests scheitern. Abschnitte ohne Inhalt entfallen auf der Startseite, statt einen Platzhalter zu zeigen.
+Keine stillen Fallbacks zwischen Datenquellen. Ein ungültiger Inhalt lässt Build und Tests scheitern. Ein vorhandenes, leeres Inhaltsverzeichnis ergibt eine leere Sammlung; fehlende Verzeichnisse und sonstige Dateisystemfehler bleiben sichtbare Fehler. Abschnitte ohne Inhalt entfallen auf der Startseite, statt einen Platzhalter zu zeigen.
 
-Die Site nutzt serverseitiges Next.js statt `output: "export"`. Produktion benötigt `DATABASE_URL` zur Laufzeit. Hosting ist Vercel ([ADR 0020](../architecture/decisions/0020-vercel-hosting.md)); frühere Angabe: Netlify als Ziel, Render als Alternative mit eigener Konfiguration.
+Die Site nutzt serverseitiges Next.js statt `output: "export"`. Hosting und Laufzeitkonfiguration sind in [ADR 0020](../architecture/decisions/0020-vercel-hosting.md) sowie den Betriebsdokumenten festgelegt.
 
 ## Case-Study-Vorlage
 
