@@ -67,10 +67,11 @@ describe("GitHub portfolio catalog", () => {
 	});
 
 	it("keeps README inspection bounded and removes code and markup before showing evidence", () => {
-		const excerpt = readmeExcerpt("# Demo\n\nA public project. [Docs](https://example.com)\n\n```sh\necho secret\n```\n\n<!-- hidden -->");
+		const excerpt = readmeExcerpt("# Demo\n\nA public project. [Docs](https://example.com)\n\n```sh\necho secret\n```\n\n<!-- hidden -->\u001b[31mterminal control\u001b[0m");
 		expect(excerpt).toContain("Demo A public project. Docs");
 		expect(excerpt).not.toContain("echo secret");
 		expect(excerpt).not.toContain("hidden");
+		expect(excerpt).not.toContain("\u001b");
 		expect(readmeExcerpt("a".repeat(2000))).toHaveLength(1200);
 	});
 
