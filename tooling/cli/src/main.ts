@@ -17,6 +17,7 @@ import { smoke } from "./commands/smoke.ts";
 import { run } from "./lib/exec.ts";
 import { accessHint, withSecrets } from "./lib/infisical.ts";
 import { parseStage, STAGES, type Stage } from "./lib/stages.ts";
+import { discoverProjects } from "./commands/projects.ts";
 
 const HELP = `uguroezdamar.com CLI — pnpm ugur <command>
 
@@ -31,6 +32,8 @@ const HELP = `uguroezdamar.com CLI — pnpm ugur <command>
   hosting status             Compare the two Vercel projects with what the repository expects
   hosting setup [--apply]    Manual go-live for production, protection bypass for the smoke run
   hosting env [--apply]      Copy an app's secrets from Infisical --stage to its Vercel environment
+  projects discover         List public repositories owned by gh auth (read-only / dry run)
+      [--apply]              Sync allowlisted repository metadata to Neon dev; never deletes
   secrets audit              Compare Infisical with the secrets manifest (names only)
   secrets set <KEY>          Set a declared key from a hidden prompt (both stages unless --stage)
   secrets generate [--apply] Create missing random keys and tokens; --rotate replaces existing ones
@@ -98,6 +101,8 @@ async function main(): Promise<number> {
       return hostingSetup(values.apply);
     case "hosting env":
       return hostingEnv(stage, values.apply);
+    case "projects discover":
+      return discoverProjects(values.apply, stage);
     case "secrets audit":
       return secretsAudit(stage);
     case "secrets prune":

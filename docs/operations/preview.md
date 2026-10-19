@@ -60,7 +60,7 @@ Der Lauf speichert nichts. Von Hand zu prüfen: Login, Einladung annehmen, Rolle
 
 - **Proxy vor Vercel:** Liegt Cloudflare als Proxy vor Vercel, sieht die App für jeden Besucher dieselbe Adresse, und das Rate-Limit trifft alle gemeinsam. Deshalb *DNS only*.
 - **Daten der Vorschau:** Vorschauen schreiben in den Neon-Branch `dev`. Dort liegen nur Testdaten.
-- **Entwürfe:** Eine Vorschau ist ein Produktionsbuild; Projekte mit `draft: true` erscheinen dort nicht, nur auf dem lokalen Dev-Server.
+- **Entwürfe:** Lokale Entwicklung und geschützte Vercel-Preview-Deployments zeigen Projekte mit `draft: true`. Der Build erkennt Preview über `VERCEL_ENV=preview` plus `VERCEL_URL`; Production filtert Drafts auch bei explizitem `includeDrafts: true`. Derzeit bestätigt `pnpm ugur hosting status` `all_except_custom_domains`, sodass Preview-URLs durch Deployment Protection geschützt sind. Sitemap und `robots` schließen Draft-Seiten unabhängig davon aus. Fällt der Schutz weg, darf kein Draft-Preview ausgerollt werden. Details: [ADR 0022](../architecture/decisions/0022-protected-draft-previews.md).
 - **Plan:** Der kostenlose Hobby-Plan ist auf nicht-kommerzielle Nutzung beschränkt. Vor der Umstellung die aktuellen Bedingungen prüfen.
 
 ## Lokal dasselbe prüfen

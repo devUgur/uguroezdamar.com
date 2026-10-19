@@ -22,7 +22,7 @@ export const ProjectFrontmatterSchema = z
     featured: z.boolean().default(false),
     /** Lower comes first. */
     displayOrder: z.number().int().default(100),
-    /** A draft is visible on a local dev server only and never part of a production build. */
+    /** Drafts may be reviewed locally and on protected Vercel Preview deployments only. */
     draft: z.boolean().default(false),
     role: z.string().min(1).optional(),
     contributions: z.array(z.string().min(1)).default([]),
@@ -74,15 +74,17 @@ const loadProjects = cache(async (): Promise<Project[]> => {
 });
 
 export interface ProjectQuery {
-  /** Defaults to "not in production", so drafts can be reviewed locally and never ship. */
+/** Defaults to local development and protected Vercel Preview deployments. */
   includeDrafts?: boolean;
 }
 
-const draftsByDefault = () => process.env.NODE_ENV !== "production";
+/** Deployment Protection is configured separately; Vercel previews are checked before release. */
+const isVercelPreview = () => process.env.VERCEL_ENV === "preview" && Boolean(process.env.VERCEL_URL);
+const draftsAllowed = () => process.env.NODE_ENV !== "production" || isVercelPreview();
 
-export async function getProjects({ includeDrafts = draftsByDefault() }: ProjectQuery = {}): Promise<Project[]> {
+export async function getProjects({ includeDrafts = draftsAllowed() }: ProjectQuery = {}): Promise<Project[]> {
   const projects = await loadProjects();
-  return includeDrafts ? projects : projects.filter((project) => !project.draft);
+  return includeDrafts && draftsAllowed() ? projects : projects.filter((project) => !project.draft);
 }
 
 export async function getFeaturedProjects(query: ProjectQuery = {}): Promise<Project[]> {

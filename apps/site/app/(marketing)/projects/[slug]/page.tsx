@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return {
     title: project.title,
     description: project.summary,
-    // A draft is only ever served by a local dev server; keep it out of any index regardless.
+    // Drafts may appear in protected previews, but never belong in search indexes.
     robots: project.draft ? { index: false, follow: false } : undefined,
     openGraph: { title: project.title, description: project.summary, images: project.cover ? [project.cover.src] : undefined },
   };

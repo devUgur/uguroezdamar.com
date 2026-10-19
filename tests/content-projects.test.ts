@@ -41,6 +41,22 @@ describe("project content", () => {
     }
   });
 
+  it("allows drafts in protected Vercel previews but never in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("VERCEL_URL", "portfolio-preview.vercel.app");
+    try {
+      const preview = await content.getProjects();
+      expect(preview.some((project) => project.draft)).toBe(true);
+
+      vi.stubEnv("VERCEL_ENV", "production");
+      const production = await content.getProjects({ includeDrafts: true });
+      expect(production.every((project) => !project.draft)).toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("keeps drafts out of the sitemap", async () => {
     const sitemap = (await import("../apps/site/app/sitemap")).default;
     const urls = (await sitemap()).map((entry) => entry.url);

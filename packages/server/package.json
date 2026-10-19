@@ -9,6 +9,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
+    "projects:discover": "node --conditions=react-server --import tsx src/scripts/discover-github-projects.ts",
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
     "db:migrate": "drizzle-kit migrate",
@@ -24,6 +25,7 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "drizzle-kit": "^0.31.11",
+    "tsx": "^4.23.15",
     "typescript": "catalog:"
   }
 }
