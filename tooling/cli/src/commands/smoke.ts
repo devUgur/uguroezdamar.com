@@ -116,10 +116,20 @@ async function smokeSite(origin: string, commit?: string): Promise<Check[]> {
     const canonical = (html.match(/<link\b[^>]*>/gi) ?? []).some((tag) =>
       /rel=["']canonical["']/i.test(tag) && canonicalUrls.some((canonicalUrl) => tag.includes(`href="${canonicalUrl}"`)),
     );
+    const sitemapHasProject = Array.from(sitemapText.matchAll(/<loc>(.*?)<\/loc>/gi)).some(([, location]) => {
+      if (!location) return false;
+      try {
+        const sitemapUrl = new URL(location);
+        const allowedHost = sitemapUrl.hostname === "uguroezdamar.com" || sitemapUrl.hostname.endsWith(".vercel.app");
+        return (sitemapUrl.protocol === "https:" && allowedHost || isLocal(origin) && sitemapUrl.origin === origin) && sitemapUrl.pathname === path;
+      } catch {
+        return false;
+      }
+    });
     const cover = await request(`${origin}${project.cover}`, { method: "HEAD" });
     const checks: Check[] = [
       { name: `site: ${project.title} card is published`, ok: catalogText.includes(project.title), detail: `missing ${project.title} in /projects` },
-      { name: `site: ${project.title} is in sitemap`, ok: canonicalUrls.some((canonicalUrl) => sitemapText.includes(canonicalUrl)), detail: `missing canonical sitemap URL for ${project.slug}` },
+      { name: `site: ${project.title} is in sitemap`, ok: sitemapHasProject, detail: `missing public sitemap route ${path}` },
       { name: `site: ${project.title} case study answers`, ok: !(page instanceof Error) && page.status === 200 && title.test(html), detail: page instanceof Error ? page.message : `HTTP ${page.status}, expected page title ${project.title}` },
       { name: `site: ${project.title} has canonical URL`, ok: canonical, detail: `missing canonical URL for ${project.slug}` },
       { name: `site: ${project.title} cover is served`, ok: !(cover instanceof Error) && cover.status === 200, detail: cover instanceof Error ? cover.message : `HTTP ${cover.status}, expected 200` },
