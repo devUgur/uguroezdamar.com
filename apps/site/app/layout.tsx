@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import "./globals.css";
 import { ThemeProvider } from "@ugur/ui";
+import { displayFont, monoFont, sansFont } from "./fonts";
 
 const canonicalOrigin = process.env.NEXT_PUBLIC_SITE_URL ?? "https://uguroezdamar.com";
 
@@ -21,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={`${sansFont.variable} ${displayFont.variable} ${monoFont.variable}`} suppressHydrationWarning>
       <body className="min-h-dvh antialiased">
         <ThemeProvider
           attribute="class"
