@@ -39,6 +39,18 @@ Der frühere Preview-Smoke für Commit `8ad2053` schlug fehl: 14 von 15 Prüfung
 4. **Freigeben.** Vercel baut `main` als Produktions-Deployment, weist ihm die Domain aber nicht zu. Es steht als *Staged* in der Liste, bis du es im Dashboard über *Promote* live schaltest. Das braucht keinen neuen Build.
 5. **Zurück:** *Instant Rollback* im Dashboard setzt die Domain auf das vorherige Deployment.
 
+### CLI-Deploy aus dem Monorepo
+
+Wenn Vercel nach einem Merge keinen gestagten Main-Build erzeugt, den Produktionsstand nicht aus einer Preview befördern. Zuerst `main` auf den vorgesehenen Release-SHA bringen und dann aus dem Repository-Root den passenden Vercel-Projektnamen explizit wählen:
+
+```powershell
+vercel deploy --project uguroezdamar-com --prod --skip-domain --yes
+```
+
+Der Befehl erzeugt nur einen gestagten Production-Build und weist ihm keine Custom Domains zu. Das Repository-`.vercelignore` schließt lokale Secrets, Vercel-/Infisical-Konfiguration und große lokale Caches aus dem CLI-Upload aus. Vor dem Promote den Deployment-SHA über `vercel inspect <deployment-url>` bestätigen, `pnpm ugur smoke` gegen die Staging-URL mit `--commit <sha>` ausführen und erst dann `vercel promote <deployment-url>` verwenden. Der Portal-Deploy erfolgt getrennt aus seinem eigenen Projekt und nur bei Portal-Codeänderungen.
+
+Vercel-CLI-Linkdaten unter `.vercel/` bleiben lokal und werden nicht committet. `vercel link --repo` kann die beiden Repository-Projekte verbinden; die tatsächlich aufgelöste Projekt-ID und das Verzeichnis vor einem Deploy mit `.vercel/repo.json` und `vercel deploy --dry --json` prüfen. Der Dry-Run muss vor dem Upload bestätigen, dass `.turbo`, `.claude`, `.env*` und `.infisical.*` ausgeschlossen sind.
+
 Veröffentlichen, Mergen und Ausliefern bleiben drei getrennte Entscheidungen.
 
 ## Einrichtung

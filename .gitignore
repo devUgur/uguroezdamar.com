@@ -149,3 +149,6 @@ package-lock.json
 /.repoan/cache/
 /.repoan/logs/
 /.repoan/reports/
+.vercel
+.env*
+!.env.example
