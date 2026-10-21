@@ -12,6 +12,7 @@ Diese Dokumentation ist die zentrale, gepflegte Referenz für Architektur, Engin
 | [Abhängigkeitsmatrix](engineering/dependency-matrix.md) | unterstützte Laufzeiten, Paketstände, Upgrade-Entscheidungen und Pflege |
 | [Sicherheit](security/README.md) | Authentifizierung, Autorisierung, Daten, Uploads und Secrets |
 | [Content & Portfolio](product/content-and-portfolio.md) | Inhaltsmodell, Publish-Entscheidung und redaktionelle Qualität |
+| [Portfolio R3: Ladezeit, Interaktion und Lokalisierung](product/portfolio-r3-experience-plan.md) | Font-Performance, Cursorbewegung, zweisprachige Routen und Release-Abnahme |
 | [Secrets & Entwicklungsumgebung](operations/secrets.md) | Infisical, Secrets-Manifest, `pnpm ugur`-CLI, Datenbank-Befehle, Rotation |
 | [Cloudflare und Kontotrennung](operations/cloudflare.md) | Wrangler-Profile je Repository, DNS-Zuständigkeit, Vercel-Cutover und minimale Berechtigungen |
 | [Hosting, Preview und Release](operations/preview.md) | Vercel-Projekte, Vorschau je Pull Request, Health-Endpunkt, Smoke-Lauf, Freigabe in die Produktion |

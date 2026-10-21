@@ -37,10 +37,11 @@ Der Auftritt ist in dieser Iteration englischsprachig. Eine Übersetzung wird ni
 ## Gestaltung und Tokens
 
 - Bestehende neutrale Farben bleiben erhalten: Hintergrund `#F4F1EB`, Oberfläche `#EAE6DF`, Ink `#121212`; im dunklen Theme Hintergrund `#121212`, Oberfläche `#1A1A1A`, Text `#F2F2F2`.
-- Playfair Display prägt Überschriften, Inter Fließtext und JetBrains Mono kleine Metadaten. Die vorhandenen selbst gehosteten Fonts bleiben bestehen.
+- Playfair Display prägt Überschriften, Inter Fließtext und JetBrains Mono kleine Metadaten. Die WOFF2-Dateien werden unter `apps/site/app/fonts/` gepflegt und über `next/font/local` ohne externe Font-Verbindung geladen; R3 dokumentiert die Auswahl der vorzuladenden Schnitte.
 - Fluid Typografie mit `clamp()`, ein responsives 12-Spalten-Raster ab Desktop, Seitenränder über `.site-container`, Abschnitte über `.site-section` und feine Token-Rahmen strukturieren den Inhalt.
 - Keine Stock-Fotos, dekorativen Verläufe oder erfundenen Produkt-Screens. Echte Produkt-Screenshots bzw. Outputs aus dokumentierten synthetischen Demo-Szenarien sind möglich, wenn Herkunft und Preview-/Veröffentlichungsfreigabe pro Asset dokumentiert sind. Ohne freigegebene Medien bleiben Projektteaser textbasiert.
 - Bewegung ist dekorativ; `prefers-reduced-motion` reduziert Animationen und Übergänge.
+- Der R3-Mausring ist rein dekorativ, lässt den nativen Cursor sichtbar und wird bei Touch sowie `prefers-reduced-motion` nicht angezeigt.
 
 ## Komponenten- und Inhaltsregeln
 
