@@ -39,7 +39,7 @@ Der Auftritt ist in dieser Iteration englischsprachig. Eine Übersetzung wird ni
 - Bestehende neutrale Farben bleiben erhalten: Hintergrund `#F4F1EB`, Oberfläche `#EAE6DF`, Ink `#121212`; im dunklen Theme Hintergrund `#121212`, Oberfläche `#1A1A1A`, Text `#F2F2F2`.
 - Playfair Display prägt Überschriften, Inter Fließtext und JetBrains Mono kleine Metadaten. Die vorhandenen selbst gehosteten Fonts bleiben bestehen.
 - Fluid Typografie mit `clamp()`, ein responsives 12-Spalten-Raster ab Desktop, Seitenränder über `.site-container`, Abschnitte über `.site-section` und feine Token-Rahmen strukturieren den Inhalt.
-- Keine Verläufe, dekorativen Fotos oder synthetischen Produkt-/Architekturvisualisierungen. Ohne freigegebene Medien bleiben Projektteaser textbasiert.
+- Keine Stock-Fotos, dekorativen Verläufe oder erfundenen Produkt-Screens. Echte Produkt-Screenshots bzw. Outputs aus dokumentierten synthetischen Demo-Szenarien sind möglich, wenn Herkunft und Preview-/Veröffentlichungsfreigabe pro Asset dokumentiert sind. Ohne freigegebene Medien bleiben Projektteaser textbasiert.
 - Bewegung ist dekorativ; `prefers-reduced-motion` reduziert Animationen und Übergänge.
 
 ## Komponenten- und Inhaltsregeln
@@ -64,7 +64,8 @@ Alle öffentlichen Routen verwenden dieselbe Seiten-Grammatik: konsistenter `.si
 - Projekt- und Blogdetails nutzen die gemeinsame `ArticleShell`-Typografie. MDX-Prosa, Listen, Links, Blockzitate und Code orientieren sich an den Theme-Tokens und bleiben in Dark Mode lesbar.
 - About, Education, Contact, Blog und Legal teilen dieselbe Seiteneinleitung und Inhaltsbreite, behalten aber ihre notwendigen Routenspezifika und Interaktionen.
 - Leere Kataloge bleiben kompakt und ehrlich. Legal-Platzhalter werden sichtbar nicht als gültiger Rechtstext ausgegeben; vor Release sind die Tatsachen durch den Betreiber zu bestätigen.
-- Drafts bleiben lokal, werden nicht indexiert und geben keine externen Links aus. A1-Visuelfreigabe ändert diese Inhaltsgrenze nicht.
+- Drafts sind lokal und in Deployment-Protected Vercel-Previews sichtbar, werden nicht indexiert und geben keine externen Links aus. A1-Visuelfreigabe ändert diese Inhaltsgrenze nicht.
+- Die lokalen und geschützten Vercel-Previews sollen für die Drafts ViralSync und Video Lab source-reviewed 16:9-Cover zeigen. In Produktion werden ihre Seiten und Karten weiterhin durch den Draft-Filter ausgeschlossen. Die Cover-Dateien liegen unter `public/` und sind deshalb selbst öffentlich abrufbare statische Assets; es dürfen dort ausschließlich die im Import-/Live-Plan dokumentierten, synthetischen und für Preview freigegebenen Bilder liegen. Sie sind keine Freigabe, das jeweilige Projekt oder dessen private Repository-URL zu veröffentlichen.
 
 Die app-spezifischen, featureübergreifend genutzten Präsentationsbausteine `PageIntro`, `ArticleShell` und `ProjectCard` liegen in `apps/site/src/components/public/`. Feature-Ordner bleiben voneinander unabhängig; Home und Projektkatalog konsumieren dieselbe öffentliche Projektkarte.
 

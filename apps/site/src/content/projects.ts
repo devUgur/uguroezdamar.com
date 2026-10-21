@@ -36,7 +36,13 @@ export const ProjectFrontmatterSchema = z
       })
       .default({}),
     /** A file under `public/projects/`. */
-    cover: z.strictObject({ src: z.string().startsWith("/projects/"), alt: z.string().min(1) }).optional(),
+    cover: z
+      .strictObject({
+        src: z.string().startsWith("/projects/"),
+        alt: z.string().min(1),
+        caption: z.string().min(1).optional(),
+      })
+      .optional(),
     repositoryVisibility: z.enum(["public", "private", "none"]),
     /** Import provenance for a GitHub-generated draft; not rendered by the site. */
     source: z

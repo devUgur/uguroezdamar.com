@@ -4,6 +4,7 @@ import { SelectedProjectCard } from "./SelectedProjectCard";
 
 export async function Work({ number }: { number: string }) {
   const projects = (await getFeaturedProjects()).slice(0, 3);
+  const firstCoverIndex = projects.findIndex((project) => project.cover);
 
   return (
     <section id="work" aria-labelledby="selected-work-heading" className="site-section">
@@ -35,7 +36,7 @@ export async function Work({ number }: { number: string }) {
             ) : (
               <ol className="grid grid-cols-1 border-t border-border xl:grid-cols-2 xl:gap-x-12">
                 {projects.map((project, index) => (
-                  <SelectedProjectCard key={project.slug} project={project} index={index} />
+                  <SelectedProjectCard key={project.slug} project={project} index={index} preloadCover={index === firstCoverIndex} />
                 ))}
               </ol>
             )}

@@ -58,9 +58,12 @@ export default async function ProjectDetailPage({ params }: Params) {
       </header>
 
       {project.cover ? (
-        <div className="relative mt-10 aspect-video overflow-hidden border-y border-border bg-surface md:mt-14">
-          <Image src={project.cover.src} alt={project.cover.alt} fill priority sizes="(max-width: 1280px) 100vw, 1200px" className="object-cover" />
-        </div>
+        <figure className="mt-10 md:mt-14">
+          <div className="relative aspect-video overflow-hidden border-y border-border bg-surface">
+            <Image src={project.cover.src} alt={project.cover.alt} fill priority sizes="(max-width: 1280px) 100vw, 1200px" className="object-cover" />
+          </div>
+          {project.cover.caption ? <figcaption className="mt-2 text-xs leading-5 text-muted-foreground">{project.cover.caption}</figcaption> : null}
+        </figure>
       ) : null}
 
       <div className="mt-12 grid grid-cols-1 gap-12 md:mt-16 md:grid-cols-12 md:gap-8">
