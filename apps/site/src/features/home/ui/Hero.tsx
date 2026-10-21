@@ -7,11 +7,11 @@ export function Hero({ locale = "en" }: { locale?: Locale }) {
   const german = locale === "de";
   const headline = german ? ["Ich entwickle", "strukturierte", "digitale Systeme."] : HEADLINE;
   return (
-    <section className="site-container flex min-h-[calc(100svh-5rem)] flex-col">
+    <section className="hero-surface site-container flex min-h-[calc(100svh-5rem)] flex-col">
       <div className="flex flex-1 flex-col justify-center py-14 md:py-16">
-        <h1 className="text-[clamp(2.5rem,12.8vw,3.5rem)] leading-[1.1] tracking-tighter md:text-[5rem] lg:text-[clamp(5rem,min(8.4vw,13.5vh),7.5rem)]">
+        <h1 className="max-w-[13ch] text-[clamp(2.5rem,12.8vw,3.5rem)] leading-[1.1] tracking-tighter md:text-[5rem] lg:text-[clamp(5rem,min(8.4vw,13.5vh),7.5rem)]">
           {headline.map((line) => (
-            <span key={line} className="block cursor-default transition-colors duration-200 hover:text-accent">
+            <span key={line} className="hero-title-line block cursor-default">
               {line}
             </span>
           ))}
@@ -32,7 +32,7 @@ export function Hero({ locale = "en" }: { locale?: Locale }) {
         <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3 font-mono text-[13px] uppercase tracking-[0.08em]">
           <Link
             href={locale === "de" ? "/de/projects" : "/projects"}
-            className="inline-flex min-h-11 items-center gap-3 rounded-sm border border-foreground/80 px-5 text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+          className="inline-flex min-h-11 items-center gap-3 border border-foreground/80 px-5 text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
           >
             {german ? "Projekte ansehen" : "View projects"}
           </Link>

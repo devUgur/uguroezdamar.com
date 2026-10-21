@@ -17,7 +17,7 @@ export default async function BlogPage() {
           <p className="font-serif text-2xl text-foreground">No articles published yet.</p>
         </div>
       ) : (
-        <div className="mt-12 grid grid-cols-1 gap-x-12 md:grid-cols-2">
+        <div className="project-grid mt-12">
           {posts.map((post) => (
             <PostCard key={post.slug} post={post} />
           ))}

@@ -54,9 +54,9 @@ export function Education({ number, hideWhenEmpty = false, locale = "en" }: Educ
 
           <div className="md:col-span-7 md:col-start-6">
             {education.length > 0 ? (
-              <ol className="border-t border-border">
+              <ol className="editorial-list">
                 {education.map((item) => (
-                  <li key={`${item.period.from}-${item.title}`} className="grid grid-cols-1 gap-2 border-b border-border py-6 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-6 md:py-7">
+                  <li key={`${item.period.from}-${item.title}`} className="grid grid-cols-1 gap-2 py-6 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-6 md:py-7">
                     <span className="font-mono text-xs text-muted-foreground">{formatYears(item.period)}</span>
                     <div>
                       <h3 className="text-xl md:text-2xl">{item.title}</h3>

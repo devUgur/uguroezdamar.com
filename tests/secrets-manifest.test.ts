@@ -49,9 +49,20 @@ describe("secrets manifest", () => {
       globalPassThroughEnv: string[];
       tasks: Record<string, { env?: string[] }>;
     };
-    const passed = new Set([...turbo.globalPassThroughEnv, ...(turbo.tasks.build?.env ?? [])]);
+    const siteTurbo = JSON.parse(readFileSync(join(root, "apps/site/turbo.json"), "utf8")) as {
+      tasks: Record<string, { passThroughEnv?: string[] }>;
+    };
+    const passed = new Set([
+      ...turbo.globalPassThroughEnv,
+      ...(turbo.tasks.build?.env ?? []),
+      ...(siteTurbo.tasks.build?.passThroughEnv ?? []),
+      ...(siteTurbo.tasks.dev?.passThroughEnv ?? []),
+    ]);
     expect([...declared].filter((key) => !passed.has(key))).toEqual([]);
     expect(turbo.tasks.dev?.env).toEqual(["NEXT_PUBLIC_SITE_URL"]);
+    expect(turbo.globalPassThroughEnv).not.toContain("CRON_SECRET");
+    expect(siteTurbo.tasks.build?.passThroughEnv).toEqual(["CRON_SECRET"]);
+    expect(siteTurbo.tasks.dev?.passThroughEnv).toEqual(["CRON_SECRET"]);
   });
 
   it("hashes deployment-specific Vercel variables for build output", () => {

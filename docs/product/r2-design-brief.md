@@ -1,6 +1,6 @@
 # R2-A — Editorial Engineering
 
-> **Stand 19.10.2026:** Der Owner hat A1 (originales Logo, Header, dreizeilige Serif-Hero, Footer und lokal draft-markierte ViralSync-Beispielkarte) visuell freigegeben. Die Nachweise liegen unter [R2-A1](evidence/r2-a1/README.md). A2 vereinheitlicht die öffentlichen Unterseiten in einem ruhigen Editorial-System; A3 umfasst die anschließende Browser- und Accessibility-Abnahme. Die Freigabe gilt nicht für eine Veröffentlichung von ViralSync oder für einen Produktions-Promote.
+> **Stand 21.10.2026:** Der Owner hat A1 (originales Logo, Header, dreizeilige Serif-Hero, Footer und lokal draft-markierte ViralSync-Beispielkarte) visuell freigegeben. Die Nachweise liegen unter [R2-A1](evidence/r2-a1/README.md). A2.1 schlägt für Review ein konsistentes, rechteckiges Editorial-System auf Startseite, Projekten, Blog, Profil, Ausbildung und Recht vor; diese Implementierung ist noch nicht visuell freigegeben. Die Freigabe gilt nicht für eine Veröffentlichung von ViralSync oder für einen Produktions-Promote.
 
 ## Zweck und Zielgruppen
 
@@ -59,7 +59,7 @@ Die responsive Prüfung umfasst 320, 375, 768, 1024, 1440 und 1920 px in hellem 
 
 ## Einheitliche öffentliche Seiten (A2)
 
-Alle öffentlichen Routen verwenden dieselbe Seiten-Grammatik: konsistenter `.site-container`, ein sichtbarer H1-Titel, ein optionaler kurzer Vorspann, eine zurückhaltende Mono-Eyebrow, Token-Rahmen und eine gemeinsame vertikale Rhythmik. Die bestehende warme Neutralpalette sowie Playfair Display, Inter und JetBrains Mono bleiben unverändert. Die Seite vermeidet gefüllte Kartenraster, erfundene Medien und dekorative Verläufe.
+Alle öffentlichen Routen verwenden dieselbe Seiten-Grammatik: konsistenter `.site-container`, ein sichtbarer H1-Titel, ein optionaler kurzer Vorspann, eine zurückhaltende Mono-Eyebrow, Token-Rahmen und eine gemeinsame vertikale Rhythmik. Die bestehende warme Neutralpalette sowie Playfair Display, Inter und JetBrains Mono bleiben unverändert. A2.1 nutzt fein gerahmte, rechteckige Flächen für Projekt-/Blogkarten und Legal-Hinweise; erfundene Medien und dekorative Verläufe bleiben ausgeschlossen.
 
 - Startseite und `/projects` verwenden `ProjectCard` als gemeinsame Projektpräsentation. Die Startseite stapelt die ausgewählten Projekte auf schmalen und mittleren Viewports und wechselt erst bei ausreichender Breite zur Zweispaltenansicht. Aktionen bleiben am Kartenende ausgerichtet; Kartentitel folgen der jeweiligen Überschriftenebene. Optionale Daten und freigegebene Medien erscheinen nur, wenn sie vorhanden sind.
 - Projekt- und Blogdetails nutzen die gemeinsame `ArticleShell`-Typografie. MDX-Prosa, Listen, Links, Blockzitate und Code orientieren sich an den Theme-Tokens und bleiben in Dark Mode lesbar.
@@ -70,4 +70,4 @@ Alle öffentlichen Routen verwenden dieselbe Seiten-Grammatik: konsistenter `.si
 
 Die app-spezifischen, featureübergreifend genutzten Präsentationsbausteine `PageIntro`, `ArticleShell` und `ProjectCard` liegen in `apps/site/src/components/public/`. Feature-Ordner bleiben voneinander unabhängig; Home und Projektkatalog konsumieren dieselbe öffentliche Projektkarte.
 
-Rollout: A1 visuell freigegeben; A2 Komponenten und Routendarstellung implementiert; A3 Browserprüfung bei 375/768/1440 px in beiden Themes sowie Fokus, mobiles Menü und Reduced Motion dokumentieren. Erst danach kann der PR zur visuellen Review vorgelegt werden. Diese Implementierung allein bestätigt keine Browser-QA und keine Produktionsfreigabe.
+Rollout: A1 visuell freigegeben; A2 Basis umgesetzt; A2.1 ist der aktuelle Design-PR-Stand. Vor Merge steht die Browserprüfung bei 375/768/1440 px in beiden Themes sowie Fokus, mobiles Menü und Reduced Motion aus. Die Rechtsseiten sind technische Entwürfe mit Betreiber-Gates und keine final freigegebenen Rechtstexte. Die Implementierung allein bestätigt weder Browser-QA noch Produktionsfreigabe.

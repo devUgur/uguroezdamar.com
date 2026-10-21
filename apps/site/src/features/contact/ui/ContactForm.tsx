@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import Link from "next/link";
 
 import { submitContactRequest } from "../api";
 import { copy, type Locale } from "@/src/features/navigation/copy";
@@ -9,8 +10,10 @@ type State = { ok: true } | { ok: false; error: string } | null;
 
 export function ContactForm({ locale = "en" }: { locale?: Locale }) {
   const text = copy[locale];
+  const [privacyBefore, privacyAfter = ""] = text.contactPrivacyNote.split(text.contactPrivacyLink);
   const [state, setState] = useState<State>(null);
   const [pending, setPending] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   async function handleSubmit(formData: FormData) {
     setPending(true);
@@ -26,6 +29,7 @@ export function ContactForm({ locale = "en" }: { locale?: Locale }) {
       const data = await res.json();
       if (data.ok) {
         setState({ ok: true });
+        formRef.current?.reset();
       } else {
         setState({ ok: false, error: data.error ?? text.sendError });
       }
@@ -38,6 +42,7 @@ export function ContactForm({ locale = "en" }: { locale?: Locale }) {
 
   return (
     <form
+        ref={formRef}
         className="grid gap-7"
         onSubmit={(e) => {
           e.preventDefault();
@@ -45,40 +50,59 @@ export function ContactForm({ locale = "en" }: { locale?: Locale }) {
         }}
       >
         <div className="grid gap-2">
-          <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground" htmlFor="name">
+          <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground" htmlFor="contact-name">
             {text.name}
           </label>
           <input
-            id="name"
+            id="contact-name"
             name="name"
-            className="min-h-12 rounded-none border-x-0 border-t-0 border-b border-input bg-transparent px-0 py-3 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            autoComplete="name"
+            maxLength={120}
+            aria-describedby="contact-name-hint"
+            className="min-h-12 rounded-none border border-input bg-background px-4 py-3 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             required
           />
+          <p id="contact-name-hint" className="text-xs leading-5 text-muted-foreground">{text.contactNameHint}</p>
         </div>
         <div className="grid gap-2">
-          <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground" htmlFor="email">
+          <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground" htmlFor="contact-email">
             {text.email}
           </label>
           <input
-            id="email"
+            id="contact-email"
             name="email"
             type="email"
-            className="min-h-12 rounded-none border-x-0 border-t-0 border-b border-input bg-transparent px-0 py-3 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            autoComplete="email"
+            maxLength={320}
+            aria-describedby="contact-email-hint"
+            className="min-h-12 rounded-none border border-input bg-background px-4 py-3 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             required
           />
+          <p id="contact-email-hint" className="text-xs leading-5 text-muted-foreground">{text.contactEmailHint}</p>
         </div>
         <div className="grid gap-2">
-          <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground" htmlFor="message">
+          <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground" htmlFor="contact-message">
             {text.message}
           </label>
           <textarea
-            id="message"
+            id="contact-message"
             name="message"
-            className="min-h-36 resize-y rounded-none border-x-0 border-t-0 border-b border-input bg-transparent px-0 py-3 text-base leading-7 text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            maxLength={5000}
+            aria-describedby="contact-message-hint"
+            className="min-h-36 resize-y rounded-none border border-input bg-background px-4 py-3 text-base leading-7 text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             required
           />
+          <p id="contact-message-hint" className="text-xs leading-5 text-muted-foreground">{text.contactMessageHint}</p>
         </div>
         <input name="nickname" className="hidden" tabIndex={-1} autoComplete="off" />
+
+        <p className="max-w-2xl border-l border-border pl-4 text-sm leading-6 text-muted-foreground">
+          {privacyBefore}
+          <Link href={locale === "de" ? "/de/privacy" : "/privacy"} className="text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+            {text.contactPrivacyLink}
+          </Link>
+          {privacyAfter}
+        </p>
 
         <div className="flex flex-wrap items-center gap-4">
           <button type="submit" disabled={pending} className="inline-flex min-h-11 items-center justify-center border border-foreground px-5 font-mono text-xs uppercase tracking-widest text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60">

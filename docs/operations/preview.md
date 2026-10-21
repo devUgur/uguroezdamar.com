@@ -78,6 +78,8 @@ Alles Weitere läuft über die CLI. Sie nutzt die angemeldete Vercel-CLI (`verce
 
 Ohne `--apply` sind `setup` und `env` Probeläufe. Welche App welchen Schlüssel liest, steht im Feld `apps` in `tooling/cli/src/secrets-manifest.ts`; nur diese Schlüssel werden kopiert. `DATABASE_URL_DIRECT` (Migrationen) erreicht den Hoster nie.
 
+Die Site definiert einen täglichen Vercel-Cron für die Kontaktaufbewahrung (`/api/cron/purge-contact-requests`). Vercel aktiviert diesen Zeitplan nur für Production-Deployments, nicht für geschützte Previews. Er erfordert das in Infisical `prod` erzeugte `CRON_SECRET`, das durch `pnpm ugur hosting env --stage prod --apply` an Vercel Production synchronisiert wird. Vor dem Promote müssen Secret, Neon-Migration und Cron-Logs geprüft werden; Vercel wiederholt fehlgeschlagene Aufrufe nicht automatisch.
+
 Infisical bleibt die Quelle. Nach einer Rotation `hosting env` erneut ausführen und neu ausliefern: Ein laufendes Deployment behält seine alten Werte.
 
 **Domains sind auf Vercel live.** `uguroezdamar.com` und `www` sind dem Site-Projekt, `portal.uguroezdamar.com` dem Portal-Projekt zugewiesen. Cloudflare bleibt authoritative DNS; A-/CNAME-Einträge zeigen auf Vercel und sind DNS-only. Die Domain-Aliases bestehen HTTPS und den Portfolio-Smoke. Änderungen an diesen Records werden über die Cloudflare-CLI-/Owner-Identität geprüft und anschließend mit `pnpm ugur smoke` gegen alle drei Hostnamen verifiziert.

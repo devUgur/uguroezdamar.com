@@ -16,7 +16,7 @@ export function ProjectGrid({ projects, locale = "en" }: { projects: Project[]; 
           <p className="font-serif text-2xl text-foreground">{text.noProjects}</p>
         </div>
       ) : (
-        <div className="mt-14 grid grid-cols-1 border-t border-border md:grid-cols-2 md:gap-x-12">
+        <div className="project-grid mt-14">
           {projects.map((p, index) => (
             <ProjectCard key={p.slug} project={p} preloadCover={index === firstCoverIndex} locale={locale} />
           ))}

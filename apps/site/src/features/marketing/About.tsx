@@ -61,9 +61,9 @@ export function About({ number, hideWhenEmpty = false, locale = "en" }: AboutPro
             ) : null}
 
             {experience.length > 0 ? (
-              <ol aria-label={de ? "Berufserfahrung" : "Career experience"} className="mt-10 border-t border-border md:mt-14">
+              <ol aria-label={de ? "Berufserfahrung" : "Career experience"} className="editorial-list mt-10 md:mt-14">
                 {experience.map((item) => (
-                  <li key={`${item.period.from}-${item.title}`} className="grid grid-cols-1 gap-2 border-b border-border py-5 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-6">
+                  <li key={`${item.period.from}-${item.title}`} className="grid grid-cols-1 gap-2 py-5 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-6">
                     <span className="font-mono text-xs text-muted-foreground">{formatYears(item.period)}</span>
                     <div>
                       <h3 className="text-xl">{item.title}</h3>

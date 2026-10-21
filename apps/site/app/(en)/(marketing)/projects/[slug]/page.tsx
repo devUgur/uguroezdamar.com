@@ -52,14 +52,16 @@ export default async function ProjectDetailPage({ params }: Params) {
   return (
     <article className="site-container py-16 md:py-24">
       <header className="page-intro">
-        <p className="page-eyebrow">
+        <p className="page-eyebrow page-intro__eyebrow">
           <Link href="/projects" className="link-underline">Projects</Link>
           <span className="mx-2 text-border">/</span>
           {project.category ? project.category : null}
-          {project.draft ? <span className="ml-3 rounded-xs border border-foreground/30 px-2 py-0.5 text-foreground">Draft</span> : null}
+          {project.draft ? <span className="ml-3 border border-foreground/30 px-2 py-0.5 text-foreground">Draft</span> : null}
         </p>
-        <h1 className="page-title">{project.title}</h1>
-        <p className="page-lede">{project.summary}</p>
+        <div className="page-intro__content">
+          <h1 className="page-title">{project.title}</h1>
+          <p className="page-lede">{project.summary}</p>
+        </div>
       </header>
 
       {project.cover ? (
@@ -85,7 +87,7 @@ export default async function ProjectDetailPage({ params }: Params) {
           <h2 className="mt-8 font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">Technologies</h2>
           <ul className="mt-3 flex flex-wrap gap-1.5">
             {project.technologies.map((technology) => (
-              <li key={technology} className="rounded-xs border border-border/60 bg-surface/80 px-2 py-0.5 font-mono text-[11px] text-foreground/80">
+              <li key={technology} className="border border-border bg-surface px-2 py-1 font-mono text-[11px] text-foreground/80">
                 {technology}
               </li>
             ))}

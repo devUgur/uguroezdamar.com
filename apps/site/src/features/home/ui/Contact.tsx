@@ -14,7 +14,7 @@ export function Contact({ number, locale = "en" }: { number: string; locale?: Lo
             {de ? "Lassen Sie uns ins Gespräch kommen." : "Start a conversation."}
           </h2>
         </div>
-        <div className="md:col-span-3 md:col-start-10">
+        <div className="contact-panel border border-border bg-surface p-5 md:col-span-3 md:col-start-10 md:p-7">
           <p className="max-w-sm text-sm leading-6 text-muted-foreground">
             {de ? "Für Fragen oder Nachrichten zu Softwareprojekten nutzen Sie bitte die Kontaktseite." : "For a question or a message about software work, use the contact page."}
           </p>

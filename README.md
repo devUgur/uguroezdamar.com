@@ -27,6 +27,8 @@ pnpm install
 pnpm dev          # Site auf :3100
 pnpm dev:portal   # Portal auf :3101
 pnpm dev:all      # beide
+pnpm dev:clean    # blockierte Ports freigeben und dev starten
+pnpm kill:ports   # blockierte Ports beenden
 pnpm guard
 pnpm lint
 pnpm typecheck
