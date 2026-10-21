@@ -8,6 +8,8 @@
 
 Das Portfolio-Infisical-Projekt hat für `dev` und `prod` alle Pflichtschlüssel; `pnpm ugur hosting status` meldet die erforderlichen Vercel-Variablennamen in beiden Projekten und Stages als „in step“. Die Audits melden optionale Admin-Overrides und zurückgezogene Variablennamen. Vor diesem Release fehlten `/projects/viralsync` und `/projects/video-lab` in der Production-Sitemap und antworteten mit 404, weil beide MDX-Einträge Drafts waren. PR #29 veröffentlicht die freigegebenen Case Studies und erweitert den CLI-Smoke um Karten, Sitemap-Routen, Canonicals, Detailseiten, Cover und ViralSync-Ziel-Link. Der Production-Smoke besteht nun 24/24 für die Site. ViralSync hat einen öffentlichen Marketing-Root; einige seiner eigenen Unterrouten sind noch nicht veröffentlicht. Video Lab hat im zugänglichen Vercel-Team kein Projekt und keine öffentliche Live-URL; seine Portfolioseite ist als Projektvorstellung mit synthetischem Storyboard gekennzeichnet.
 
+Der R3-Lokalisierungs-Smoke erweitert diese historischen 24 Prüfungen um beide Sprachvarianten der öffentlichen Informationsseiten und Projektfallstudien. Er prüft HTTP-Status, HTML-`lang`, Canonical und wechselseitige `hreflang`-Ziele. Erwarteter Umfang nach dieser Erweiterung: 81 lokale bzw. 84 gehostete Site-Prüfungen (inklusive Hosting-Adressprüfungen und ViralSync-Ziel-Link); der Portal-Smoke bleibt separat.
+
 ### Verbleibende Release-Gates
 
 1. Für echte Kontaktzustellung und Portal-Login manuell Betreiberpostfach, Formulareingang, Einladungsablauf und Berechtigungen bestätigen. Der Smoke prüft Health, Datenbankzugriff, anonyme Ablehnungen und veröffentlichte Projektseiten, aber keinen echten Mailversand oder Owner-Login.

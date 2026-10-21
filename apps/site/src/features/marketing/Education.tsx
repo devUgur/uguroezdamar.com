@@ -1,24 +1,29 @@
 import Link from "next/link";
 
 import profile from "@/content/profile";
+import germanProfile from "@/content/profile.de";
 import { byRecency, formatYears, hasEducation } from "@/src/content/profile";
+import { type Locale } from "@/src/features/navigation/copy";
 
 interface EducationProps {
   /** Position on the home page, e.g. "04". */
   number?: string;
   /** On the home page an empty list is left out; its own page says that nothing is published. */
   hideWhenEmpty?: boolean;
+  locale?: Locale;
 }
 
-export function Education({ number, hideWhenEmpty = false }: EducationProps) {
-  if (hideWhenEmpty && !hasEducation(profile)) return null;
-  const education = byRecency(profile.education);
+export function Education({ number, hideWhenEmpty = false, locale = "en" }: EducationProps) {
+  const de = locale === "de";
+  const localizedProfile = de ? germanProfile : profile;
+  if (hideWhenEmpty && !hasEducation(localizedProfile)) return null;
+  const education = byRecency(localizedProfile.education);
 
-  if (!hasEducation(profile)) {
+  if (!hasEducation(localizedProfile)) {
     return (
       <section id="education" className="site-container pb-16 md:pb-24" aria-label="Education">
         <p className="max-w-xl border-y border-border py-5 text-sm leading-6 text-muted-foreground">
-          No education entries have been published yet.
+          {de ? "Es wurden noch keine Ausbildungsstationen veröffentlicht." : "No education entries have been published yet."}
         </p>
       </section>
     );
@@ -35,14 +40,14 @@ export function Education({ number, hideWhenEmpty = false }: EducationProps) {
                   {number} <span className="mx-2 text-border">/</span>{" "}
                 </>
               ) : null}
-              Education
+              {de ? "Ausbildung" : "Education"}
             </p>
             <h2 id="education-heading" className="max-w-sm text-3xl leading-tight md:text-4xl">
-              Learning and education
+              {de ? "Lernen und Ausbildung" : "Learning and education"}
             </h2>
             {number ? (
-              <Link href="/education" className="link-underline mt-7 inline-flex min-h-11 items-center gap-3 font-mono text-xs uppercase tracking-[0.13em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
-                Education details <span aria-hidden="true">↗</span>
+              <Link href={de ? "/de/education" : "/education"} className="link-underline mt-7 inline-flex min-h-11 items-center gap-3 font-mono text-xs uppercase tracking-[0.13em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
+                {de ? "Details zur Ausbildung" : "Education details"} <span aria-hidden="true">↗</span>
               </Link>
             ) : null}
           </div>

@@ -4,6 +4,19 @@ vi.mock("../tooling/cli/src/lib/infisical.ts", () => ({ secretValues: () => unde
 
 const origin = "http://localhost:3100";
 const publishedSlugs = ["viralsync", "video-lab"] as const;
+const localizedPaths = [
+  "/", "/de", "/projects", "/de/projects", "/about", "/de/about", "/education", "/de/education",
+  "/contact", "/de/contact", "/blog", "/de/blog", "/privacy", "/de/privacy", "/imprint", "/de/imprint",
+  ...publishedSlugs.flatMap((slug) => [`/projects/${slug}`, `/de/projects/${slug}`]),
+];
+
+function localizedHtml(pathname: string, content: string) {
+  const german = pathname === "/de" || pathname.startsWith("/de/");
+  const enPath = german ? (pathname === "/de" ? "/" : pathname.slice(3)) : pathname;
+  const dePath = enPath === "/" ? "/de" : `/de${enPath}`;
+  const canonical = `${origin}${pathname}`;
+  return `<html lang="${german ? "de" : "en"}"><head><link rel="canonical" href="${canonical}" /><link rel="alternate" hrefLang="en" href="${origin}${enPath}" /><link rel="alternate" hrefLang="de" href="${origin}${dePath}" /><title>${content}</title></head><body>${content}</body></html>`;
+}
 
 function siteFetch({ omitSitemapSlug, missingProject }: { omitSitemapSlug?: string; missingProject?: string } = {}) {
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -20,16 +33,17 @@ function siteFetch({ omitSitemapSlug, missingProject }: { omitSitemapSlug?: stri
         .join("");
       return new Response(`<urlset><loc>${origin}/projects</loc>${entries}</urlset>`, { status: 200 });
     }
-    if (url.pathname === "/projects") return new Response("<main>ViralSync Video Lab</main>", { status: 200 });
-    if (url.pathname === "/") return new Response("<main>Portfolio</main>", { status: 200 });
+    if (url.pathname === "/projects" || url.pathname === "/de/projects") return new Response(localizedHtml(url.pathname, "ViralSync Video Lab"), { status: 200 });
+    if (url.pathname === "/" || url.pathname === "/de") return new Response(localizedHtml(url.pathname, "Portfolio"), { status: 200 });
     if (url.pathname === "/work") return new Response(null, { status: 308 });
-    if (url.pathname.startsWith("/projects/")) {
-      const slug = url.pathname.slice("/projects/".length);
+    if (url.pathname.startsWith("/projects/") || url.pathname.startsWith("/de/projects/")) {
+      const slug = url.pathname.startsWith("/de/") ? url.pathname.slice("/de/projects/".length) : url.pathname.slice("/projects/".length);
       const title = slug === "video-lab" ? "Video Lab" : "ViralSync";
       if (slug === missingProject) return new Response("Not found", { status: 404 });
       if (method === "HEAD") return new Response(null, { status: 200 });
-      return new Response(`<html><head><title>${title} | Ugur Özdamar</title><link rel="canonical" href="${url.href}" /></head><body>${title}</body></html>`, { status: 200 });
+      return new Response(localizedHtml(url.pathname, `${title} | Ugur Özdamar`), { status: 200 });
     }
+    if (localizedPaths.includes(url.pathname)) return new Response(localizedHtml(url.pathname, "Localized page"), { status: 200 });
     if (url.pathname === "/api/contact") {
       if (init?.headers && new Headers(init.headers).get("content-type") !== "application/json") return new Response(null, { status: 415 });
       if (init?.headers && new Headers(init.headers).get("origin") === "https://attacker.example") return new Response(null, { status: 403 });
