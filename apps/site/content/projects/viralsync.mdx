@@ -1,17 +1,18 @@
 ---
-# DRAFT — not part of a production page build. Statements were checked against the repository on
-# 2026-10-13 (README, docs/MVP.md, docs/CONNECTORS.md, package manifests); re-check the status
-# paragraph before publishing. Preview cover: synthetic Healthy Life showcase calendar; attribution
-# and publication approval gate are recorded in docs/product/portfolio-live-and-import-plan.md.
-# Before publishing: confirm every statement, role, contributions, period, image and alt text;
-# then set `draft: false` in a reviewed PR.
+# Public case study approved by the project owner on 2026-10-21. Product and review status are
+# deliberately explicit; no repository link or claim of general availability is made.
 title: ViralSync
-summary: A social media operations platform in development — connect the channels of a brand, keep finished media in one library, plan and publish posts, and read their analytics from one place.
+summary: An early-stage social media operations platform bringing brand channels, media, post planning and provider workflows into one workspace.
 category: SaaS platform
 status: active
+role: Product owner and engineer
+contributions:
+  - Built the organization and brand workflows, media library, and channel connection foundation.
+  - Structured the product around shared domain logic, a Next.js app, and a Hono API on Cloudflare Workers.
+  - Implemented server-side invitation and provider-approval gates for a planned private beta; production rollout remains a separate release.
 featured: true
 displayOrder: 10
-draft: true
+draft: false
 technologies:
   - TypeScript
   - Next.js
@@ -38,14 +39,11 @@ ViralSync puts the channels of a brand behind one workflow.
 
 ## Solution
 
-Accounts on YouTube, TikTok, Instagram and Facebook are connected once and assigned to a brand.
-Finished media lives in a library, and posts are planned and published from there. The product
-is built in vertical phases, and each use case is meant to ship three ways: in the web app,
-through an API route, and as a tool of an AI agent that asks for approval before it acts.
-
-The work is in progress. Foundation, media library and channel connections are done. The agent
-has its tools but not yet its interface, analytics are synced from the providers but not yet
-shown, and the developer API is built but not yet proven on a deployed stage.
+ViralSync is being built around a shared workspace for brand channels, a media library and a
+reviewable publishing workflow. The current build has its organization and brand foundation,
+media library and channel connection foundations. Publishing, analytics presentation and the
+assistant interface are still being completed. Production controls and provider approvals remain
+under release review; this portfolio page is a project case study, not an offer of general availability.
 
 ## Architecture
 

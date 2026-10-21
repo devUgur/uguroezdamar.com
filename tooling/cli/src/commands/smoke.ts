@@ -25,6 +25,11 @@ interface HealthResult {
 const TIMEOUT_MS = 30_000;
 /** An address from a documentation range: no real client has it, so it can only come from us. */
 const FORGED_ADDRESS = "203.0.113.250";
+/** Case studies that this portfolio release promises to publish. Keep routes and covers in the smoke gate. */
+const PUBLIC_PROJECTS = [
+  { slug: "viralsync", title: "ViralSync", cover: "/projects/viralsync/calendar-month-light.webp", live: "https://viralsync.io" },
+  { slug: "video-lab", title: "Video Lab", cover: "/projects/video-lab/golden-recipe-contact-sheet.webp", live: undefined },
+] as const;
 
 /** Per origin: the header that lets this run through Vercel's deployment protection. */
 const bypass = new Map<string, string>();
@@ -81,6 +86,8 @@ async function smokeSite(origin: string, commit?: string): Promise<Check[]> {
   const forged = await health(origin, { "x-vercel-forwarded-for": FORGED_ADDRESS, "x-forwarded-for": FORGED_ADDRESS, "x-real-ip": FORGED_ADDRESS });
   const sitemap = await request(`${origin}/sitemap.xml`);
   const sitemapText = sitemap instanceof Error ? "" : await sitemap.text();
+  const catalog = await request(`${origin}/projects`);
+  const catalogText = catalog instanceof Error ? "" : await catalog.text();
   const contact = `${origin}/api/contact`;
   const forgedClient = forged.report?.client;
 
@@ -98,13 +105,50 @@ async function smokeSite(origin: string, commit?: string): Promise<Check[]> {
       ]
     : [];
 
+  const projectChecks = await Promise.all(PUBLIC_PROJECTS.flatMap(async (project) => {
+    const path = `/projects/${project.slug}`;
+    const url = `${origin}${path}`;
+    const canonicalUrls = (isLocal(origin) ? [origin, "https://uguroezdamar.com"] : ["https://uguroezdamar.com"])
+      .map((canonicalOrigin) => `${canonicalOrigin}${path}`);
+    const page = await request(url);
+    const html = page instanceof Error ? "" : await page.text();
+    const title = new RegExp(`<title[^>]*>[^<]*${project.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[^<]*</title>`, "i");
+    const canonical = (html.match(/<link\b[^>]*>/gi) ?? []).some((tag) =>
+      /rel=["']canonical["']/i.test(tag) && canonicalUrls.some((canonicalUrl) => tag.includes(`href="${canonicalUrl}"`)),
+    );
+    const sitemapHasProject = Array.from(sitemapText.matchAll(/<loc>(.*?)<\/loc>/gi)).some(([, location]) => {
+      if (!location) return false;
+      try {
+        const sitemapUrl = new URL(location);
+        const allowedHost = sitemapUrl.hostname === "uguroezdamar.com" || sitemapUrl.hostname.endsWith(".vercel.app");
+        return (sitemapUrl.protocol === "https:" && allowedHost || isLocal(origin) && sitemapUrl.origin === origin) && sitemapUrl.pathname === path;
+      } catch {
+        return false;
+      }
+    });
+    const cover = await request(`${origin}${project.cover}`, { method: "HEAD" });
+    const checks: Check[] = [
+      { name: `site: ${project.title} card is published`, ok: catalogText.includes(project.title), detail: `missing ${project.title} in /projects` },
+      { name: `site: ${project.title} is in sitemap`, ok: sitemapHasProject, detail: `missing public sitemap route ${path}` },
+      { name: `site: ${project.title} case study answers`, ok: !(page instanceof Error) && page.status === 200 && title.test(html), detail: page instanceof Error ? page.message : `HTTP ${page.status}, expected page title ${project.title}` },
+      { name: `site: ${project.title} has canonical URL`, ok: canonical, detail: `missing canonical URL for ${project.slug}` },
+      { name: `site: ${project.title} cover is served`, ok: !(cover instanceof Error) && cover.status === 200, detail: cover instanceof Error ? cover.message : `HTTP ${cover.status}, expected 200` },
+    ];
+    if (project.live && !isLocal(origin)) {
+      const live = await request(project.live);
+      checks.push({ name: `site: ${project.title} project link answers`, ok: !(live instanceof Error) && live.status >= 200 && live.status < 400, detail: live instanceof Error ? live.message : `HTTP ${live.status}, expected 2xx or 3xx` });
+    }
+    return checks;
+  })).then((groups) => groups.flat());
+
   return [
     ...healthChecks("site", healthResult, commit, !proxied),
     ...addressChecks,
     await status("site: home page", `${origin}/`, 200),
-    await status("site: project catalog", `${origin}/projects`, 200),
+    { name: "site: project catalog", ok: !(catalog instanceof Error) && catalog.status === 200, detail: catalog instanceof Error ? catalog.message : `HTTP ${catalog.status}, expected 200` },
     await status("site: /work redirects", `${origin}/work`, 308),
     { name: "site: sitemap lists the catalog", ok: sitemapText.includes("/projects"), detail: "no /projects entry" },
+    ...projectChecks,
     await status("site: contact refuses a wrong content type", contact, 415, { method: "POST", headers: { "content-type": "text/plain" }, body: "{}" }),
     await status("site: contact refuses another origin", contact, 403, json({}, { origin: "https://attacker.example" })),
     await status("site: contact refuses invalid input", contact, 400, json({ name: "" })),

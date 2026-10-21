@@ -41,13 +41,22 @@ describe("project content", () => {
     }
   });
 
+  it("publishes the approved ViralSync and Video Lab case studies", async () => {
+    const published = await content.getProjects({ includeDrafts: false });
+    expect(published).toEqual(expect.arrayContaining([
+      expect.objectContaining({ slug: "viralsync", draft: false, role: expect.any(String), contributions: expect.arrayContaining([expect.any(String)]) }),
+      expect.objectContaining({ slug: "video-lab", draft: false, role: expect.any(String), contributions: expect.arrayContaining([expect.any(String)]) }),
+    ]));
+  });
+
   it("allows drafts in protected Vercel previews but never in production", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("VERCEL_ENV", "preview");
     vi.stubEnv("VERCEL_URL", "portfolio-preview.vercel.app");
     try {
       const preview = await content.getProjects();
-      expect(preview.some((project) => project.draft)).toBe(true);
+      const sourceDrafts = (await content.getProjects({ includeDrafts: true })).filter((project) => project.draft);
+      expect(preview).toEqual(expect.arrayContaining(sourceDrafts));
 
       vi.stubEnv("VERCEL_ENV", "production");
       const production = await content.getProjects({ includeDrafts: true });
