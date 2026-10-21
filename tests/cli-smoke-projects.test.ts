@@ -10,15 +10,16 @@ const localizedPaths = [
   ...publishedSlugs.flatMap((slug) => [`/projects/${slug}`, `/de/projects/${slug}`]),
 ];
 
-function localizedHtml(pathname: string, content: string) {
+function localizedHtml(pathname: string, content: string, preloadMono = true) {
   const german = pathname === "/de" || pathname.startsWith("/de/");
   const enPath = german ? (pathname === "/de" ? "/" : pathname.slice(3)) : pathname;
   const dePath = enPath === "/" ? "/de" : `/de${enPath}`;
   const canonical = `${origin}${pathname}`;
-  return `<html lang="${german ? "de" : "en"}"><head><link rel="canonical" href="${canonical}" /><link rel="alternate" hrefLang="en" href="${origin}${enPath}" /><link rel="alternate" hrefLang="de" href="${origin}${dePath}" /><title>${content}</title></head><body>${content}</body></html>`;
+  const monoLink = preloadMono ? `<link rel="preload" href="/_next/static/media/jetbrains_mono_latin_400_normal.woff2" as="font" type="font/woff2" crossorigin="" />` : "";
+  return `<html lang="${german ? "de" : "en"}"><head>${monoLink}<link rel="canonical" href="${canonical}" /><link rel="alternate" hrefLang="en" href="${origin}${enPath}" /><link rel="alternate" hrefLang="de" href="${origin}${dePath}" /><title>${content}</title></head><body>${content}</body></html>`;
 }
 
-function siteFetch({ omitSitemapSlug, missingProject, wrongGermanTitleLink }: { omitSitemapSlug?: string; missingProject?: string; wrongGermanTitleLink?: string } = {}) {
+function siteFetch({ omitSitemapSlug, missingProject, wrongGermanTitleLink, missingMonoPreload }: { omitSitemapSlug?: string; missingProject?: string; wrongGermanTitleLink?: string; missingMonoPreload?: boolean } = {}) {
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(input instanceof Request ? input.url : String(input));
     const method = init?.method ?? "GET";
@@ -42,7 +43,7 @@ function siteFetch({ omitSitemapSlug, missingProject, wrongGermanTitleLink }: { 
       }).join("");
       return new Response(localizedHtml(url.pathname, cards), { status: 200 });
     }
-    if (url.pathname === "/" || url.pathname === "/de") return new Response(localizedHtml(url.pathname, "Portfolio"), { status: 200 });
+    if (url.pathname === "/" || url.pathname === "/de") return new Response(localizedHtml(url.pathname, "Portfolio", !missingMonoPreload), { status: 200 });
     if (url.pathname === "/work") return new Response(null, { status: 308 });
     if (url.pathname.startsWith("/projects/") || url.pathname.startsWith("/de/projects/")) {
       const slug = url.pathname.startsWith("/de/") ? url.pathname.slice("/de/projects/".length) : url.pathname.slice("/projects/".length);
@@ -93,6 +94,14 @@ describe("portfolio smoke project routes", () => {
 
   it("fails when a German project card title links to the English case study", async () => {
     vi.stubGlobal("fetch", siteFetch({ wrongGermanTitleLink: "viralsync" }));
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const { smoke } = await import("../tooling/cli/src/commands/smoke.ts");
+
+    expect(await smoke({ site: origin })).toBe(1);
+  });
+
+  it("fails when the home page does not preload JetBrains Mono", async () => {
+    vi.stubGlobal("fetch", siteFetch({ missingMonoPreload: true }));
     vi.spyOn(console, "log").mockImplementation(() => undefined);
     const { smoke } = await import("../tooling/cli/src/commands/smoke.ts");
 

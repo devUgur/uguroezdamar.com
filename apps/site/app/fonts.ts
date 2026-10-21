@@ -28,6 +28,6 @@ export const monoFont = localFont({
   weight: "400",
   style: "normal",
   display: "swap",
-  preload: false,
+  preload: true,
   fallback: ["ui-monospace", "monospace"],
 });
