@@ -22,6 +22,7 @@ const RepositorySchema = z.object({
 });
 
 const GitHubPageSchema = z.array(RepositorySchema);
+const CommitPageSchema = z.array(z.object({ sha: z.string().regex(/^[a-f0-9]{40}$/i) }));
 const ReadmeSchema = z.object({
 	name: z.string().max(255),
 	path: z.string().max(1024),
@@ -83,6 +84,11 @@ export function readmeExcerpt(markdown: string): string {
 		.slice(0, 1200);
 }
 
+export function parseLatestCommitSha(value: unknown): string | null {
+	const parsed = CommitPageSchema.safeParse(value);
+	return parsed.success ? parsed.data[0]?.sha ?? null : null;
+}
+
 /** Inspect one explicit repository. Reads only public metadata and README; never executes or stores repository content. */
 export function inspectPublicGitHubRepository(owner: string, name: string): GitHubRepositoryInspection {
 	if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(owner) || !/^[A-Za-z0-9._-]{1,100}$/.test(name) || name === "." || name === "..") {
@@ -106,6 +112,12 @@ export function inspectPublicGitHubRepository(owner: string, name: string): GitH
 	if (!safeRepository.success) throw new Error("GitHub repository metadata did not match the expected schema; no data was saved.");
 	const repository = toDiscoveredRepository(safeRepository.data);
 	if (!repository) throw new Error("The selected repository is private; inspection supports public repositories only.");
+	let commitResponse: unknown;
+	try { commitResponse = JSON.parse(runGitHubApi(`repos/${owner}/${name}/commits?per_page=1`)); } catch {
+		throw new Error("Could not read the default branch revision; no data was saved.");
+	}
+	const sourceRevision = parseLatestCommitSha(commitResponse);
+	if (!sourceRevision) throw new Error("The repository has no readable default branch commit; no data was saved.");
 
 	let readme: GitHubRepositoryInspection["readme"] = null;
 	try {
@@ -119,7 +131,7 @@ export function inspectPublicGitHubRepository(owner: string, name: string): GitH
 		// A missing or unreadable README is non-fatal; metadata inspection remains useful.
 	}
 
-	return { repository, readme, sourceRevision: safeRepository.data.updated_at };
+	return { repository, readme, sourceRevision };
 }
 
 function safeHomepage(value: string | null): string | null {

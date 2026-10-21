@@ -9,7 +9,8 @@ try {
 	const inspection = inspectPublicGitHubRepository(owner, name);
 	const { repository, readme } = inspection;
 	console.log(`Repository: ${repository.owner}/${repository.name}`);
-	console.log(`Source updated: ${inspection.sourceRevision}`);
+	console.log(`Source commit: ${inspection.sourceRevision}`);
+	console.log(`Repository updated: ${repository.remoteUpdatedAt.toISOString()}`);
 	console.log(`Description: ${repository.description ?? "(none)"}`);
 	console.log(`Homepage: ${repository.homepageUrl ?? "(not approved / unavailable)"}`);
 	console.log(`Topics: ${repository.topics.join(", ") || "(none)"}`);

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { githubCliEnvironment, readmeExcerpt, syncPublicGitHubRepositories, toDiscoveredRepository } from "../packages/server/src/portfolio-catalog/github";
+import { githubCliEnvironment, parseLatestCommitSha, readmeExcerpt, syncPublicGitHubRepositories, toDiscoveredRepository } from "../packages/server/src/portfolio-catalog/github";
 import { useTestDatabase } from "./_helpers/test-db";
 
 const sourceRepository = {
@@ -73,6 +73,13 @@ describe("GitHub portfolio catalog", () => {
 		expect(excerpt).not.toContain("hidden");
 		expect(excerpt).not.toContain("\u001b");
 		expect(readmeExcerpt("a".repeat(2000))).toHaveLength(1200);
+	});
+
+	it("accepts only an immutable commit SHA as the source revision", () => {
+		const sha = "a".repeat(40);
+		expect(parseLatestCommitSha([{ sha }])).toBe(sha);
+		expect(parseLatestCommitSha([])).toBeNull();
+		expect(parseLatestCommitSha([{ sha: "main" }])).toBeNull();
 	});
 
 	it("upserts by immutable GitHub ID and preserves the original discovery timestamp", async () => {
