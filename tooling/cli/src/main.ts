@@ -17,7 +17,7 @@ import { smoke } from "./commands/smoke.ts";
 import { run } from "./lib/exec.ts";
 import { accessHint, withSecrets } from "./lib/infisical.ts";
 import { parseStage, STAGES, type Stage } from "./lib/stages.ts";
-import { discoverProjects, inspectProject } from "./commands/projects.ts";
+import { discoverProjects, draftProject, inspectProject } from "./commands/projects.ts";
 
 const HELP = `uguroezdamar.com CLI — pnpm ugur <command>
 
@@ -35,6 +35,7 @@ const HELP = `uguroezdamar.com CLI — pnpm ugur <command>
   projects discover         List public repositories owned by gh auth (read-only / dry run)
       [--apply]              Sync allowlisted repository metadata to Neon dev; never deletes
   projects inspect <owner>/<repo>  Read selected public metadata and a bounded README excerpt; no persistence
+  projects draft <owner>/<repo> --slug <slug>  Prepare a local schema-valid draft; --apply writes, never publishes
   secrets audit              Compare Infisical with the secrets manifest (names only)
   secrets set <KEY>          Set a declared key from a hidden prompt (both stages unless --stage)
   secrets generate [--apply] Create missing random keys and tokens; --rotate replaces existing ones
@@ -71,6 +72,7 @@ const { values, positionals } = parseArgs({
     all: { type: "boolean", default: false },
     site: { type: "string" },
     portal: { type: "string" },
+    slug: { type: "string" },
     commit: { type: "string" },
     apply: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
@@ -106,6 +108,8 @@ async function main(): Promise<number> {
       return discoverProjects(values.apply, stage);
     case "projects inspect":
       return inspectProject(positionals[2] ?? "");
+    case "projects draft":
+      return draftProject(positionals[2] ?? "", values.slug ?? "", values.apply);
     case "secrets audit":
       return secretsAudit(stage);
     case "secrets prune":

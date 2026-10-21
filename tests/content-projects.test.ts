@@ -79,6 +79,28 @@ describe("project content", () => {
     expect(() => content.parseProject("example", { ...incomplete, draft: true }, "Body")).not.toThrow();
   });
 
+  it("allows empty technologies on an unpublished import draft, but requires them for publication", () => {
+    const importedDraft = {
+      title: "Imported",
+      summary: "Review this metadata.",
+      category: "Software",
+      status: "active",
+      draft: true,
+      technologies: [],
+      repositoryVisibility: "public",
+      source: {
+        provider: "github",
+        repository: "devUgur/imported",
+        commit: "a".repeat(40),
+        readme: null,
+        importedAt: "2026-10-21T10:15:00.000Z",
+      },
+      updatedAt: "2026-10-21",
+    };
+    expect(content.parseProject("imported", importedDraft, "Review required.").technologies).toEqual([]);
+    expect(() => content.parseProject("imported", { ...importedDraft, draft: false }, "Body")).toThrow(/technologies|required to publish/);
+  });
+
   it("refuses a link to a repository that is not public", () => {
     const linked = { ...valid, repositoryVisibility: "private", links: { github: "https://github.com/example/private" } };
     expect(() => content.parseProject("example", linked, "Body")).toThrow(/public repository/);

@@ -41,7 +41,7 @@ export default async function ProjectDetailPage({ params }: Params) {
   const facts = [
     { label: "Role", value: project.role },
     { label: "Period", value: formatPeriod(project.period) },
-    { label: "Status", value: STATUS_LABELS[project.status] },
+    { label: "Status", value: project.status ? STATUS_LABELS[project.status] : undefined },
   ].filter((fact): fact is { label: string; value: string } => Boolean(fact.value));
 
   return (
@@ -50,7 +50,7 @@ export default async function ProjectDetailPage({ params }: Params) {
         <p className="page-eyebrow">
           <Link href="/projects" className="link-underline">Projects</Link>
           <span className="mx-2 text-border">/</span>
-          {project.category}
+          {project.category ? project.category : null}
           {project.draft ? <span className="ml-3 rounded-xs border border-foreground/30 px-2 py-0.5 text-foreground">Draft</span> : null}
         </p>
         <h1 className="page-title">{project.title}</h1>

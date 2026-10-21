@@ -16,8 +16,8 @@ export const ProjectFrontmatterSchema = z
   .strictObject({
     title: z.string().min(1),
     summary: z.string().min(1),
-    category: z.string().min(1),
-    status: z.enum(["active", "completed", "archived"]),
+    category: z.string().min(1).optional(),
+    status: z.enum(["active", "completed", "archived"]).optional(),
     /** Shown on the home page. */
     featured: z.boolean().default(false),
     /** Lower comes first. */
@@ -26,7 +26,7 @@ export const ProjectFrontmatterSchema = z
     draft: z.boolean().default(false),
     role: z.string().min(1).optional(),
     contributions: z.array(z.string().min(1)).default([]),
-    technologies: z.array(z.string().min(1)).min(1),
+    technologies: z.array(z.string().min(1)).default([]),
     period: z.strictObject({ from: year, to: year.optional(), ongoing: z.boolean().default(false) }).optional(),
     links: z
       .strictObject({
@@ -38,6 +38,18 @@ export const ProjectFrontmatterSchema = z
     /** A file under `public/projects/`. */
     cover: z.strictObject({ src: z.string().startsWith("/projects/"), alt: z.string().min(1) }).optional(),
     repositoryVisibility: z.enum(["public", "private", "none"]),
+    /** Import provenance for a GitHub-generated draft; not rendered by the site. */
+    source: z
+      .strictObject({
+        provider: z.literal("github"),
+        repository: z.string().regex(/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/),
+        commit: z.string().regex(/^[a-f0-9]{40}$/i),
+        readme: z
+          .strictObject({ path: z.string().min(1).max(1024), sha: z.string().regex(/^[a-f0-9]{40}$/i) })
+          .nullable(),
+        importedAt: z.iso.datetime(),
+      })
+      .optional(),
     updatedAt: z.iso.date(),
   })
   .superRefine((project, context) => {
@@ -45,6 +57,11 @@ export const ProjectFrontmatterSchema = z
       context.addIssue({ code: "custom", path: ["links", "github"], message: "only a public repository may be linked" });
     }
     if (project.draft) return;
+    if (project.technologies.length === 0) {
+      context.addIssue({ code: "custom", path: ["technologies"], message: "required to publish" });
+    }
+    if (!project.category) context.addIssue({ code: "custom", path: ["category"], message: "required to publish" });
+    if (!project.status) context.addIssue({ code: "custom", path: ["status"], message: "required to publish" });
     // What a reader needs before a case study is worth publishing.
     if (!project.role) context.addIssue({ code: "custom", path: ["role"], message: "required to publish" });
     if (project.contributions.length === 0) {
