@@ -27,7 +27,9 @@ pnpm install
 pnpm ugur setup
 ```
 
-`setup` öffnet den Browser für die Anmeldung bei Infisical und Neon und verknüpft den Checkout mit dem Infisical-Projekt (`.infisical.json`, enthält nur eine Projekt-ID und wird committet). Das Infisical-Projekt selbst wird einmalig in der Web-Oberfläche angelegt (Name `uguroezdamar-com`, Environments `dev` und `prod`).
+`setup` öffnet den Browser für die Anmeldung bei Infisical und Neon und verknüpft den Checkout mit dem Infisical-Projekt (`.infisical.json`, enthält nur eine Projekt-ID und wird committet). Das Infisical-Projekt selbst wird einmalig in der Web-Oberfläche angelegt (Name `uguroezdamar-com`, Environments `dev` und `prod`). Es muss ein eigenes Projekt dieses Produkts vom Typ **Secrets Management** in der ausgewählten Organisation sein; ein Projekt von ViralSync oder ein anderes fremdes Projekt darf nicht wiederverwendet werden.
+
+`pnpm ugur setup --relink` fragt die Projektwahl erneut ab. Die CLI prüft den ausgewählten Link zunächst in einem temporären Verzeichnis und testet den Zugriff auf `dev` und `prod`. Erst wenn beide Prüfungen erfolgreich sind, ersetzt sie `.infisical.json`; Abbruch oder ein falsches Projekt lassen die bisherige Verknüpfung unverändert. Bei `This project does not belong to your selected organization` muss die Infisical-Organisation bzw. Projektzuordnung korrigiert werden. Erneutes `infisical login` allein behebt eine falsche Projektzuordnung nicht. `pnpm ugur dev` prüft den Zugriff vor dem Start und zeigt bei Fehlern den konkreten nächsten Schritt.
 
 Beim allerersten Einrichten des Produkts zusätzlich:
 

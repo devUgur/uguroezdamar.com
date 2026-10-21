@@ -1,16 +1,49 @@
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { has, run } from "../lib/exec.ts";
 import {
   accessHint,
   INFISICAL_DOMAIN,
-  INFISICAL_FILE,
   infisicalConfig,
   listSecretNames,
   writeInfisicalConfig,
 } from "../lib/infisical.ts";
 import { neonLoggedIn } from "../lib/neon.ts";
+import { STAGES, type Stage } from "../lib/stages.ts";
 
 const step = (text: string) => console.log(`\n▸ ${text}`);
+
+function selectedWorkspaceId(path: string): string | null {
+  try {
+    const value = JSON.parse(readFileSync(path, "utf8")) as { workspaceId?: unknown };
+    return typeof value.workspaceId === "string" && /^[0-9a-f-]{36}$/i.test(value.workspaceId) ? value.workspaceId : null;
+  } catch {
+    return null;
+  }
+}
+
+function verifyProjectAccess(workspaceId: string, stage: Stage, cwd: string): boolean {
+  const result = run(
+    "infisical",
+    ["export", "--env", STAGES[stage].infisical, "--projectId", workspaceId, "--domain", INFISICAL_DOMAIN, "--path", "/", "--format", "json", "--silent"],
+    { cwd, capture: true },
+  );
+  if (result.code === 0) return true;
+  const detail = result.stderr.match(/^Message:\s*(.+)$/m)?.[1]?.trim();
+  console.error(`Infisical project access failed for ${stage}${detail ? `: ${detail}` : "."}`);
+  return false;
+}
+
+function removeTemporaryDirectory(path: string): void {
+  const root = resolve(tmpdir());
+  const target = resolve(path);
+  const relativeTarget = relative(root, target);
+  if (!relativeTarget || relativeTarget.startsWith("..") || isAbsolute(relativeTarget)) {
+    throw new Error("Refusing to remove a path outside the temporary directory.");
+  }
+  rmSync(target, { recursive: true, force: true });
+}
 
 /**
  * One-time onboarding of a machine: sign in to Infisical and Neon in the browser and link this
@@ -32,9 +65,7 @@ export function setup(relink = false): number {
     }
   }
 
-  if (relink && existsSync(INFISICAL_FILE)) rmSync(INFISICAL_FILE);
-
-  if (!infisicalConfig()) {
+  if (!infisicalConfig() || relink) {
     // `init` lists nothing without a session; an existing one is reused.
     if (!relink) {
       step(`Sign in to Infisical (${INFISICAL_DOMAIN}) — a browser window opens.`);
@@ -42,18 +73,28 @@ export function setup(relink = false): number {
     }
 
     step('Choose the organization, then this product\'s project. It must be of type "Secrets Management".');
-    if (run("infisical", ["init", `--domain=${INFISICAL_DOMAIN}`]).code !== 0) return 1;
-    const { workspaceId } = JSON.parse(readFileSync(INFISICAL_FILE, "utf8")) as { workspaceId?: string };
-    if (!workspaceId) {
-      console.error("`infisical init` did not record a project.");
-      return 1;
+    const temporaryDirectory = mkdtempSync(join(tmpdir(), "uguroezdamar-infisical-link-"));
+    try {
+      if (run("infisical", ["init", `--domain=${INFISICAL_DOMAIN}`], { cwd: temporaryDirectory }).code !== 0) {
+        console.error("Infisical linking was cancelled or failed; the existing repository link was left unchanged.");
+        return 1;
+      }
+      const workspaceId = selectedWorkspaceId(join(temporaryDirectory, ".infisical.json"));
+      if (!workspaceId) {
+        console.error("`infisical init` did not record a valid project; the existing repository link was left unchanged.");
+        return 1;
+      }
+      for (const stage of Object.keys(STAGES) as Stage[]) {
+        if (!verifyProjectAccess(workspaceId, stage, temporaryDirectory)) {
+          console.error("The repository's existing Infisical link was left unchanged. Select the correct organization and project, then retry.");
+          return 1;
+        }
+      }
+      writeInfisicalConfig(workspaceId);
+      console.log("✓ Infisical: project access verified for dev and prod; repository link updated");
+    } finally {
+      removeTemporaryDirectory(temporaryDirectory);
     }
-    writeInfisicalConfig(workspaceId);
-    if (!listSecretNames("dev") || !listSecretNames("prod")) {
-      console.error(`\n✗ The chosen project cannot hold this product's secrets.\n${accessHint()}`);
-      return 1;
-    }
-    console.log("✓ .infisical.json written — commit it; it holds a project id, no secret.");
   } else if (!listSecretNames("dev")) {
     if (accessHint().includes("--relink")) {
       console.error(accessHint());

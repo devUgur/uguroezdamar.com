@@ -1,6 +1,6 @@
 import { createConnection, createServer } from "node:net";
 import { REPO_ROOT, run } from "../lib/exec.ts";
-import { accessHint, withSecrets } from "../lib/infisical.ts";
+import { accessHint, listSecretNames, withSecrets } from "../lib/infisical.ts";
 import { runManagedProcess } from "../lib/managed-process.ts";
 import { LOCAL_ORIGINS, type Stage } from "../lib/stages.ts";
 
@@ -79,6 +79,11 @@ export async function dev(filters: string[], options: DevOptions = {}): Promise<
   const apps = selectApps(filters, options.all);
   if (!Array.isArray(apps)) {
     console.error(`Unknown app "${apps.unknown.join(", ")}". Use: ${APPS.join(", ")}.`);
+    return 1;
+  }
+
+  if (!listSecretNames("dev")) {
+    console.error(accessHint());
     return 1;
   }
 

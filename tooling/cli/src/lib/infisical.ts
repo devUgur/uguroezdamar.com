@@ -151,12 +151,12 @@ export const SETUP_HINT = "Not linked to Infisical yet — run `pnpm ugur setup`
 export const LOGIN_HINT = `Cannot read Infisical — run \`infisical login --domain=${INFISICAL_DOMAIN}\` (or \`pnpm ugur setup\`).`;
 
 export const RELINK_HINT =
-  "Create a project of type \"Secrets Management\" in Infisical, then run `pnpm ugur setup --relink` and choose it.";
+  "This checkout is linked to an Infisical project that your selected organization cannot access. Select the correct organization and this product's dedicated \"Secrets Management\" project, then run `pnpm ugur setup --relink`. Do not link the ViralSync project.";
 
 /** The right hint for a failed read: not linked, linked to an unusable project, or not signed in. */
 export function accessHint(): string {
   if (!infisicalConfig()) return SETUP_HINT;
   if (!lastReadError) return LOGIN_HINT;
-  const wrongProject = /project is of type|not found/i.test(lastReadError);
+  const wrongProject = /project is of type|not found|does not belong to your selected organization/i.test(lastReadError);
   return [`Infisical refused: ${lastReadError}`, wrongProject ? RELINK_HINT : LOGIN_HINT].join("\n");
 }
