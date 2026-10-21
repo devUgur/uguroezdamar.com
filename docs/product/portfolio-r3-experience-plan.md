@@ -1,6 +1,6 @@
 # Portfolio R3 — Ladezeit, Interaktion und Lokalisierung
 
-**Status:** Umsetzung begonnen · **Owner:** Ugur Özdamar · **Stand:** 21.10.2026
+**Status:** R3.1 implementiert und auf Production promotet; Performancevergleich und visuelle Detailabnahme offen · **Owner:** Ugur Özdamar · **Stand:** 21.10.2026
 
 Dieser Plan ergänzt [R2 Editorial Engineering](r2-design-brief.md) und den operativen [Portfolio-/Live-Plan](portfolio-live-and-import-plan.md). Die Portfolio-Case-Studies für ViralSync und Video Lab sind bereits auf der Portfolio-Production veröffentlicht. Dieser Plan beschreibt die nächste Qualitätsschicht; er ändert keine Freigabe für die eigenständigen ViralSync- oder Video-Lab-Produkte.
 
@@ -21,6 +21,14 @@ Dieser Plan ergänzt [R2 Editorial Engineering](r2-design-brief.md) und den oper
 | R3.3 — redaktionelle Übersetzung | Homepage, About, Education, Contact, Blog-UI, Projektkarten und beide Case Studies manuell lokalisieren. Datums-/Zahlenformat und Alt-Texte folgen der Sprache. | Inhaltliche Review beider Sprachen, interne Links und Meta-Titel korrekt, keine Inhalte aus Draft-MDX. Rechtstexte erst nach Betreiber-/Rechtsprüfung übersetzen und freigeben. |
 | R3.4 — visuelle und barrierefreie Abnahme | Screenshots und Tastatur-/Screenreader-Prüfung bei 375, 768 und 1440 px in beiden Themes; Cursor und Navigation mit Bewegungsvorgaben prüfen. | Keine abgeschnittene Copy, stabile Mediengrößen, sichtbarer Fokus, sinnvolle Sprache des Dokuments und korrekte Alternativtexte. Ergebnisse mit Commit und URL ablegen. |
 | R3.5 — Veröffentlichung | PR-Preview prüfen, CI abwarten, exakten Commit gegen Staging-Smoke prüfen, Merge per PR, danach manuell die Site-Production promoten und Smoke erneut ausführen. | Release-URL/Commit dokumentiert; Apex und `www` liefern dieselben geprüften Routen; Rollback-Referenz festgehalten. |
+
+## R3.1 Rollout-Nachweis
+
+- Main-Commit: `9997735b98fe841eda9e346595843b9603be96b9` (Feature-PR #31 und sicherer CLI-Releasepfad aus PR #32).
+- Production-Deployment: `dpl_B5qqvyhTbQ3TvSvTHSLHtdng7J3a` (`https://uguroezdamar-d6dr4itfz-devugur1s-projects.vercel.app`), manuell promotet nach erfolgreichem Staged-Smoke.
+- Site-Smoke `--commit 9997735…`: 24/24 auf Staging, `https://uguroezdamar.com` und `https://www.uguroezdamar.com`.
+- Gebautes HTML enthält Same-Origin-WOFF2-Preloads für Inter und Playfair Display; im gebauten HTML/CSS wurden keine Google-Font-Hosts gefunden. Core Web Vitals wurden noch nicht im Feld verglichen.
+- PR #31 CI: Lint, Migrationen, Typecheck, 87 Tests sowie Site-/Portal-Build grün. Site-/Portal-Previews grün. Das unveränderte Portal wurde nicht promotet.
 
 ## Technische Entscheidungen
 
