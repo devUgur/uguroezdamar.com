@@ -17,6 +17,11 @@ interface Health {
   client?: string | null;
 }
 
+interface HealthResult {
+  report: Health | null;
+  detail?: string;
+}
+
 const TIMEOUT_MS = 30_000;
 /** An address from a documentation range: no real client has it, so it can only come from us. */
 const FORGED_ADDRESS = "203.0.113.250";
@@ -40,14 +45,17 @@ async function status(name: string, url: string, expected: number, init?: Reques
   return { name, ok: response.status === expected, detail: `HTTP ${response.status}, expected ${expected}` };
 }
 
-async function health(origin: string, headers?: Record<string, string>): Promise<Health | null> {
+async function health(origin: string, headers?: Record<string, string>): Promise<HealthResult> {
   const response = await request(`${origin}/api/health`, { headers });
-  if (response instanceof Error || !response.ok) return null;
-  return (await response.json().catch(() => null)) as Health | null;
+  if (response instanceof Error) return { report: null, detail: response.message };
+  if (!response.ok) return { report: null, detail: `HTTP ${response.status}` };
+  const report = (await response.json().catch(() => null)) as Health | null;
+  return report ? { report } : { report: null, detail: `HTTP ${response.status}, response was not JSON` };
 }
 
-function healthChecks(app: string, report: Health | null, commit?: string, local = false): Check[] {
-  if (!report) return [{ name: `${app}: /api/health answers`, ok: false, detail: "no JSON answer" }];
+function healthChecks(app: string, result: HealthResult, commit?: string, local = false): Check[] {
+  const { report } = result;
+  if (!report) return [{ name: `${app}: /api/health answers`, ok: false, detail: result.detail ?? "no JSON answer" }];
   const deployed = report.commit ?? "";
   return [
     { name: `${app}: /api/health answers`, ok: report.ok === true && report.app === app },
@@ -68,11 +76,13 @@ const json = (body: unknown, headers: Record<string, string> = {}): RequestInit 
 });
 
 async function smokeSite(origin: string, commit?: string): Promise<Check[]> {
-  const report = await health(origin);
+  const healthResult = await health(origin);
+  const report = healthResult.report;
   const forged = await health(origin, { "x-vercel-forwarded-for": FORGED_ADDRESS, "x-forwarded-for": FORGED_ADDRESS, "x-real-ip": FORGED_ADDRESS });
   const sitemap = await request(`${origin}/sitemap.xml`);
   const sitemapText = sitemap instanceof Error ? "" : await sitemap.text();
   const contact = `${origin}/api/contact`;
+  const forgedClient = forged.report?.client;
 
   // Only the hosting proxy sets the client address; a local server has none in front of it.
   const proxied = !isLocal(origin);
@@ -82,14 +92,14 @@ async function smokeSite(origin: string, commit?: string): Promise<Check[]> {
         { name: "site: sees a client address", ok: Boolean(report?.client), detail: "x-vercel-forwarded-for did not reach the app" },
         {
           name: "site: a client cannot choose its address",
-          ok: Boolean(forged?.client) && forged?.client !== FORGED_ADDRESS,
-          detail: forged?.client === FORGED_ADDRESS ? "a forged address header was accepted" : "no address seen",
+          ok: Boolean(forgedClient) && forgedClient !== FORGED_ADDRESS,
+          detail: forgedClient === FORGED_ADDRESS ? "a forged address header was accepted" : "no address seen",
         },
       ]
     : [];
 
   return [
-    ...healthChecks("site", report, commit, !proxied),
+    ...healthChecks("site", healthResult, commit, !proxied),
     ...addressChecks,
     await status("site: home page", `${origin}/`, 200),
     await status("site: project catalog", `${origin}/projects`, 200),
@@ -104,8 +114,9 @@ async function smokeSite(origin: string, commit?: string): Promise<Check[]> {
 }
 
 async function smokePortal(origin: string, commit?: string): Promise<Check[]> {
+  const healthResult = await health(origin);
   return [
-    ...healthChecks("portal", await health(origin), commit, isLocal(origin)),
+    ...healthChecks("portal", healthResult, commit, isLocal(origin)),
     await status("portal: login page", `${origin}/login`, 200),
     await status("portal: admin API refuses anonymous callers", `${origin}/api/admins`, 401),
     await status("portal: invite API refuses anonymous callers", `${origin}/api/admins/invites`, 401, json({})),

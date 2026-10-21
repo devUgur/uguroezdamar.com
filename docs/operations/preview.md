@@ -2,7 +2,7 @@
 
 **Zweck:** Wie Site und Portal bei Vercel eingerichtet werden, wie ein Stand vor dem Merge als Vorschau geprüft wird und wie er in die Produktion kommt. Entscheidung: [ADR 0020](../architecture/decisions/0020-vercel-hosting.md).
 
-**Stand 13.10.2026:** Beide Projekte sind angelegt und eingerichtet, die Umgebung Preview hat ihre Variablen. `pnpm ugur smoke` gegen die Vorschau des Commits `e821bec` hat alle 19 Prüfungen bestanden, einschließlich Client-Adresse und Commit. Die Umgebung Production ist noch leer und liefert auf den `vercel.app`-Adressen den alten Stand von `main` aus; die Domain zeigt weiter auf Render.
+**Stand 21.10.2026:** `pnpm ugur hosting status` bestätigt Site und Portal, manuelles Promote, `all_except_custom_domains` und vorhandene Smoke-Bypasses. Beide Production-Aliases stehen auf `f60a1a4`; die Statusprüfung meldet die erforderlichen Variablennamen für Preview und Production als `in step`. Der nicht schreibende Smoke-Lauf gegen beide Production-Aliases schlug bei 7 von 15 Prüfungen fehl: Site-Health antwortete 404, Site-Home und Projektkatalog 500, Portal-Health 401 (Deployment-Protection-Middleware); Kontakt-Validierungen und anonyme Portal-Sperren verhielten sich erwartungsgemäß. Vercel Runtime-Logs der Site zeigen `DatabaseNotConfiguredError`; die Site- und Portal-Health-Routen sind im aktuell deployten Commit `f60a1a4` noch nicht enthalten. Produktion ist damit nicht launch-bereit. Vor einer Promotion muss die Produktionslaufzeit `DATABASE_URL` nachweislich erhalten, der neue Kandidat beide Health-Routen bereitstellen, die Smoke-Bypass-Antwort für das Portal geprüft und der vollständige Smoke-Lauf am exakten Kandidaten bestanden werden. Logs wurden nur auf Status und Fehlerklasse ausgewertet; Request-Inhalte wurden nicht ausgegeben.
 
 ## Aufbau
 
@@ -28,7 +28,7 @@ Veröffentlichen, Mergen und Ausliefern bleiben drei getrennte Entscheidungen.
 
 ## Einrichtung
 
-Die zwei Projekte bestehen seit dem 13.10.2026: `uguroezdamar-com` (Root Directory `apps/site`) und `uguroezdamar-portal` (`apps/portal`), beide mit diesem Repository verbunden, Produktions-Branch `main`, Node.js 24.x. Die Namen stehen in `tooling/cli/src/lib/vercel.ts`.
+Die zwei Projekte sind `uguroezdamar-com` (Root Directory `apps/site`) und `uguroezdamar-portal` (`apps/portal`), beide mit diesem Repository verbunden, Produktions-Branch `main`, Node.js 24.x. Die Namen stehen in `tooling/cli/src/lib/vercel.ts`.
 
 Alles Weitere läuft über die CLI. Sie nutzt die angemeldete Vercel-CLI (`vercel login`) und zeigt nur Namen, nie Werte.
 
@@ -60,7 +60,7 @@ Der Lauf speichert nichts. Von Hand zu prüfen: Login, Einladung annehmen, Rolle
 
 - **Proxy vor Vercel:** Liegt Cloudflare als Proxy vor Vercel, sieht die App für jeden Besucher dieselbe Adresse, und das Rate-Limit trifft alle gemeinsam. Deshalb *DNS only*.
 - **Daten der Vorschau:** Vorschauen schreiben in den Neon-Branch `dev`. Dort liegen nur Testdaten.
-- **Entwürfe:** Lokale Entwicklung und geschützte Vercel-Preview-Deployments zeigen Projekte mit `draft: true`. Der Build erkennt Preview über `VERCEL_ENV=preview` plus `VERCEL_URL`; Production filtert Drafts auch bei explizitem `includeDrafts: true`. Derzeit bestätigt `pnpm ugur hosting status` `all_except_custom_domains`, sodass Preview-URLs durch Deployment Protection geschützt sind. Sitemap und `robots` schließen Draft-Seiten unabhängig davon aus. Fällt der Schutz weg, darf kein Draft-Preview ausgerollt werden. Details: [ADR 0022](../architecture/decisions/0022-protected-draft-previews.md).
+- **Entwürfe:** Lokale Entwicklung und geschützte Vercel-Preview-Deployments zeigen Projekte mit `draft: true`. Der Build erkennt Preview über `VERCEL_ENV=preview` plus `VERCEL_URL`; Production filtert Drafts auch bei explizitem `includeDrafts: true`. `pnpm ugur hosting status` bestätigt derzeit `all_except_custom_domains`; Preview-URLs sind durch Deployment Protection geschützt. Sitemap und `robots` schließen Draft-Seiten unabhängig davon aus. Fällt der Schutz weg, darf kein Draft-Preview ausgerollt werden. Details: [ADR 0022](../architecture/decisions/0022-protected-draft-previews.md).
 - **Plan:** Der kostenlose Hobby-Plan ist auf nicht-kommerzielle Nutzung beschränkt. Vor der Umstellung die aktuellen Bedingungen prüfen.
 
 ## Lokal dasselbe prüfen
