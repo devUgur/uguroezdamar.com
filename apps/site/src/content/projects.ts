@@ -99,14 +99,15 @@ const loadProjects = cache(async (): Promise<Project[]> => {
 export interface ProjectQuery {
 /** Defaults to local development and protected Vercel Preview deployments. */
   includeDrafts?: boolean;
+  locale?: "en" | "de";
 }
 
 /** Deployment Protection is configured separately; Vercel previews are checked before release. */
 const isVercelPreview = () => process.env.VERCEL_ENV === "preview" && Boolean(process.env.VERCEL_URL);
 const draftsAllowed = () => process.env.NODE_ENV !== "production" || isVercelPreview();
 
-export async function getProjects({ includeDrafts = draftsAllowed() }: ProjectQuery = {}): Promise<Project[]> {
-  const projects = await loadProjects();
+export async function getProjects({ includeDrafts = draftsAllowed(), locale = "en" }: ProjectQuery = {}): Promise<Project[]> {
+  const projects = locale === "de" ? await loadGermanProjects() : await loadProjects();
   return includeDrafts && draftsAllowed() ? projects : projects.filter((project) => !project.draft);
 }
 
@@ -118,10 +119,17 @@ export async function getProjectBySlug(slug: string, query: ProjectQuery = {}): 
   return (await getProjects(query)).find((project) => project.slug === slug) ?? null;
 }
 
+const loadGermanProjects = cache(async (): Promise<Project[]> => {
+  const files = await readContentFiles(contentDir("projects", "de"));
+  return files
+    .map((file) => parseProject(file.slug, file.data, file.content))
+    .sort((a, b) => a.displayOrder - b.displayOrder || a.title.localeCompare(b.title));
+});
+
 /** "2024–Present", "2022–2024", "2023", or `null` without a period. */
-export function formatPeriod(period: Project["period"]): string | null {
+export function formatPeriod(period: Project["period"], locale: "en" | "de" = "en"): string | null {
   if (!period) return null;
-  if (period.ongoing) return `${period.from}–Present`;
+  if (period.ongoing) return `${period.from}–${locale === "de" ? "heute" : "Present"}`;
   return period.to && period.to !== period.from ? `${period.from}–${period.to}` : String(period.from);
 }
 

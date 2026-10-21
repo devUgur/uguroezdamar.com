@@ -4,7 +4,7 @@ import { contentDir, isValidSlug, readContentFile, readContentFiles, type Conten
 
 import type { PostRecord } from "./types";
 
-const blogDir = () => contentDir("blog");
+const blogDir = (locale: "en" | "de" = "en") => locale === "de" ? contentDir("blog", "de") : contentDir("blog");
 
 export function isValidBlogSlug(slug: string): boolean {
   return isValidSlug(slug);
@@ -20,13 +20,13 @@ function toPost(file: ContentFile): PostRecord {
   };
 }
 
-export async function getAllPosts(): Promise<PostRecord[]> {
-  const posts = (await readContentFiles(blogDir())).map(toPost);
+export async function getAllPosts(locale: "en" | "de" = "en"): Promise<PostRecord[]> {
+  const posts = (await readContentFiles(blogDir(locale))).map(toPost);
   posts.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
   return posts;
 }
 
-export async function getPostBySlug(slug: string): Promise<PostRecord | null> {
-  const file = await readContentFile(blogDir(), slug);
+export async function getPostBySlug(slug: string, locale: "en" | "de" = "en"): Promise<PostRecord | null> {
+  const file = await readContentFile(blogDir(locale), slug);
   return file ? toPost(file) : null;
 }

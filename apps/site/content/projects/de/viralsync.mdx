@@ -1,0 +1,45 @@
+---
+# Deutsche Fassung der am 21.10.2026 vom Projektinhaber freigegebenen öffentlichen Fallstudie.
+title: ViralSync
+summary: Eine Social-Media-Operations-Plattform in einer frühen Entwicklungsphase. Sie bündelt Markenkanäle, Medien, Beitragsplanung und Anbieter-Workflows in einem Arbeitsbereich.
+category: SaaS-Plattform
+status: active
+role: Produktinhaber und Entwickler
+contributions:
+  - Aufbau der Organisations- und Marken-Workflows, der Medienbibliothek sowie der Grundlage für Kanalverbindungen.
+  - Strukturierung des Produkts mit gemeinsam genutzter Domänenlogik, einer Next.js-Anwendung und einer Hono-API auf Cloudflare Workers.
+  - Serverseitige Einladungs- und Anbieterfreigaben für eine geplante private Beta; der Produktionsstart wird separat geprüft.
+featured: true
+displayOrder: 10
+draft: false
+technologies:
+  - TypeScript
+  - Next.js
+  - Cloudflare Workers
+  - Hono
+  - PostgreSQL (Neon)
+  - Drizzle ORM
+  - Mastra
+links:
+  live: https://viralsync.io
+repositoryVisibility: private
+cover:
+  src: /projects/viralsync/calendar-month-light.webp
+  alt: Monatlicher Veröffentlichungskalender von ViralSync mit synthetischen Beispielbeiträgen für Healthy Life.
+  caption: Synthetischer Healthy-Life-Demokalender mit Beispielbeiträgen.
+updatedAt: 2026-10-21
+---
+
+## Herausforderung
+
+Wer auf mehreren sozialen Netzwerken veröffentlicht, wiederholt dieselbe Arbeit in verschiedenen Werkzeugen: dasselbe Video hochladen, Bildtexte neu formulieren und Kennzahlen aus mehreren Dashboards zusammentragen. ViralSync führt die Kanäle einer Marke in einem gemeinsamen Workflow zusammen.
+
+## Lösung
+
+ViralSync entsteht als gemeinsamer Arbeitsbereich für Markenkanäle, eine Medienbibliothek und einen überprüfbaren Veröffentlichungsprozess. Der aktuelle Entwicklungsstand umfasst die Grundlagen für Organisationen und Marken, die Medienbibliothek und die ersten Kanalverbindungen. Veröffentlichung, Analytics und die Assistenzoberfläche werden noch fertiggestellt. Produktionskontrollen und Freigaben der Anbieter befinden sich weiterhin in Prüfung. Diese Portfolioseite beschreibt das Projekt und ist kein Angebot einer allgemein verfügbaren Plattform.
+
+## Architektur
+
+Das Produkt ist ein Monorepo mit einer Next.js-Webanwendung und einer Hono-API auf Cloudflare Workers. Jedes soziale Netzwerk ist hinter einer Provider-Schnittstelle mit einem Manifest für unterstützte Kanäle und Einstellungen gekapselt. In Tests kann ein simuliertes Netzwerk diese Schnittstelle ersetzen.
+
+Domänenregeln, Anwendungsfälle, Datenbankzugriff und Agent sind getrennte Pakete. Dadurch verwenden Webanwendung, API und Agent dieselben Implementierungen. Marketingseite und Nutzerdokumentation sind eigenständige statische Websites.

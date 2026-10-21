@@ -1,0 +1,44 @@
+---
+# Deutsche Fassung der am 21.10.2026 vom Projektinhaber freigegebenen öffentlichen Fallstudie.
+title: Video Lab
+summary: Ein local-first KI-Videostudio in Entwicklung. Es erstellt zunächst einen überprüfbaren Produktionsplan, bevor kostenpflichtige Generierung beginnt. Eine öffentlich gehostete Demo gibt es derzeit nicht.
+category: KI-Werkzeuge
+status: active
+role: Produktinhaber und Entwickler
+contributions:
+  - Konzeption eines freigabepflichtigen Produktionslaufs, bei dem vor der kostenpflichtigen Generierung genau der geprüfte Plan bestätigt werden muss.
+  - Aufbau eines szenenbasierten Kompositions- und Render-Workflows mit MP4-Ausgabe.
+  - Ergänzung von Provider-Verbindungen, Budgetkontrollen, Kostenübersicht und einem kostenlosen Mock-Medienmodus.
+featured: true
+displayOrder: 20
+draft: false
+technologies:
+  - TypeScript
+  - Next.js
+  - Vercel AI SDK
+  - Mastra
+  - FFmpeg
+  - Modal
+repositoryVisibility: private
+cover:
+  src: /projects/video-lab/golden-recipe-contact-sheet.webp
+  alt: Sechsstufiges Storyboard für ein synthetisches Smoothie-Video – vom Einstieg über Zutaten bis zum Ergebnis und Handlungsaufruf.
+  caption: Synthetisches Storyboard eines Rezeptvideos mit sechs Szenen.
+updatedAt: 2026-10-21
+---
+
+## Herausforderung
+
+Ein KI-generiertes Kurzvideo besteht aus mehreren möglicherweise kostenpflichtigen Schritten: Bildern, Clips, Sprache, Musik und Schnitt. Ein ungeeigneter Prompt fällt unter Umständen erst auf, nachdem alle Schritte bezahlt wurden.
+
+## Lösung
+
+Video Lab plant, bevor Kosten entstehen. Ein Director-Agent übersetzt eine Idee in einen konkreten Plan mit Szenen, Prompts, Audio und geschätzten Kosten. Erst nach Freigabe genau dieses Plans startet die Generierung. Änderungen am Plan benötigen eine erneute Freigabe. Anschließend lassen sich Kompositionen Szene für Szene bearbeiten und als MP4 rendern.
+
+Die Anwendung ist local-first und wird nicht als gehosteter Dienst angeboten. Diese Seite stellt das Projekt und sein synthetisches Storyboard vor, keine öffentliche Produktdemo.
+
+## Architektur
+
+Provider wie OpenAI, Google, fal.ai und ElevenLabs werden mit eigenen Schlüsseln der nutzenden Person angebunden. Diese werden zusammen mit dem Hauptschlüssel verschlüsselt im Betriebssystem-Schlüsselbund gespeichert. Selbst gehostete offene Modelle laufen über ein Gateway auf Modal.
+
+Jede kostenpflichtige Generierung wird in einer Kostenübersicht erfasst; Pläne enthalten Kostenschätzungen und Budgetgrenzen. Ohne Provider-Verbindung kann der gesamte Ablauf mit kostenlosen Mock-Medien entwickelt und getestet werden.

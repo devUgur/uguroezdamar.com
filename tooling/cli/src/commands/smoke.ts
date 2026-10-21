@@ -74,6 +74,72 @@ function healthChecks(app: string, result: HealthResult, commit?: string, local 
 /** A local production build has no hosting proxy in front of it and no deploy commit. */
 const isLocal = (url: string) => ["localhost", "127.0.0.1"].includes(new URL(url).hostname);
 
+/** Public routes that are deliberately published in both English and German. */
+const LOCALIZED_ROUTES = [
+  { en: "/", de: "/de" },
+  { en: "/projects", de: "/de/projects" },
+  { en: "/about", de: "/de/about" },
+  { en: "/education", de: "/de/education" },
+  { en: "/contact", de: "/de/contact" },
+  { en: "/blog", de: "/de/blog" },
+  { en: "/privacy", de: "/de/privacy" },
+  { en: "/imprint", de: "/de/imprint" },
+] as const;
+
+function linkTags(html: string): Array<{ rel?: string; href?: string; hrefLang?: string }> {
+  return (html.match(/<link\b[^>]*>/gi) ?? []).map((tag) => ({
+    rel: tag.match(/\brel=["']([^"']+)["']/i)?.[1]?.toLowerCase(),
+    href: tag.match(/\bhref=["']([^"']+)["']/i)?.[1],
+    hrefLang: tag.match(/\bhreflang=["']([^"']+)["']/i)?.[1]?.toLowerCase(),
+  }));
+}
+
+async function localizedRouteChecks(origin: string): Promise<Check[]> {
+  const checks: Check[] = [];
+  const publicOrigin = "https://uguroezdamar.com";
+  const routes = [
+    ...LOCALIZED_ROUTES,
+    ...PUBLIC_PROJECTS.map(({ slug }) => ({ en: `/projects/${slug}`, de: `/de/projects/${slug}` })),
+  ];
+  for (const route of routes) {
+    for (const locale of ["en", "de"] as const) {
+      const pathname = route[locale];
+      const response = await request(`${origin}${pathname}`);
+      const html = response instanceof Error ? "" : await response.text();
+      const links = linkTags(html);
+      const expectedCanonical = pathname === "/" ? "/" : pathname;
+      const canonical = links.find((link) => link.rel === "canonical" && link.href);
+      let canonicalMatches = false;
+      try {
+        const canonicalUrl = new URL(canonical?.href ?? "");
+        canonicalMatches = canonicalUrl.pathname === expectedCanonical && [origin, publicOrigin].includes(canonicalUrl.origin);
+      } catch {
+        canonicalMatches = false;
+      }
+      const htmlLanguage = html.match(/<html\b[^>]*\blang=["']([^"']+)["']/i)?.[1]?.toLowerCase();
+      const expectedAlternates = [
+        { locale: "en", path: route.en },
+        { locale: "de", path: route.de },
+      ];
+      const hasAlternates = expectedAlternates.every(({ locale: language, path }) => links.some((link) => {
+        if (link.rel !== "alternate" || link.hrefLang !== language || !link.href) return false;
+        try {
+          const alternate = new URL(link.href);
+          return alternate.pathname === path && [origin, publicOrigin].includes(alternate.origin);
+        } catch {
+          return false;
+        }
+      }));
+      checks.push(
+        { name: `site: ${pathname} answers`, ok: !(response instanceof Error) && response.status === 200, detail: response instanceof Error ? response.message : `HTTP ${response.status}, expected 200` },
+        { name: `site: ${pathname} declares lang=${locale}`, ok: htmlLanguage === locale, detail: `document language is ${htmlLanguage || "missing"}` },
+        { name: `site: ${pathname} has canonical and language alternates`, ok: canonicalMatches && hasAlternates, detail: `canonical ${canonical?.href ?? "missing"}; en/de alternates ${hasAlternates ? "present" : "missing"}` },
+      );
+    }
+  }
+  return checks;
+}
+
 const json = (body: unknown, headers: Record<string, string> = {}): RequestInit => ({
   method: "POST",
   headers: { "content-type": "application/json", ...headers },
@@ -145,6 +211,7 @@ async function smokeSite(origin: string, commit?: string): Promise<Check[]> {
     ...healthChecks("site", healthResult, commit, !proxied),
     ...addressChecks,
     await status("site: home page", `${origin}/`, 200),
+    ...await localizedRouteChecks(origin),
     { name: "site: project catalog", ok: !(catalog instanceof Error) && catalog.status === 200, detail: catalog instanceof Error ? catalog.message : `HTTP ${catalog.status}, expected 200` },
     await status("site: /work redirects", `${origin}/work`, 308),
     { name: "site: sitemap lists the catalog", ok: sitemapText.includes("/projects"), detail: "no /projects entry" },

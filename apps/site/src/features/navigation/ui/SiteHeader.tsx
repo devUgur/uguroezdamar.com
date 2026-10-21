@@ -6,15 +6,18 @@ import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@ugur/ui/client";
 import { cn } from "@ugur/core";
 import { SiteLogo } from "./SiteLogo";
-
-const NAV_LINKS = [
-  { href: "/projects", label: "Projects" },
-  { href: "/about", label: "About" },
-  { href: "/contact", label: "Contact" },
-] as const;
+import { copy, getLocale, localizedPath } from "../copy";
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const locale = getLocale(pathname);
+  const text = copy[locale];
+  const base = locale === "de" ? "/de" : "";
+  const navLinks = [
+    { href: `${base}/projects`, label: text.nav[0] },
+    { href: `${base}/${locale === "de" ? "about" : "about"}`, label: text.nav[1] },
+    { href: `${base}/contact`, label: text.nav[2] },
+  ];
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -46,7 +49,7 @@ export function SiteHeader() {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-foreground focus:px-4 focus:py-2 focus:text-sm focus:text-background focus:shadow-lg focus:outline-2 focus:outline-offset-2 focus:outline-ring"
       >
-        Skip to main content
+        {text.skip}
       </a>
 
       <header
@@ -60,15 +63,15 @@ export function SiteHeader() {
         )}
       >
         <div className="site-container flex items-center justify-between">
-          <SiteLogo />
+          <SiteLogo locale={locale} />
 
           <div className="flex items-center gap-3 md:gap-8">
             <nav
               className="hidden items-center gap-8 font-mono text-[13px] uppercase tracking-[0.08em] md:flex"
-              aria-label="Main navigation"
+              aria-label={text.mainNav}
             >
-              {NAV_LINKS.map((item) => {
-                const isActive = pathname?.startsWith(item.href);
+              {navLinks.map((item) => {
+                const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
 
                 return (
                   <Link
@@ -98,11 +101,14 @@ export function SiteHeader() {
             </nav>
 
             <div className="flex items-center gap-1">
+              <Link href={localizedPath(pathname ?? "/", locale === "en" ? "de" : "en")} hrefLang={locale === "en" ? "de" : "en"} lang={locale === "en" ? "de" : "en"} className="inline-flex min-h-11 items-center rounded-xs px-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" aria-label={`${text.language}: ${text.switchLanguage}`}>
+                {locale === "en" ? "DE" : "EN"}
+              </Link>
               <ThemeToggle />
 
               <button
                 type="button"
-                aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+                aria-label={mobileOpen ? text.closeMenu : text.openMenu}
                 aria-expanded={mobileOpen}
                 aria-controls="mobile-navigation"
                 onClick={() => setMobileOpen((open) => !open)}
@@ -139,12 +145,12 @@ export function SiteHeader() {
 
         <nav
           id="mobile-navigation"
-          aria-label="Mobile navigation"
+          aria-label={text.mainNav}
           className={cn("md:hidden", mobileOpen ? "block" : "hidden")}
         >
           <ul className="site-container pb-6 pt-4">
-            {NAV_LINKS.map((item) => {
-              const isActive = pathname?.startsWith(item.href);
+            {navLinks.map((item) => {
+              const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
 
               return (
                 <li key={item.href} className="border-t border-border/50 first:border-t-0">

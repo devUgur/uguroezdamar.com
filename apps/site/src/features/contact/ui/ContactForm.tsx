@@ -3,10 +3,12 @@
 import { useState } from "react";
 
 import { submitContactRequest } from "../api";
+import { copy, type Locale } from "@/src/features/navigation/copy";
 
 type State = { ok: true } | { ok: false; error: string } | null;
 
-export function ContactForm() {
+export function ContactForm({ locale = "en" }: { locale?: Locale }) {
+  const text = copy[locale];
   const [state, setState] = useState<State>(null);
   const [pending, setPending] = useState(false);
 
@@ -25,10 +27,10 @@ export function ContactForm() {
       if (data.ok) {
         setState({ ok: true });
       } else {
-        setState({ ok: false, error: data.error ?? "Failed to save request" });
+        setState({ ok: false, error: data.error ?? text.sendError });
       }
     } catch {
-      setState({ ok: false, error: "Failed to save request" });
+      setState({ ok: false, error: text.sendError });
     } finally {
       setPending(false);
     }
@@ -44,7 +46,7 @@ export function ContactForm() {
       >
         <div className="grid gap-2">
           <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground" htmlFor="name">
-            Name
+            {text.name}
           </label>
           <input
             id="name"
@@ -55,7 +57,7 @@ export function ContactForm() {
         </div>
         <div className="grid gap-2">
           <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground" htmlFor="email">
-            Email
+            {text.email}
           </label>
           <input
             id="email"
@@ -67,7 +69,7 @@ export function ContactForm() {
         </div>
         <div className="grid gap-2">
           <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground" htmlFor="message">
-            Message
+            {text.message}
           </label>
           <textarea
             id="message"
@@ -80,9 +82,9 @@ export function ContactForm() {
 
         <div className="flex flex-wrap items-center gap-4">
           <button type="submit" disabled={pending} className="inline-flex min-h-11 items-center justify-center border border-foreground px-5 font-mono text-xs uppercase tracking-widest text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60">
-            {pending ? "Sending…" : "Send message"}
+            {pending ? text.sending : text.sendMessage}
           </button>
-          {state?.ok ? <p className="text-sm text-muted-foreground" role="status">Your request has been saved.</p> : null}
+          {state?.ok ? <p className="text-sm text-muted-foreground" role="status">{text.sent}</p> : null}
           {state && !state.ok ? (
             <p className="text-sm text-destructive" role="alert">{state.error}</p>
           ) : null}
