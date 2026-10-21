@@ -1,10 +1,11 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
-import { has, run } from "../lib/exec.ts";
+import { has, REPO_ROOT, run } from "../lib/exec.ts";
 import {
   accessHint,
   INFISICAL_DOMAIN,
+  INFISICAL_PROFILE,
   infisicalConfig,
   listSecretNames,
   writeInfisicalConfig,
@@ -14,10 +15,22 @@ import { STAGES, type Stage } from "../lib/stages.ts";
 
 const step = (text: string) => console.log(`\n▸ ${text}`);
 
+function supportsNamedProfilesAndYaml(): boolean {
+  const result = run("infisical", ["--version"], { capture: true });
+  const version = result.stdout.match(/(\d+)\.(\d+)\.(\d+)/);
+  const required = [0, 43, 145];
+  const current = version?.slice(1).map(Number);
+  if (!current) return false;
+  for (let index = 0; index < required.length; index += 1) {
+    if (current[index]! > required[index]!) return true;
+    if (current[index]! < required[index]!) return false;
+  }
+  return true;
+}
+
 function selectedWorkspaceId(path: string): string | null {
   try {
-    const value = JSON.parse(readFileSync(path, "utf8")) as { workspaceId?: unknown };
-    return typeof value.workspaceId === "string" && /^[0-9a-f-]{36}$/i.test(value.workspaceId) ? value.workspaceId : null;
+    return readFileSync(path, "utf8").match(/^\s+project-id:\s*([0-9a-f-]{36})\s*$/im)?.[1] ?? null;
   } catch {
     return null;
   }
@@ -27,7 +40,7 @@ function verifyProjectAccess(workspaceId: string, stage: Stage, cwd: string): bo
   const result = run(
     "infisical",
     ["export", "--env", STAGES[stage].infisical, "--projectId", workspaceId, "--domain", INFISICAL_DOMAIN, "--path", "/", "--format", "json", "--silent"],
-    { cwd, capture: true },
+    { cwd, capture: true, env: { INFISICAL_PROFILE } },
   );
   if (result.code === 0) return true;
   const detail = result.stderr.match(/^Message:\s*(.+)$/m)?.[1]?.trim();
@@ -45,10 +58,35 @@ function removeTemporaryDirectory(path: string): void {
   rmSync(target, { recursive: true, force: true });
 }
 
+function ensureDedicatedProfile(): boolean {
+  const profiles = run("infisical", ["profile", "list"], { capture: true });
+  if (!supportsNamedProfilesAndYaml() || profiles.code !== 0) {
+    console.error("This setup needs Infisical CLI v0.43.145 or newer for named login profiles and `.infisical.yaml`. Upgrade Infisical, then run `pnpm ugur setup` again.");
+    return false;
+  }
+
+  if (!new RegExp(`(^|\\s)${INFISICAL_PROFILE}(\\s|$)`, "m").test(profiles.stdout)) {
+    step(`Sign in to the dedicated uguroezdamar.com Infisical account in the browser (not the ViralSync account).`);
+    if (run("infisical", ["login", `--save-as=${INFISICAL_PROFILE}`, `--domain=${INFISICAL_DOMAIN}`]).code !== 0) return false;
+  }
+
+  if (run("infisical", ["profile", "bind", INFISICAL_PROFILE, REPO_ROOT]).code !== 0) {
+    console.error(`Could not bind Infisical profile '${INFISICAL_PROFILE}' to this checkout.`);
+    return false;
+  }
+  const current = run("infisical", ["profile", "current", "--plain"], { capture: true });
+  if (current.code !== 0 || current.stdout.trim() !== INFISICAL_PROFILE) {
+    console.error(`Infisical profile mismatch. Expected '${INFISICAL_PROFILE}' for ${REPO_ROOT}; current: ${current.stdout.trim() || "unknown"}.`);
+    return false;
+  }
+  console.log(`✓ Infisical login profile: ${INFISICAL_PROFILE} (bound to this repository)`);
+  return true;
+}
+
 /**
  * One-time onboarding of a machine: sign in to Infisical and Neon in the browser and link this
  * checkout to its Infisical project. Every step is skipped when it is already done, so the
- * command is safe to repeat; `relink` forgets the linked project and asks again. Nothing is written to disk except `.infisical.json` (a project id).
+ * command is safe to repeat; `relink` asks again. Only the non-secret project configuration is written to `.infisical.yaml`.
  */
 export function setup(relink = false): number {
   if (!process.stdin.isTTY) {
@@ -65,21 +103,20 @@ export function setup(relink = false): number {
     }
   }
 
-  if (!infisicalConfig() || relink) {
-    // `init` lists nothing without a session; an existing one is reused.
-    if (!relink) {
-      step(`Sign in to Infisical (${INFISICAL_DOMAIN}) — a browser window opens.`);
-      if (run("infisical", ["login", `--domain=${INFISICAL_DOMAIN}`]).code !== 0) return 1;
-    }
+  if (!ensureDedicatedProfile()) return 1;
 
+  if (!infisicalConfig() || relink) {
     step('Choose the organization, then this product\'s project. It must be of type "Secrets Management".');
     const temporaryDirectory = mkdtempSync(join(tmpdir(), "uguroezdamar-infisical-link-"));
     try {
-      if (run("infisical", ["init", `--domain=${INFISICAL_DOMAIN}`], { cwd: temporaryDirectory }).code !== 0) {
+      if (run("infisical", ["init", `--domain=${INFISICAL_DOMAIN}`], {
+        cwd: temporaryDirectory,
+        env: { INFISICAL_PROFILE },
+      }).code !== 0) {
         console.error("Infisical linking was cancelled or failed; the existing repository link was left unchanged.");
         return 1;
       }
-      const workspaceId = selectedWorkspaceId(join(temporaryDirectory, ".infisical.json"));
+      const workspaceId = selectedWorkspaceId(join(temporaryDirectory, ".infisical.yaml"));
       if (!workspaceId) {
         console.error("`infisical init` did not record a valid project; the existing repository link was left unchanged.");
         return 1;

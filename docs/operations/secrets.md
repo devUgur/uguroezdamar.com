@@ -20,16 +20,28 @@ Infisical (eu) ── Root "/" von dev · prod ───────────
 
 ## Einen Rechner einrichten
 
-Voraussetzungen: Node 24, pnpm, [Infisical CLI](https://infisical.com/docs/cli/overview) (`winget install infisical.infisical`), Neon CLI (`npm install --global neonctl`).
+Voraussetzungen: Node 24, pnpm, [Infisical CLI](https://infisical.com/docs/cli/overview) v0.43.145 oder neuer (Named Profiles und `.infisical.yaml`; `winget install infisical.infisical` bzw. `winget upgrade infisical`), Neon CLI (`npm install --global neonctl`).
 
 ```bash
 pnpm install
 pnpm ugur setup
 ```
 
-`setup` öffnet den Browser für die Anmeldung bei Infisical und Neon und verknüpft den Checkout mit dem Infisical-Projekt (`.infisical.json`, enthält nur eine Projekt-ID und wird committet). Das Infisical-Projekt selbst wird einmalig in der Web-Oberfläche angelegt (Name `uguroezdamar-com`, Environments `dev` und `prod`). Es muss ein eigenes Projekt dieses Produkts vom Typ **Secrets Management** in der ausgewählten Organisation sein; ein Projekt von ViralSync oder ein anderes fremdes Projekt darf nicht wiederverwendet werden.
+**Produktidentitäten sind getrennt:** ViralSync und uguroezdamar.com verwenden getrennte Infisical-Logins. Die CLI-Profile halten beide Logins auf demselben Rechner verfügbar; sie vereinigen weder Konten noch Projekte. Dieses Repository verwendet ausschließlich das lokale Profil `uguroezdamar`; ViralSync behält sein eigenes Profil und sein eigenes Infisical-Projekt. `pnpm ugur setup` richtet das Portfolio-Profil ein und bindet es an diesen Checkout. Wenn der Browser beim Anmelden ein Konto vorauswählt, ausdrücklich mit der für uguroezdamar.com registrierten Geschäfts-/Portfolio-Mail fortfahren bzw. das Konto wechseln.
 
-`pnpm ugur setup --relink` fragt die Projektwahl erneut ab. Die CLI prüft den ausgewählten Link zunächst in einem temporären Verzeichnis und testet den Zugriff auf `dev` und `prod`. Erst wenn beide Prüfungen erfolgreich sind, ersetzt sie `.infisical.json`; Abbruch oder ein falsches Projekt lassen die bisherige Verknüpfung unverändert. Bei `This project does not belong to your selected organization` muss die Infisical-Organisation bzw. Projektzuordnung korrigiert werden. Erneutes `infisical login` allein behebt eine falsche Projektzuordnung nicht. `pnpm ugur dev` prüft den Zugriff vor dem Start und zeigt bei Fehlern den konkreten nächsten Schritt.
+Die CLI unterstützt Named Profiles und das aktuelle Projektformat `.infisical.yaml` ab v0.43.145. Einmalig wird das Profil angelegt und an dieses Repository gebunden:
+
+```text
+infisical login --save-as uguroezdamar --domain=https://eu.infisical.com
+infisical profile bind uguroezdamar <repository-path>
+infisical profile current
+```
+
+`pnpm ugur setup` führt diese Einrichtung interaktiv aus, falls das Profil noch fehlt. Die Verzeichnisbindung wird in der lokalen Infisical-Konfiguration gespeichert, nicht im Git-Repository. Jeder `pnpm ugur`-Zugriff prüft vor einem Secret-Lese- oder Schreibvorgang, dass im Repository das Profil `uguroezdamar` aktiv ist. So kann ein global als Standard ausgewählter ViralSync-Login nicht versehentlich für dieses Repository verwendet werden. Bei einer abgelaufenen Anmeldung das Profil ausdrücklich neu authentifizieren: `infisical login --profile uguroezdamar --domain=https://eu.infisical.com`.
+
+Das Infisical-Projekt selbst wird einmalig in der Web-Oberfläche angelegt (Name `uguroezdamar-com`, Environments `dev` und `prod`). Es muss ein eigenes Projekt dieses Produkts vom Typ **Secrets Management** in der zum Portfolio-Login gehörenden Organisation sein; ein ViralSync-Projekt oder ein anderes fremdes Projekt darf nicht wiederverwendet werden.
+
+`pnpm ugur setup --relink` fragt die Projektwahl erneut ab. Die CLI prüft den ausgewählten Link zunächst in einem temporären Verzeichnis und testet den Zugriff auf `dev` und `prod` unter dem gebundenen Portfolio-Profil. Erst wenn beide Prüfungen erfolgreich sind, ersetzt sie `.infisical.yaml`; Abbruch oder ein falsches Projekt lassen die bisherige Verknüpfung unverändert. Bei `This project does not belong to your selected organization` prüfen, ob `infisical profile current` `uguroezdamar` anzeigt und ob dieses Profil mit dem Portfolio-Login authentifiziert ist. Erneutes Anmelden mit ViralSync löst den Organisationsfehler nicht. `pnpm ugur dev` prüft Profil und Secret-Zugriff vor dem Start und zeigt den nächsten Schritt.
 
 Beim allerersten Einrichten des Produkts zusätzlich:
 
