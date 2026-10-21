@@ -2,7 +2,7 @@
 
 ## Aktuell bekannte Ausgangslage
 
-Das Repository enthält GitHub Actions für Lint, Typecheck, Tests und Build. Die Site nutzt jetzt serverseitiges Next.js statt Static Export; CMS-Routen lesen veröffentlichte Inhalte zur Laufzeit. Hosting ist Vercel ([ADR 0020](../architecture/decisions/0020-vercel-hosting.md)). Historische CI-Fehler aus dem Audit waren nicht mehr abrufbar.
+Das Repository enthält GitHub Actions für Lint, Typecheck, Tests und Build. Die Site nutzt Next.js; Projekttexte kommen aus Git/MDX, operative Daten aus Neon PostgreSQL. Hosting ist Vercel ([ADR 0020](../architecture/decisions/0020-vercel-hosting.md)).
 
 ## Umgebungen
 
@@ -14,7 +14,7 @@ Das Repository enthält GitHub Actions für Lint, Typecheck, Tests und Build. Di
 
 Site und Portal sind zwei Vercel-Projekte aus diesem Repository ([ADR 0020](../architecture/decisions/0020-vercel-hosting.md)). Einrichtung, Vorschau je Pull Request, Smoke-Lauf, Freigabe in die Produktion und Rollback stehen in [preview.md](preview.md).
 
-Stand 13.10.2026: Bei Vercel ist noch nichts angelegt. `uguroezdamar.com` zeigt per DNS weiter auf Render und liefert dort den statischen Stand vom März 2026 aus; `portal.uguroezdamar.com` zeigt ebenfalls auf Render und antwortete nicht. Render bleibt unverändert, bis die neue Auslieferung geprüft und der DNS-Eintrag umgestellt ist.
+Stand 21.10.2026: Vercel meldet Production-Aliases auf SHA `f60a1a4` und manuelles Promote. Der Produktions-Smoke fand HTTP 500 auf Site-Routen, Site-Health HTTP 404 und Portal-Health HTTP 401 durch Deployment Protection. Geschützte Vercel-Logs zeigen für Site-Fehler `DatabaseNotConfiguredError`; Health-Routen sind im Produktions-SHA noch nicht enthalten. Der Dienst ist nicht launch-bereit. Laufzeitkonfiguration und Smoke-Bypass müssen am nächsten Kandidaten geprüft und der komplette Smoke vor jeder Promotion bestanden werden.
 
 Der Kontakt-Endpunkt liest die Client-Adresse aus `x-vercel-forwarded-for` (`apps/site/src/lib/client-address.ts`). Das setzt voraus, dass die Domain direkt auf Vercel zeigt und kein weiterer Proxy davor liegt.
 

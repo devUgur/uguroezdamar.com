@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { REPO_ROOT, run } from "./exec.ts";
@@ -7,10 +7,13 @@ import { STAGES, type Stage } from "./stages.ts";
 
 /** EU cloud, like every other project of ours. */
 export const INFISICAL_DOMAIN = "https://eu.infisical.com";
-export const INFISICAL_FILE = join(REPO_ROOT, ".infisical.json");
+export const INFISICAL_FILE = join(REPO_ROOT, ".infisical.yaml");
+const LEGACY_INFISICAL_FILE = join(REPO_ROOT, ".infisical.json");
+/** Dedicated local Infisical login profile for this product, separate from ViralSync. */
+export const INFISICAL_PROFILE = "uguroezdamar";
 
 interface InfisicalConfig {
-  /** Infisical's own key for the project id in `.infisical.json`. */
+  /** Infisical's project id, called `workspaceId` by the legacy JSON format. */
   workspaceId: string;
   domain: string;
 }
@@ -18,22 +21,30 @@ interface InfisicalConfig {
 /** `null` until `pnpm ugur setup` has linked this checkout to its Infisical project. */
 export function infisicalConfig(): InfisicalConfig | null {
   if (!existsSync(INFISICAL_FILE)) return null;
-  const config = JSON.parse(readFileSync(INFISICAL_FILE, "utf8")) as Partial<InfisicalConfig>;
-  if (!config.workspaceId) return null;
-  return { workspaceId: config.workspaceId, domain: config.domain ?? INFISICAL_DOMAIN };
+  const yaml = readFileSync(INFISICAL_FILE, "utf8");
+  const workspaceId = yaml.match(/^\s+project-id:\s*([0-9a-f-]{36})\s*$/im)?.[1];
+  const domain = yaml.match(/^\s+domain:\s*(\S+)\s*$/im)?.[1];
+  if (!workspaceId) return null;
+  return { workspaceId, domain: domain ?? INFISICAL_DOMAIN };
 }
 
-/** Rewrites `.infisical.json` into our fixed shape, keeping only the project id. */
+/** Rewrites `.infisical.yaml` into our fixed shape, keeping only the project id. */
 export function writeInfisicalConfig(workspaceId: string): void {
-  const config = {
-    workspaceId,
-    defaultEnvironment: STAGES.dev.infisical,
-    domain: INFISICAL_DOMAIN,
-    gitBranchToEnvironmentMapping: Object.fromEntries(
-      Object.values(STAGES).map((stage) => [stage.branch, stage.infisical]),
-    ),
-  };
-  writeFileSync(INFISICAL_FILE, `${JSON.stringify(config, null, 2)}\n`);
+  const mappings = Object.values(STAGES).map((stage) => `      ${stage.branch}: ${stage.infisical}`).join("\n");
+  const yaml = [
+    "version: 1",
+    "general:",
+    `  domain: ${INFISICAL_DOMAIN}`,
+    "secrets-management:",
+    `  project-id: ${workspaceId}`,
+    `  default-environment: ${STAGES.dev.infisical}`,
+    "  mappings:",
+    "    git-branch-to-environment:",
+    mappings,
+    "",
+  ].join("\n");
+  writeFileSync(INFISICAL_FILE, yaml);
+  if (existsSync(LEGACY_INFISICAL_FILE)) unlinkSync(LEGACY_INFISICAL_FILE);
 }
 
 function baseArgs(stage: Stage): string[] | null {
@@ -51,8 +62,25 @@ export interface SecretNames {
 
 /** Why the last read failed, in Infisical's own words (never contains secret values). */
 let lastReadError: string | null = null;
+let profileError: string | null = null;
+
+function hasExpectedProfile(): boolean {
+  const result = run("infisical", ["profile", "current", "--plain"], { capture: true });
+  if (result.code !== 0) {
+    profileError = "This requires Infisical CLI v0.43.145 or newer for named profiles and `.infisical.yaml`. Upgrade the CLI, then authenticate the dedicated profile.";
+    return false;
+  }
+  const current = result.stdout.trim();
+  if (current !== INFISICAL_PROFILE) {
+    profileError = `This checkout must use the '${INFISICAL_PROFILE}' Infisical profile; it currently resolves to '${current || "no profile"}'. If the profile is missing, run: infisical login --save-as ${INFISICAL_PROFILE} --domain=${INFISICAL_DOMAIN}; then bind it: infisical profile bind ${INFISICAL_PROFILE} "${REPO_ROOT}"`;
+    return false;
+  }
+  profileError = null;
+  return true;
+}
 
 function exportRows(stage: Stage): Array<{ key: string; value: string }> | null {
+  if (!hasExpectedProfile()) return null;
   const base = baseArgs(stage);
   if (!base) return null;
   const { code, stdout, stderr } = run(
@@ -112,6 +140,7 @@ const lastErrorLine = (stderr: string, redact?: string) =>
  * stdout (which echoes the secret) is discarded and only the last stderr line is reported.
  */
 export function setSecret(stage: Stage, key: string, value: string): { ok: boolean; error?: string } {
+  if (!hasExpectedProfile()) return { ok: false, error: profileError ?? "wrong Infisical profile" };
   const base = baseArgs(stage);
   if (!base) return { ok: false, error: "not linked to an Infisical project (pnpm ugur setup)" };
   const dir = mkdtempSync(join(tmpdir(), "ugur-secret-"));
@@ -131,6 +160,7 @@ export function setSecret(stage: Stage, key: string, value: string): { ok: boole
 /** Deletes shared secrets at `/`. Errors carry key names, never values. */
 export function deleteSecrets(stage: Stage, keys: string[]): { ok: boolean; error?: string } {
   if (keys.length === 0) return { ok: true };
+  if (!hasExpectedProfile()) return { ok: false, error: profileError ?? "wrong Infisical profile" };
   const base = baseArgs(stage);
   if (!base) return { ok: false, error: "not linked to an Infisical project (pnpm ugur setup)" };
   const args = ["secrets", "delete", ...keys, ...base, "--path", "/", "--type", "shared", "--silent"];
@@ -142,6 +172,7 @@ export function deleteSecrets(stage: Stage, keys: string[]): { ok: boolean; erro
 
 /** `infisical run` — injects secrets as env vars for one process; nothing touches disk. */
 export function withSecrets(stage: Stage, command: string[]): [string, string[]] | null {
+  if (!hasExpectedProfile()) return null;
   const base = baseArgs(stage);
   if (!base) return null;
   return ["infisical", ["run", ...base, "--path", "/", "--silent", "--", ...command]];
@@ -151,12 +182,13 @@ export const SETUP_HINT = "Not linked to Infisical yet — run `pnpm ugur setup`
 export const LOGIN_HINT = `Cannot read Infisical — run \`infisical login --domain=${INFISICAL_DOMAIN}\` (or \`pnpm ugur setup\`).`;
 
 export const RELINK_HINT =
-  "Create a project of type \"Secrets Management\" in Infisical, then run `pnpm ugur setup --relink` and choose it.";
+  "This checkout is linked to an Infisical project that your selected organization cannot access. Select the correct organization and this product's dedicated \"Secrets Management\" project, then run `pnpm ugur setup --relink`. Do not link the ViralSync project.";
 
 /** The right hint for a failed read: not linked, linked to an unusable project, or not signed in. */
 export function accessHint(): string {
+  if (profileError) return profileError;
   if (!infisicalConfig()) return SETUP_HINT;
   if (!lastReadError) return LOGIN_HINT;
-  const wrongProject = /project is of type|not found/i.test(lastReadError);
+  const wrongProject = /project is of type|not found|does not belong to your selected organization/i.test(lastReadError);
   return [`Infisical refused: ${lastReadError}`, wrongProject ? RELINK_HINT : LOGIN_HINT].join("\n");
 }

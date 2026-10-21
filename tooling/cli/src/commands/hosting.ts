@@ -5,6 +5,7 @@ import {
   getProject,
   VERCEL_PROJECTS,
   VERCEL_TARGET,
+  hasMatchingProtectionBypass,
   vercelApi,
   type App,
   type VercelProject,
@@ -20,7 +21,7 @@ const keysFor = (app: App, stage: Stage, { optional = true } = {}) =>
     .filter((spec) => spec.apps?.includes(app) && (optional || !spec.optional))
     .map((spec) => spec.key);
 
-function describe(app: App, project: VercelProject): string[] {
+function describe(app: App, project: VercelProject, bypassStatus: string): string[] {
   const expected = VERCEL_PROJECTS[app];
   const production = project.targets?.production;
   const lines = [
@@ -31,7 +32,7 @@ function describe(app: App, project: VercelProject): string[] {
     `  production        ${production?.meta?.githubCommitSha?.slice(0, 7) ?? "no deployment"} at ${production?.alias?.[0] ?? "no address"}`,
     `  go-live           ${project.autoAssignCustomDomains === false ? "manual (promote)" : "✗ automatic on every push to the production branch"}`,
     `  protection        ${project.ssoProtection?.deploymentType ?? "✗ none"}`,
-    `  smoke bypass      ${Object.keys(project.protectionBypass ?? {}).length > 0 ? "present" : "✗ missing"}`,
+    `  smoke bypass      ${bypassStatus}`,
   ];
   for (const stage of ["dev", "prod"] as const) {
     const target = VERCEL_TARGET[stage];
@@ -56,7 +57,13 @@ export function hostingStatus(): number {
       failed = true;
       continue;
     }
-    const lines = describe(app, project.data);
+    const storedBypass = secretValues("dev", [BYPASS_KEY[app]])?.[BYPASS_KEY[app]];
+    const bypassStatus = hasMatchingProtectionBypass(project.data, storedBypass)
+      ? "matches Infisical dev"
+      : storedBypass
+        ? "✗ does not match Infisical dev"
+        : "✗ unavailable in Infisical dev";
+    const lines = describe(app, project.data, bypassStatus);
     failed ||= lines.some((line) => line.includes("✗"));
     console.log(`${lines.join("\n")}\n`);
   }

@@ -3,6 +3,8 @@ import { ProjectCard } from "@/src/components/public/ProjectCard";
 import { PageIntro } from "@/src/components/public/PageIntro";
 
 export function ProjectGrid({ projects }: { projects: Project[] }) {
+  const firstCoverIndex = projects.findIndex((project) => project.cover);
+
   return (
     <div>
       <PageIntro section="Project catalog" title="Projects" description="Case studies of software I have built: the problem, the solution and the architecture behind it." />
@@ -13,8 +15,8 @@ export function ProjectGrid({ projects }: { projects: Project[] }) {
         </div>
       ) : (
         <div className="mt-14 grid grid-cols-1 border-t border-border md:grid-cols-2 md:gap-x-12">
-          {projects.map((p) => (
-            <ProjectCard key={p.slug} project={p} />
+          {projects.map((p, index) => (
+            <ProjectCard key={p.slug} project={p} preloadCover={index === firstCoverIndex} />
           ))}
         </div>
       )}

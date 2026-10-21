@@ -43,7 +43,7 @@ Zustände: `draft` (privat), `preview` (authentifiziert bzw. signiert und zeitli
 
 Die Portfolio-Inhalte haben eine eindeutige Quelle:
 
-- **Projekte, Profil, Werdegang:** Dateien im Repository sind die Quelle ([ADR 0019](../architecture/decisions/0019-content-from-git.md)): `apps/site/content/projects/<slug>.mdx` und `apps/site/content/profile.ts`. Änderungen laufen durch Pull Request und Deployment. Ein Projekt mit `draft: true` ist nur lokal sichtbar; externe Projektlinks werden in Draft-Vorschauen nicht ausgegeben.
+- **Projekte, Profil, Werdegang:** Dateien im Repository sind die Quelle ([ADR 0019](../architecture/decisions/0019-content-from-git.md)): `apps/site/content/projects/<slug>.mdx` und `apps/site/content/profile.ts`. Änderungen laufen durch Pull Request und Deployment. Projekte mit `draft: true` sind lokal sowie auf durch Vercel `all_except_custom_domains` geschützten Preview-Deployments sichtbar, aber niemals in Production; die Sitemap führt sie nicht auf. Externe Projektlinks werden in Draft-Vorschauen nicht ausgegeben ([ADR 0022, vorgeschlagen](../architecture/decisions/0022-protected-draft-previews.md)).
 - **Blog:** MDX in Git ist die Quelle. Änderungen laufen durch Review und Deploy.
 
 Keine stillen Fallbacks zwischen Datenquellen. Ein ungültiger Inhalt lässt Build und Tests scheitern. Ein vorhandenes, leeres Inhaltsverzeichnis ergibt eine leere Sammlung; fehlende Verzeichnisse und sonstige Dateisystemfehler bleiben sichtbare Fehler. Abschnitte ohne Inhalt entfallen auf der Startseite, statt einen Platzhalter zu zeigen.

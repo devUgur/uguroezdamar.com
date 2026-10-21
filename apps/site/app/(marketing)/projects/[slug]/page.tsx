@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return {
     title: project.title,
     description: project.summary,
-    // A draft is only ever served by a local dev server; keep it out of any index regardless.
+    // Drafts may appear in protected previews, but never belong in search indexes.
     robots: project.draft ? { index: false, follow: false } : undefined,
     openGraph: { title: project.title, description: project.summary, images: project.cover ? [project.cover.src] : undefined },
   };
@@ -41,7 +41,7 @@ export default async function ProjectDetailPage({ params }: Params) {
   const facts = [
     { label: "Role", value: project.role },
     { label: "Period", value: formatPeriod(project.period) },
-    { label: "Status", value: STATUS_LABELS[project.status] },
+    { label: "Status", value: project.status ? STATUS_LABELS[project.status] : undefined },
   ].filter((fact): fact is { label: string; value: string } => Boolean(fact.value));
 
   return (
@@ -50,7 +50,7 @@ export default async function ProjectDetailPage({ params }: Params) {
         <p className="page-eyebrow">
           <Link href="/projects" className="link-underline">Projects</Link>
           <span className="mx-2 text-border">/</span>
-          {project.category}
+          {project.category ? project.category : null}
           {project.draft ? <span className="ml-3 rounded-xs border border-foreground/30 px-2 py-0.5 text-foreground">Draft</span> : null}
         </p>
         <h1 className="page-title">{project.title}</h1>
@@ -58,9 +58,12 @@ export default async function ProjectDetailPage({ params }: Params) {
       </header>
 
       {project.cover ? (
-        <div className="relative mt-10 aspect-video overflow-hidden border-y border-border bg-surface md:mt-14">
-          <Image src={project.cover.src} alt={project.cover.alt} fill priority sizes="(max-width: 1280px) 100vw, 1200px" className="object-cover" />
-        </div>
+        <figure className="mt-10 md:mt-14">
+          <div className="relative aspect-video overflow-hidden border-y border-border bg-surface">
+            <Image src={project.cover.src} alt={project.cover.alt} fill priority sizes="(max-width: 1280px) 100vw, 1200px" className="object-cover" />
+          </div>
+          {project.cover.caption ? <figcaption className="mt-2 text-xs leading-5 text-muted-foreground">{project.cover.caption}</figcaption> : null}
+        </figure>
       ) : null}
 
       <div className="mt-12 grid grid-cols-1 gap-12 md:mt-16 md:grid-cols-12 md:gap-8">

@@ -1,8 +1,16 @@
 # Portfolio, GitHub-Import und Live-Release
 
-**Stand:** 19.10.2026
+**Stand:** 21.10.2026
 **Zweck:** Umsetzung des einheitlichen Portfolio-Designs, eines sicheren Projekt-Import-/Medien-Workflows und der getrennten Live-Releases von uguroezdamar.com und viralsync.io.
 **Status:** Plan aus Audit und aktuellem Repository-Abgleich; noch keine Produktionsfreigabe.
+
+## Aktueller Ausführungsstand
+
+Stand 21.10.2026: PR #23 (`codex/github-project-catalog`) enthält Discovery, sichere Einzelprüfung, Draft-Generator mit Quellnachweis und Schutz gegen Cache-Kollisionen zwischen Preview und Produktion. Der letzte im GitHub-Status verifizierte grüne Stand war `5727626`. Die späteren Dokumentations- und aktuellen Cover-Änderungen warten auf CI/Preview am neuen SHA. Der frühere Preview-Smoke konnte 14 von 15 Prüfungen wegen Deployment-Protection-Weiterleitungen (302/401) nicht erreichen.
+
+Die Infisical-Anmeldung für dieses Portfolio ist inzwischen erfolgreich abgeschlossen und der lokale CLI-Kontext dem Portfolio-Projekt zugeordnet; ViralSync bleibt in einem separaten CLI-Profil. `pnpm dev` startete die Site mit den Dev-Secrets erfolgreich. `pnpm ugur secrets audit` konnte Dev und Prod lesen; erforderliche Secrets sind vorhanden. Die Audit-Ausgabe meldet nur noch retired Variablen (`REVALIDATE_SECRET`, zusätzlich in Prod `SITE_URL`) und optionale, nicht gesetzte Variablen. Diese Werte wurden nicht gelöscht.
+
+Die ausstehenden Migrationen wurden am 21.10.2026 auf Neon `dev` angewendet. Anschließend wurden neun eigene öffentliche Repositories synchronisiert und derselbe Sync erfolgreich wiederholt; die Implementierung nutzt einen Upsert auf die eindeutige GitHub-Repository-ID und löscht fehlende Datensätze nicht. Das bestätigt die Wiederholbarkeit des Befehls, ersetzt aber noch keine gesonderte Fehler-/Ratenlimitprüfung. Die Produktions-Aliases stehen laut letztem dokumentiertem Smoke-Abgleich auf SHA `f60a1a4`; weder Merge nach `main` noch Produktions-Promote ist erfolgt. Der damalige Smoke-Lauf gegen beide Produktions-Aliases schlug bei 7 von 15 Prüfungen fehl: Site-Health HTTP 404, Site-Home und Projektkatalog HTTP 500, Portal-Health HTTP 401 durch Deployment Protection. Site-Fehlerlogs enthielten `DatabaseNotConfiguredError`; der deployte SHA enthielt die neuen Health-Routen nicht. Kontakt-Validierungen und anonyme Portal-Sperren bestanden. Diese Live-Befunde müssen vor Release erneut gegen aktuelle Deployments verifiziert werden.
 
 ## Ziel des Vorhabens
 
@@ -21,13 +29,26 @@
 - Das lokale ViralSync-Repository `C:\Projects\viralsync.io` steht auf `dev`, ist vier Commits hinter `origin/dev` und hat sieben nicht committete Änderungen. Daran wird nicht gearbeitet, bis diese Änderungen in einem separaten Worktree gesichtet und erhalten sind.
 - ViralSync besitzt bereits `pnpm vs showcase check|capture`, das die echte App mit synthetischen Testdaten aufnimmt. Marketing, Docs, App/API und Produktion haben getrennte Freigaben; Privacy, Terms und Imprint sind laut `docs/LAUNCH.md` weiterhin Drafts.
 
+## Source-reviewed Preview-Cover für private Projekte
+
+Die Änderungen ergänzen die lokalen Ansichten und durch Vercel Deployment Protection geschützten PR-Previews um 16:9-Cover für die bestehenden, weiterhin auf `draft: true` gesetzten Einträge ViralSync und Video Lab. Beide Bilder stammen aus ausdrücklich synthetischen Beispiel-Szenarien und wurden für die Portfolio-Vorschau zugeschnitten und als WebP optimiert:
+
+| Portfolio-Draft | Interner Quellnachweis | Behandlung |
+| --- | --- | --- |
+| ViralSync | `viralsync.io` → `sites/marketing/public/product/calendar-month-light.png` (Healthy Life showcase calendar) | 16:9-Ausschnitt; synthetische Demo-Posts |
+| Video Lab | `video-lab` → `artifacts/golden-recipe-influencer/contact-sheet.png` (golden-recipe synthetic scenario) | 16:9-Kontaktbogen aus den sechs vorhandenen Szenenabschnitten |
+
+Portfolio-Kopien liegen unter `apps/site/public/projects/<slug>/`; validierte MDX-Alt-Texte beschreiben die sichtbaren Bilder und optionale sichtbare Bildunterschriften kennzeichnen die synthetischen Szenarien. Der persönliche E2E-Chat-Screenshot wurde nicht verwendet. Quellpfade und Repository-Namen bleiben ausschließlich in dieser internen Dokumentation und erscheinen nicht im gerenderten Portfolio. Die Cover-Dateien liegen unter `public/` und sind als statische Assets direkt abrufbar. Produktion filtert weiterhin die Draft-Seiten und -Karten heraus; daher dürfen in diesem Ordner nur die dokumentierten, synthetischen und für Preview freigegebenen Bilder liegen. Keine vertraulichen oder kundenbezogenen Medien dürfen dort abgelegt werden.
+
+Die Aufnahme dieser zwei Sample-Bilder erlaubt ihre Sichtung lokal und im geschützten PR-Preview. Vor `draft: false` muss der Owner pro Projekt den vollständigen Text, die sichtbaren Demo-Marken und -Texte, Bildausschnitt, Alt-Text und alle externen Ziele ausdrücklich für Veröffentlichung freigeben. Cover-Aufnahme ist keine Projekt- oder Produktionsfreigabe. Deployment Protection des Vercel-PR-Previews ist Voraussetzung für die redaktionelle Draft-Prüfung; ein `noindex`-Tag oder unbekannte URL ersetzt den Zugangsschutz nicht.
+
 ## Inhalts- und Datenentscheidung
 
 ### Empfohlener Weg: Git bleibt Publish-Quelle, Neon wird Importkatalog
 
 Die Datenbank speichert GitHub-Repository-Identität, Sichtbarkeit, Importstatus, Quellrevision, Inhalts-Fingerprint, erzeugte PR-Referenz und Medien-Prüfstatus. Sie speichert keine zweite Kopie redaktioneller Case-Study-Texte als veröffentlichungsfähige Wahrheit. Die Website bleibt ohne Neon-Abhängigkeit für Portfolio-Seiten verfügbar.
 
-Ein Import erzeugt einen lokalen MDX-Draft bzw. einen Branch-/Pull-Request-Vorschlag. Die CLI übernimmt nur erlaubte Repository-Metadaten und überschreibt bei wiederholtem Sync keine manuell redigierten Felder wie Rolle, Beiträge, Alt-Texte, Zeitraum oder Freigabestatus. Veröffentlicht wird nach inhaltlicher Prüfung über den vorhandenen Git-/PR-/Vercel-Prozess.
+Ein Import erzeugt einen lokalen MDX-Draft bzw. einen Branch-/Pull-Request-Vorschlag. Die CLI übernimmt nur erlaubte Repository-Metadaten und überschreibt bei wiederholtem Sync keine manuell redigierten Felder wie Rolle, Beiträge, Alt-Texte, Zeitraum oder Freigabestatus. `pnpm ugur projects draft <owner>/<repo> --slug <slug>` zeigt standardmäßig einen Dry-Run; `--apply` legt genau eine neue lokale MDX-Datei mit `draft: true` an und überschreibt nichts. Die Datei speichert GitHub-Repository, exakte Quellrevision, README-Pfad/-Blob-SHA (falls vorhanden) und Importzeitpunkt. README-Inhalte werden als nicht vertrauenswürdige Evidenz markiert, begrenzt angezeigt, weder interpretiert noch ausgeführt und nicht in MDX kopiert. Titel und Beschreibung stammen aus öffentlicher Repository-Metadaten; Rolle, Beiträge, Zeitraum, Kategorie, Status, Technologien, Ergebnisse, Kundenbezug, Screenshots und Alt-Texte bleiben leer bzw. ungefüllt, bis der Owner sie bestätigt. Veröffentlicht wird nach inhaltlicher Prüfung über den vorhandenen Git-/PR-/Vercel-Prozess.
 
 Damit erfüllt der Katalog den Wunsch, Projekte mit einem CLI-Aufruf zu erfassen und in Neon abzulegen, während es für veröffentlichte Portfolio-Texte eine einzige Quelle gibt.
 
@@ -50,9 +71,9 @@ Eine allgemeine Bitte, Projekte live zu schalten, ergänzt keine fehlenden Proje
 | Phase | Ergebnis | Arbeit | Abnahme / Gate |
 | --- | --- | --- | --- |
 | 0. Einheitliches Portfolio-Design | A2-Seiten bilden ein konsistentes System | gemeinsame Seitenköpfe, Projektkarten, Artikeltypografie, Kontaktformular, About/Education/Legal-Rahmen; Startseite bis Tablet nicht schmal; Dark Mode tokenbasiert | Route-Review, 375/768/1440 px, hell/dunkel, Tastatur/Fokus, Reduced Motion; Design-PR und exact-SHA-Previews grün |
-| 1. Quellenvertrag | ADR, Datenkatalog und Publish-Grenze widerspruchsfrei | neue ADR für GitHub-Importkatalog; Content-Doku bereinigen; additive Tabellen getrennt von stillgelegten CMS-Tabellen; Status- und Eigentumsfelder festlegen | Migration auf `dev`, Backup/Restore geprüft; keine Produktionsdatenänderung und kein doppelt geführter Publikationstext |
-| 2. GitHub-Discovery/Import-CLI | idempotente `pnpm ugur projects`-Befehle | Dry-Run als Standard; bestehende `gh auth` verwenden; öffentliche Repos standardmäßig, private nur explizit intern auswählen; Upsert per stabiler GitHub-ID; README/Issues/Code nicht automatisch als MDX ausführen | paginierte API, Rate-Limits, Retry, Rename/Archive, Fork/Visibility, Deduplizierung, Konflikt- und Fehlerfälle geprüft; Werte und Tokens erscheinen nie in Logs |
-| 3. Inhaltsentwurf und Vorschau | geprüfte Entwürfe ohne öffentliche Leaks | ausgewählte Metadaten sicher in MDX-Vorschläge übertragen; persönliche Aussagen bleiben redigiert; Draft-Assets außerhalb von `public/`; Vorschau ist authentifiziert/geschützt | Draft nicht in öffentlichen Routen, Sitemap, OG-Metadaten oder Asset-URLs; Zugriffsschutz und Ablauf des Preview-Zugangs geprüft |
+| 1. Quellenvertrag | ADR 0021; additive `portfolio_github_repositories`-Tabelle getrennt von den stillgelegten CMS-Tabellen | Migration und Offline-Schema-Check sind lokal sauber; Migration auf Neon `dev` angewendet. Restore-/Migrationsprüfung und Fehlerpfade bleiben offen; keine Produktionsdatenänderung und kein doppelt geführter Publikationstext |
+| 2. GitHub-Discovery/Import-CLI | `pnpm ugur projects discover` listet öffentliche Repositories, `--apply` synchronisiert nur nach Neon `dev`; `projects inspect <owner>/<repo>` bleibt gezielte read-only Prüfung | Neun öffentliche Repositories wurden nach Dev synchronisiert und der Upsert erneut ausgeführt. Fehler-/Rate-Limit-Verhalten bleibt zu verifizieren. Der öffentliche Discovery-Pfad enthält keine privaten Repositories. `inspect` ist auf öffentliche Metadaten und einen begrenzten README-Auszug des authentifizierten Owners beschränkt, persistiert nichts und führt keinen Repo-Code aus. ViralSync/Video Lab liegen als kuratierte, manuell geprüfte MDX-Drafts vor; ihre privaten Repositorys sind nicht Teil dieses automatischen Imports. |
+| 3. Inhaltsentwurf und Vorschau | geprüfte Entwürfe ohne öffentliche Projektseiten | `projects draft` erstellt per Dry-Run oder lokalem `--apply` einen schema-validen Stub mit Quellrevision; README-Inhalte werden nie in MDX übernommen. Persönliche Aussagen, Beiträge und Projektergebnisse erfordern Owner-Bestätigung. Für ViralSync und Video Lab sind ausschließlich die dokumentierten synthetischen Preview-Cover unter `public/` freigegeben; weitere Draft-Medien bleiben außerhalb des öffentlichen Asset-Verzeichnisses. | Draft-Seiten/-Karten nicht in Production oder Sitemap; Draft-Seiten nicht indexierbar; Preview-Review nur mit Vercel Deployment Protection; statische Cover sind synthetische, direkt abrufbare Assets; jede Tatsachenbehauptung ist auf überprüfbare Quelle zurückzuführen |
 | 4. Screenshot-/Medienfluss | echte, freigegebene und responsive Produktbilder | zuerst vorhandenes `pnpm vs showcase capture` für ViralSync mit synthetischen Daten nutzen; für externe Demos separate `pnpm ugur projects capture`-Prüfung entwerfen; Vorschau nur über explizite HTTPS-Allowlist, ohne Cookies/Tokens, mit SSRF-, Redirect-, Timeout- und Größenbegrenzung; Candidate-Dateien manuell prüfen und optimiert versionieren | keine privaten Screens, Kundendaten oder Admin-Routen; sichtbarer Text, Bildrechte, Zuschnitt und Alt-Text bestätigt; Next/Image lädt feste Formate/Größen |
 | 5. Öffentliche Projektfreigabe | belegbare Case Studies | aktuelle Drafts einzeln prüfen; fehlende Rolle/Beiträge/Zeiträume/Fakten durch Owner liefern oder weglassen; nur freigegebene externe URLs; `draft: false` im PR | Owner akzeptiert konkrete Darstellung; Projektseite, Home-Karte, externe Ziele, Schema, Sitemap und Metadaten geprüft |
 | 6. Portfolio-Release | Site und Portal auf festem Stand live | CI und Vercel Preview prüfen; `pnpm ugur smoke` für Site und Portal am exakten SHA; Login/Invite/Kontakt/IP-Rate-Limit manuell prüfen; Produktionsvariablen getrennt setzen; manuelles Vercel-Promote; erst nach Host-Prüfung DNS ändern | vorheriger Deployment-SHA bekannt; Health/Smoke grün; Domain-Routen und echte Kontaktzustellung geprüft; Instant Rollback verfügbar |
@@ -60,15 +81,16 @@ Eine allgemeine Bitte, Projekte live zu schalten, ergänzt keine fehlenden Proje
 
 ## GitHub-CLI-Vertrag
 
-Vorgesehene Befehlsskizze (Namen vor Implementierung in der CLI-Hilfe festlegen):
+Implementierte Befehle und nächste geplante Schritte:
 
 ```text
-pnpm ugur projects discover --owner <owner>                 # nur lesen / Dry-Run
-pnpm ugur projects discover --owner <owner> --apply --stage dev
-pnpm ugur projects import <owner>/<repo> --slug <slug> --apply
-pnpm ugur projects check [<slug>]
-pnpm ugur projects capture <slug> --url <freigegebene-demo-url> --apply
-pnpm ugur projects status [--stage dev|prod]
+pnpm ugur projects discover                                 # eigener gh-Account, nur lesen / Dry-Run
+pnpm ugur projects discover --apply --stage dev             # expliziter Katalog-Sync, nur dev
+pnpm ugur projects inspect <owner>/<repo>                   # Metadaten + begrenzte README-Evidenz, keine Speicherung
+pnpm ugur projects draft <owner>/<repo> --slug <slug>        # Dry-Run; --apply legt genau einen lokalen Draft an
+pnpm ugur projects check [<slug>]                            # geplant
+pnpm ugur projects capture <slug> --url <freigegebene-demo-url> --apply # geplant
+pnpm ugur projects status [--stage dev|prod]                 # geplant
 ```
 
 `publish` darf keinen stillen Deploy auslösen: es bereitet einen reviewbaren MDX-Diff oder PR vor. Öffentliche GitHub-Authentifizierung wird aus der bereits angemeldeten `gh`-CLI gelesen; keine Tokens als Argument, Prozessumgebung oder Terminalausgabe. Nur öffentliche Repositories werden standardmäßig aufgelistet; private Repository-Metadaten werden intern gehalten und nie verlinkt. Fehlende Berechtigungen oder API-Fehler brechen den Vorgang sichtbar ab.
@@ -89,7 +111,7 @@ Die Owner-Anweisung umfasst das Ziel, Releases live zu bringen. Jeder tatsächli
 
 Stop, wenn einer dieser Punkte zutrifft:
 
-- Draft-Text oder Draft-Asset ist öffentlich oder nicht authentifiziert erreichbar.
+- Draft-Text ist öffentlich oder ein Draft-Asset mit vertraulichen, kundenbezogenen oder nicht für öffentliche Abrufe freigegebenen Inhalten ist erreichbar. Die beiden dokumentierten synthetischen Preview-Cover sind die begrenzte Ausnahme; sie enthalten keine Projektquellpfade oder privaten Repository-Links.
 - Projektfakten, Bildrechte, Datenschutzangaben oder Rechtsinhalte sind ungeprüft.
 - GitHub-Import würde private Daten, README-Inhalte, Tokens, fremde Skripte oder nicht freigegebene Links publizieren.
 - Migration ist nicht auf `dev` validiert oder Backup/Restore für die Zielumgebung nicht belegt.
@@ -99,8 +121,9 @@ Stop, wenn einer dieser Punkte zutrifft:
 
 ## Nächste konkrete Schritte
 
-1. Visuelle A2-Korrekturen auf dem bestehenden Feature-Branch abschließen und den durch Browser-Evaluation noch offenen PASS-/Owner-Review nachholen.
-2. Den aktuellen Design-Diff als Draft-PR auf PR #21 stacken, nach dem Review grüne CI und Vercel-Site-Preview am Head-SHA belegen.
-3. Portfolio-Inhalte und Blog-/Legal-Seiten nur mit vorhandenen, bestätigten Fakten behandeln; ViralSync und Video Lab bleiben vorläufig in geschützter Vorschau.
-4. Eine eigene ADR und anschließend einen getrennten PR für additive Neon-Importtabellen und read-only GitHub-Discovery vorbereiten.
-5. Erst nach den separaten Release-Gates Site/Portal und ViralSync auf die jeweiligen Produktionsziele promoten.
+1. Neon-Dev-Migration und wiederholter Katalog-Sync sind erledigt. Als Nächstes lesenden Katalogstatus ergänzen/prüfen und Fehler-, Rate-Limit- sowie Teilabrufverhalten des Imports abschließen.
+2. Die neun gefundenen öffentlichen Repositories nach belegbaren Produkt-/Website-Bezügen priorisieren und pro Kandidat Rolle, Beitrag und Veröffentlichungsrechte bestätigen; keine Repo-Datei ist automatisch eine freigegebene Case Study.
+3. ViralSync und Video Lab sind bereits als lokale MDX-Drafts angelegt und erhalten source-reviewed Demo-Cover. Als Nächstes beide geschützt im PR-Preview visuell prüfen; fehlende Rolle, Beiträge, Zeitraum, Faktentreue und Veröffentlichungsrechte einzeln bestätigen, bevor eine Veröffentlichung erwogen wird.
+4. Für ViralSync und Video Lab sind source-reviewed synthetische 16:9-Preview-Cover im PR-Worktree vorbereitet. Als Nächstes in der durch Vercel Deployment Protection geschützten PR-Preview auf Desktop und Mobile Zuschnitt/Lesbarkeit prüfen; zusätzliche Medien nur nach derselben Quellen- und Inhaltsprüfung übernehmen. Externe URL-Captures erst nach SSRF-/Redirect-/Allowlist-Gates implementieren.
+5. A2-Design-PR und Inhalte visuell, rechtlich und redaktionell abnehmen; ViralSync-Änderungen separat in einem erhaltenen Worktree prüfen.
+6. Infisical-Kontext ist eingerichtet. Bypass-Secrets und geschützte Preview-Routen weiterhin verifizieren; danach Live-Fehler anhand geschützter Runtime-Logs und Umgebungsnamen klären. Site/Portal erst nach exaktem SHA, CI, vollständig grünem Preview- und Produktions-Smoke, Datenbank/Auth/Kontaktprüfung, Produktionskonfiguration und expliziter Produktionsfreigabe promoten. ViralSync folgt ausschließlich seinen eigenen LAUNCH-Gates.

@@ -88,6 +88,28 @@ export const contactRateLimits = pgTable(
 	(table) => [index("contact_rate_limits_expires_at_idx").on(table.expiresAt)],
 );
 
+/** Internal source catalog for GitHub discovery; it is not read by the public site. */
+export const portfolioGithubRepositories = pgTable(
+	"portfolio_github_repositories",
+	{
+		id: id(),
+		githubRepositoryId: text("github_repository_id").notNull().unique(),
+		owner: text("owner").notNull(),
+		name: text("name").notNull(),
+		visibility: text("visibility", { enum: ["public", "private"] }).notNull(),
+		description: text("description"),
+		homepageUrl: text("homepage_url"),
+		topics: jsonb("topics").$type<string[]>().notNull().default([]),
+		defaultBranch: text("default_branch"),
+		isFork: boolean("is_fork").notNull().default(false),
+		isArchived: boolean("is_archived").notNull().default(false),
+		remoteUpdatedAt: timestamptz("remote_updated_at"),
+		discoveredAt: timestamptz("discovered_at").notNull().defaultNow(),
+		syncedAt: timestamptz("synced_at").notNull().defaultNow(),
+	},
+	(table) => [index("portfolio_github_repositories_owner_name_idx").on(table.owner, table.name)],
+);
+
 // Retired with the content CMS (ADR 0019): no code reads or writes these three tables any more.
 // They stay defined until their data has been backed up and a restore has been tested; a
 // separate migration then drops them.
