@@ -104,7 +104,7 @@ export function SiteHeader() {
               <Link href={localizedPath(pathname ?? "/", locale === "en" ? "de" : "en")} hrefLang={locale === "en" ? "de" : "en"} lang={locale === "en" ? "de" : "en"} className="inline-flex min-h-11 items-center rounded-xs px-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" aria-label={`${text.language}: ${text.switchLanguage}`}>
                 {locale === "en" ? "DE" : "EN"}
               </Link>
-              <ThemeToggle />
+              <ThemeToggle ariaLabel={text.themeToggle} />
 
               <button
                 type="button"
