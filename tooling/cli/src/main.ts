@@ -21,7 +21,7 @@ import { discoverProjects, draftProject, inspectProject } from "./commands/proje
 
 const HELP = `uguroezdamar.com CLI — pnpm ugur <command>
 
-  setup [--relink]           One-time: sign in to Infisical and Neon in the browser, link the project
+  setup [--relink]           One-time: sign in to Infisical, Neon and read-only Cloudflare in browser
                              (--relink chooses a different Infisical project)
   doctor                     Check tools, logins and required secrets
   dev [--filter site|portal] Run the site with dev secrets injected and localhost addresses
