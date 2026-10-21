@@ -26,6 +26,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return {
     title: project.title,
     description: project.summary,
+    alternates: { canonical: `/projects/${project.slug}` },
     // Drafts may appear in protected previews, but never belong in search indexes.
     robots: project.draft ? { index: false, follow: false } : undefined,
     openGraph: { title: project.title, description: project.summary, images: project.cover ? [project.cover.src] : undefined },

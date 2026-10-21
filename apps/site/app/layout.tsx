@@ -3,7 +3,13 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@ugur/ui";
 
+const canonicalOrigin =
+  process.env.VERCEL_ENV === "preview" && process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : process.env.NEXT_PUBLIC_SITE_URL ?? "https://uguroezdamar.com";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(canonicalOrigin),
   title: {
     default: "Ugur Özdamar",
     template: "%s | Ugur Özdamar",

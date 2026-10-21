@@ -1,16 +1,18 @@
 ---
-# DRAFT — not part of a production page build. Statements were checked against the repository on
-# 2026-10-13 (README, package manifest, source layout). Preview cover: synthetic golden-recipe
-# scenario contact sheet; attribution and publication approval gate are recorded in
-# docs/product/portfolio-live-and-import-plan.md. Before publishing: confirm every statement, role,
-# contributions, period, image and alt text; then set `draft: false` in a reviewed PR.
+# Public case study approved by the project owner on 2026-10-21. The preview is an illustrative,
+# synthetic storyboard; Video Lab does not currently have a public hosted demo.
 title: Video Lab
-summary: A conversational AI video studio — an idea becomes a production plan with scenes, prompts, audio and cost, and only an approved plan is generated, composed and rendered.
+summary: A local-first AI video studio in development. It turns an idea into a reviewable production plan before paid generation; no public hosted demo is available yet.
 category: AI tooling
 status: active
+role: Product owner and engineer
+contributions:
+  - Designed an approval-gated production run that requires approval of the exact plan before paid generation.
+  - Built a scene-based composition and rendering workflow that produces MP4 output.
+  - Added provider connections, budget controls, a cost ledger, and a free mock-media mode.
 featured: true
 displayOrder: 20
-draft: true
+draft: false
 technologies:
   - TypeScript
   - Next.js
@@ -36,7 +38,8 @@ composition. A wrong prompt in the first step is only noticed after the last one
 Video Lab plans before it spends. A director agent turns an idea into a concrete plan — scenes,
 prompts, audio, estimated cost — and nothing is generated until that exact plan is approved.
 Changing the plan requires a new approval. Compositions can then be edited scene by scene and
-rendered to MP4.
+rendered to MP4. The application is local-first and is not offered as a hosted service; this page
+shows the project and its synthetic storyboard, not a public product demo.
 
 ## Architecture
 
