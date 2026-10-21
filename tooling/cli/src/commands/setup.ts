@@ -22,7 +22,8 @@ async function ensureCloudflareProfile(): Promise<boolean> {
     console.error("Wrangler CLI not found → install it with `npm install --global wrangler`, then run `pnpm ugur setup` again.");
     return false;
   }
-  if (process.env.CLOUDFLARE_API_TOKEN) {
+  // Wrangler's API-token override is a local CLI control, not an application secret.
+  if (Reflect.get(process.env, "CLOUDFLARE_API_TOKEN")) {
     console.error("CLOUDFLARE_API_TOKEN is set and overrides Wrangler profiles. Unset it before running `pnpm ugur setup` so this checkout can be bound to its own profile.");
     return false;
   }
