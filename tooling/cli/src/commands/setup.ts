@@ -1,4 +1,5 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { createInterface } from "node:readline/promises";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { has, REPO_ROOT, run } from "../lib/exec.ts";
@@ -14,6 +15,63 @@ import { neonLoggedIn } from "../lib/neon.ts";
 import { STAGES, type Stage } from "../lib/stages.ts";
 
 const step = (text: string) => console.log(`\n▸ ${text}`);
+const CLOUDFLARE_PROFILE = "uguroezdamar";
+
+async function ensureCloudflareProfile(): Promise<boolean> {
+  if (!has("wrangler")) {
+    console.error("Wrangler CLI not found → install it with `npm install --global wrangler`, then run `pnpm ugur setup` again.");
+    return false;
+  }
+  if (process.env.CLOUDFLARE_API_TOKEN) {
+    console.error("CLOUDFLARE_API_TOKEN is set and overrides Wrangler profiles. Unset it before running `pnpm ugur setup` so this checkout can be bound to its own profile.");
+    return false;
+  }
+
+  const profiles = run("wrangler", ["auth", "list"], { cwd: REPO_ROOT, capture: true });
+  if (profiles.code !== 0) {
+    console.error("Could not inspect Wrangler auth profiles.");
+    return false;
+  }
+  const hasProfile = new RegExp(`(^|\\s)${CLOUDFLARE_PROFILE}(\\s|$)`, "m").test(profiles.stdout);
+  let createdProfile = false;
+  if (!hasProfile) {
+    step("Sign in with the Cloudflare account that owns uguroezdamar.com. The new Wrangler profile requests account and zone read access only; DNS writes stay in Cloudflare's zone dashboard.");
+    if (run("wrangler", ["auth", "create", CLOUDFLARE_PROFILE, "--scopes", "account:read", "--scopes", "user:read", "--scopes", "zone:read"], { cwd: REPO_ROOT }).code !== 0) {
+      console.error("Cloudflare profile creation failed or was cancelled.");
+      return false;
+    }
+    createdProfile = true;
+  }
+
+  if (run("wrangler", ["auth", "activate", CLOUDFLARE_PROFILE, REPO_ROOT], { cwd: REPO_ROOT }).code !== 0) {
+    console.error(`Could not bind Wrangler profile '${CLOUDFLARE_PROFILE}' to this checkout.`);
+    return false;
+  }
+
+  const identity = run("wrangler", ["whoami"], { cwd: REPO_ROOT, capture: true });
+  if (identity.code !== 0) {
+    run("wrangler", ["auth", "deactivate", REPO_ROOT], { cwd: REPO_ROOT });
+    if (createdProfile) run("wrangler", ["auth", "delete", CLOUDFLARE_PROFILE], { cwd: REPO_ROOT });
+    console.error("Could not verify the active Cloudflare identity. Run `pnpm exec wrangler whoami` from this repository and check the profile before using Cloudflare.");
+    return false;
+  }
+  console.log(identity.stdout.trim());
+  const readline = createInterface({ input: process.stdin, output: process.stdout });
+  let confirmation = "";
+  try {
+    confirmation = (await readline.question("After checking the account above, type uguroezdamar.com only if it owns that DNS zone: ")).trim();
+  } finally {
+    readline.close();
+  }
+  if (confirmation !== "uguroezdamar.com") {
+    run("wrangler", ["auth", "deactivate", REPO_ROOT], { cwd: REPO_ROOT });
+    if (createdProfile) run("wrangler", ["auth", "delete", CLOUDFLARE_PROFILE], { cwd: REPO_ROOT });
+    console.error("Cloudflare zone ownership was not confirmed. No DNS changes were made; verify the account and rerun `pnpm ugur setup`.");
+    return false;
+  }
+  console.log(`✓ Wrangler profile '${CLOUDFLARE_PROFILE}' is bound to this repository (read-only account/zone scopes)`);
+  return true;
+}
 
 function supportsNamedProfilesAndYaml(): boolean {
   const result = run("infisical", ["--version"], { capture: true });
@@ -84,11 +142,12 @@ function ensureDedicatedProfile(): boolean {
 }
 
 /**
- * One-time onboarding of a machine: sign in to Infisical and Neon in the browser and link this
+ * One-time onboarding of a machine: sign in to Infisical, Neon, and the read-only Cloudflare profile
+ * in the browser, and link this
  * checkout to its Infisical project. Every step is skipped when it is already done, so the
  * command is safe to repeat; `relink` asks again. Only the non-secret project configuration is written to `.infisical.yaml`.
  */
-export function setup(relink = false): number {
+export async function setup(relink = false): Promise<number> {
   if (!process.stdin.isTTY) {
     console.error("`pnpm ugur setup` opens the browser and asks questions: run it in your own terminal.");
     return 1;
@@ -104,6 +163,7 @@ export function setup(relink = false): number {
   }
 
   if (!ensureDedicatedProfile()) return 1;
+  if (!(await ensureCloudflareProfile())) return 1;
 
   if (!infisicalConfig() || relink) {
     step('Choose the organization, then this product\'s project. It must be of type "Secrets Management".');

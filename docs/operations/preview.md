@@ -1,6 +1,6 @@
 # Hosting, Preview und Release
 
-**Zweck:** Wie Site und Portal bei Vercel eingerichtet werden, wie ein Stand vor dem Merge als Vorschau geprüft wird und wie er in die Produktion kommt. Entscheidung: [ADR 0020](../architecture/decisions/0020-vercel-hosting.md).
+**Zweck:** Wie Site und Portal bei Vercel eingerichtet werden, wie ein Stand vor dem Merge als Vorschau geprüft wird und wie er in die Produktion kommt. Entscheidung: [ADR 0020](../architecture/decisions/0020-vercel-hosting.md). Cloudflare-Kontotrennung und DNS-Verfahren stehen unter [Cloudflare](cloudflare.md) und [ADR 0023](../architecture/decisions/0023-cloudflare-dns-and-account-boundaries.md).
 
 **Stand 21.10.2026:** Main-Commit `f92be7d` wurde nach grüner CI manuell auf beide Vercel-Production-Projekte promotet. `pnpm ugur hosting status` bestätigt die aktuellen Production-Aliases auf diesem SHA, manuelles Promote, `all_except_custom_domains`, passende Smoke-Bypasses und die erforderlichen Variablennamen. Der Smoke gegen beide Staged-Production-Deployments und anschließend gegen die aktuellen Production-Aliases bestand jeweils alle 19 Prüfungen (Health, Datenbank, erwarteter SHA, Client-IP-Schutz, öffentliche Site-Routen, Kontakt-Validierungen und anonyme Portal-Sperren).
 
