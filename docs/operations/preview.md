@@ -2,9 +2,31 @@
 
 **Zweck:** Wie Site und Portal bei Vercel eingerichtet werden, wie ein Stand vor dem Merge als Vorschau geprüft wird und wie er in die Produktion kommt. Entscheidung: [ADR 0020](../architecture/decisions/0020-vercel-hosting.md). Cloudflare-Kontotrennung und DNS-Verfahren stehen unter [Cloudflare](cloudflare.md) und [ADR 0023](../architecture/decisions/0023-cloudflare-dns-and-account-boundaries.md).
 
-**Stand 21.10.2026:** Main-Commit `f92be7d` wurde nach grüner CI manuell auf beide Vercel-Production-Projekte promotet. `pnpm ugur hosting status` bestätigt die aktuellen Production-Aliases auf diesem SHA, manuelles Promote, `all_except_custom_domains`, passende Smoke-Bypasses und die erforderlichen Variablennamen. Der Smoke gegen beide Staged-Production-Deployments und anschließend gegen die aktuellen Production-Aliases bestand jeweils alle 19 Prüfungen (Health, Datenbank, erwarteter SHA, Client-IP-Schutz, öffentliche Site-Routen, Kontakt-Validierungen und anonyme Portal-Sperren).
+**Stand 21.10.2026:** Main-Commit `f92be7d` wurde nach grüner CI manuell auf beide Vercel-Production-Projekte promotet. `pnpm ugur hosting status` bestätigt manuelles Promote, `all_except_custom_domains`, passende Smoke-Bypasses und die erforderlichen Variablennamen. Smoke gegen beide Vercel-Production-Aliases: 19/19. Der Live-Smoke auf `https://uguroezdamar.com` besteht alle 13 Site-Prüfungen; der vollständige Smoke mit `https://portal.uguroezdamar.com` besteht 16/17, weil die Portal-Domain noch auf Render zeigt.
 
-Die eigentlichen Domains sind noch nicht umgestellt: öffentliche DNS-Abfragen zeigen `uguroezdamar.com` weiterhin auf Render (`216.24.57.16`, `216.24.57.18`), `www` auf `uguroezdamar-com.onrender.com` und `portal` auf `portal-uguroezdamar-com.onrender.com`. Die drei Hostnamen sind den Vercel-Projekten zugewiesen, Vercel meldet ihre DNS-Konfiguration jedoch noch als ungültig. Der verfügbare Wrangler-Zugang ist dem ViralSync-Konto zugeordnet und hat keine DNS-Schreibberechtigung für diese Domain; dessen Default-Profil wird nicht für das Portfolio verwendet. Nach Anmeldung mit dem Cloudflare-Konto, das die Portfolio-Zone verwaltet, die von Vercel empfohlenen DNS-Einträge setzen (DNS only, Proxy aus), die Vercel-Verifikation wiederholen und den Smoke gegen die echten Hostnamen ausführen. Erst dann zeigt die bisherige Domain den neuen Vercel-Stand.
+**DNS-Snapshot 21.10.2026 nach der Betreiberänderung:** Die autoritativen Cloudflare-Nameserver `linda.ns.cloudflare.com` und `rohin.ns.cloudflare.com` liefern den Apex und `www` auf Vercel. `vercel domains verify` bestätigt beide Hostnamen für `uguroezdamar-com`; `www` zeigt den projektspezifischen CNAME `8e330e50605e5449.vercel-dns-017.com.`. Die DNS-Antwort veröffentlicht den CNAME direkt, passend zu DNS-only ohne Cloudflare-Proxy. HTTPS am Apex liefert 200. HTTPS bei `www` scheitert noch mit einem TLS-Namensfehler; `vercel certs ls` enthält aktuell nur das Zertifikat für den Apex. `vercel certs issue www.uguroezdamar.com --challenge-only` hat eine DNS-Challenge gestartet. Der Challenge-TXT-Eintrag war bei der anschließenden öffentlichen Abfrage noch nicht sichtbar.
+
+Der Portal-Record ist noch nicht umgestellt: Cloudflare liefert `portal.uguroezdamar.com CNAME portal-uguroezdamar-com.onrender.com`; Vercel meldet `invalid-configuration`. Der von Vercel für das Portal-Projekt empfohlene Zielwert ist `b6010c3103a2d7b8.vercel-dns-017.com.`. Das Live-Smoke gegen den Apex besteht alle 13 Site-Prüfungen; beim Portal-Smoke scheitert `/api/health` an HTTP 401. Die beiden Vercel-Production-Aliases bestehen dagegen 19/19 Prüfungen. Erst nach dem Portal-CNAME-Wechsel und dem www-Zertifikat ist der DNS-Cutover abgeschlossen.
+
+Die externe ViralSync-Website `https://viralsync.io` und die Vercel-App `https://app.viralsync.io` antworten derzeit mit HTTP 200. Das Portfolio listet ViralSync dennoch als Draft. Im sichtbaren Vercel-Team gibt es kein Video-Lab-Projekt; `video-lab.mdx` besitzt keine Live-URL und bleibt ebenfalls Draft. Diese Produkt-Deployments und die Veröffentlichung der Portfolio-Cases benötigen getrennte Freigabe und eigene Projektkonfiguration.
+
+### Manuelle Abschlussfolge
+
+1. In Cloudflare den bestehenden `portal`-CNAME `portal-uguroezdamar-com.onrender.com` durch `b6010c3103a2d7b8.vercel-dns-017.com` ersetzen, Proxy aus lassen.
+2. Den von `vercel certs issue www.uguroezdamar.com --challenge-only` ausgegebenen `_acme-challenge.www`-TXT-Wert setzen. Den Wert nicht committen; bei Ablauf die Challenge neu erzeugen.
+3. Danach ausführen:
+
+   ```powershell
+   vercel domains verify portal.uguroezdamar.com
+   vercel certs issue www.uguroezdamar.com
+   vercel certs ls
+   Resolve-DnsName -Name _acme-challenge.www.uguroezdamar.com -Type TXT -Server 1.1.1.1
+   pnpm ugur smoke --site https://uguroezdamar.com --portal https://portal.uguroezdamar.com
+   ```
+
+   Erwartung: Domain-Verifikation `configured-correctly`, Zertifikat enthält `www.uguroezdamar.com`, TXT ist sichtbar und Smoke 19/19. Zusätzlich HTTPS bei `www` ohne Zertifikatswarnung öffnen.
+4. Secrets-Bereinigung wurde nur als Dry-Run ausgeführt: `prod` würde `REVALIDATE_SECRET` und `SITE_URL`, `dev` `REVALIDATE_SECRET` entfernen. Erst nach Bestätigung, dass diese Werte nicht mehr gebraucht werden, je Stage `pnpm ugur secrets prune --stage <stage> --apply` ausführen und Audit wiederholen.
+5. Video Lab nicht mit ViralSync-Secrets oder Portfolio-Datenbank deployen. Vor einer Live-Preview eigenes Vercel-Projekt, Runtime-/Persistent-Storage, eigene Verbindungen/Secrets, sichere Mock-/Spend-Gates und eine geschützte Preview einrichten. Danach eine tatsächliche Live-URL in der Draft-Case-Study ergänzen und erst nach Fakten-/Owner-Review veröffentlichen.
 
 Der historische Smoke gegen den früheren Production-SHA `f60a1a4` schlug bei 7 von 15 Prüfungen fehl (Site-Health 404, Site-Home/Katalog 500, Portal-Health 401 durch Deployment Protection); diese Fehler wurden auf dem neuen Main-Stand behoben. Der frühere Lauf bleibt als Historie dokumentiert, nicht als aktueller Production-Status.
 
