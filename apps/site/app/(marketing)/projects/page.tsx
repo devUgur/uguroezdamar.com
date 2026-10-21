@@ -12,7 +12,7 @@ export default async function ProjectsPage() {
   const projects = await getProjects();
 
   return (
-    <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12 py-16 md:py-24">
+    <div className="site-container py-16 md:py-24">
       <ProjectGrid projects={projects} />
     </div>
   );

@@ -8,8 +8,8 @@ export async function Work({ number }: { number: string }) {
   return (
     <section id="work" aria-labelledby="selected-work-heading" className="site-section">
       <div className="site-container">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-12 md:gap-8">
-          <div className="md:col-span-4">
+        <div>
+          <div className="max-w-3xl">
             <p className="mb-5 font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground md:text-sm">
               {number} <span className="mx-2 text-border">/</span> Selected work
             </p>
@@ -21,7 +21,7 @@ export async function Work({ number }: { number: string }) {
             </Link>
           </div>
 
-          <div className="md:col-span-7 md:col-start-6">
+          <div className="mt-10">
             {projects.length === 0 ? (
               <div className="border-y border-border py-8 md:py-10">
                 <p className="text-lg">No featured projects have been published yet.</p>
@@ -33,7 +33,7 @@ export async function Work({ number }: { number: string }) {
                 </Link>
               </div>
             ) : (
-              <ol className="border-t border-border">
+              <ol className="grid grid-cols-1 border-t border-border xl:grid-cols-2 xl:gap-x-12">
                 {projects.map((project, index) => (
                   <SelectedProjectCard key={project.slug} project={project} index={index} />
                 ))}

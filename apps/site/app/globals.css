@@ -185,6 +185,84 @@ html {
 	border-top: 1px solid hsl(var(--border));
 }
 
+.page-intro {
+	max-width: 52rem;
+}
+
+.page-intro--no-lede {
+	padding-bottom: clamp(2.5rem, 5vw, 4rem);
+}
+
+.page-eyebrow {
+	font-family: var(--font-mono);
+	font-size: 0.7rem;
+	line-height: 1.5;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: hsl(var(--muted-foreground));
+}
+
+.page-title {
+	margin-top: 0.8rem;
+	font-family: var(--font-serif);
+	font-size: clamp(2.6rem, 6vw, 5rem);
+	line-height: 1.04;
+	letter-spacing: -0.045em;
+}
+
+.page-lede {
+	max-width: 43rem;
+	margin-top: 1.25rem;
+	font-size: clamp(1rem, 1.5vw, 1.2rem);
+	line-height: 1.75;
+	color: hsl(var(--muted-foreground));
+}
+
+.project-card {
+	min-width: 0;
+	display: flex;
+	height: 100%;
+	flex-direction: column;
+	justify-content: space-between;
+	padding-block: 2rem;
+	border-bottom: 1px solid hsl(var(--border));
+}
+
+.article-prose {
+	max-width: 44rem;
+	color: hsl(var(--foreground));
+	font-size: 1rem;
+	line-height: 1.85;
+}
+
+.article-prose > * + * { margin-top: 1.35em; }
+.article-prose h2,
+.article-prose h3,
+.article-prose h4 {
+	margin-top: 2.2em;
+	font-family: var(--font-serif);
+	line-height: 1.2;
+	letter-spacing: -0.025em;
+}
+.article-prose h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); }
+.article-prose h3 { font-size: 1.45rem; }
+.article-prose p,
+.article-prose li { color: hsl(var(--muted-foreground)); }
+.article-prose ul,
+.article-prose ol { padding-left: 1.35rem; }
+.article-prose ul { list-style: disc; }
+.article-prose ol { list-style: decimal; }
+.article-prose li + li { margin-top: 0.45rem; }
+.article-prose a { text-decoration: underline; text-underline-offset: 0.2em; color: hsl(var(--foreground)); }
+.article-prose blockquote { border-left: 1px solid hsl(var(--border)); padding-left: 1.25rem; font-family: var(--font-serif); font-size: 1.2rem; }
+.article-prose code { font-family: var(--font-mono); font-size: 0.88em; }
+.article-prose pre { overflow-x: auto; border: 1px solid hsl(var(--border)); padding: 1rem; background: hsl(var(--surface)); }
+.article-prose hr { border-color: hsl(var(--border)); }
+
+@media (min-width: 768px) {
+	.project-card { padding-block: 2.5rem; }
+}
+
 /* Hero scroll cue: a hairline sweeping left to right. */
 .scroll-cue {
 	animation: scroll-cue 2s ease-in-out infinite;

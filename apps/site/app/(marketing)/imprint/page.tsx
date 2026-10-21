@@ -1,11 +1,15 @@
-import { Container, Section } from "@ugur/ui";
+import { PageIntro } from "@/src/components/public/PageIntro";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Imprint" };
 
 export default function ImprintPage() {
   return (
-    <Container>
-      <Section title="Imprint" description="Legal disclosure.">
-        <p className="text-sm text-zinc-700">Replace with imprint details.</p>
-      </Section>
-    </Container>
+    <article className="site-container py-16 md:py-24">
+      <PageIntro section="Legal" title="Imprint" description="Legal disclosure." />
+      <div className="mt-12 max-w-3xl border-t border-border pt-6 text-sm leading-7 text-muted-foreground">
+        <p>Replace with imprint details.</p>
+      </div>
+    </article>
   );
 }

@@ -1,26 +1,18 @@
 import { ContactForm } from "@/src/features/contact";
 import { ArrowUpRight, Mail } from "lucide-react";
+import { PageIntro } from "@/src/components/public/PageIntro";
+import type { Metadata } from "next";
 
 export const runtime = "nodejs";
+export const metadata: Metadata = { title: "Contact" };
 
 export default function ContactPage() {
   return (
-    <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12 py-16 md:py-24">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
+    <div className="site-container py-16 md:py-24">
+      <PageIntro section="Direct contact" title="Get in touch" description="For a question or a message about software work, send a message here or use the listed email address." />
+      <div className="mt-12 grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-16 items-start">
         {/* Left Column: Direct info & context */}
         <div className="lg:col-span-5 space-y-8">
-          <div>
-            <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-3">
-              Direct Contact
-            </div>
-            <h1 className="font-serif text-[clamp(2.5rem,5vw+0.5rem,4rem)] leading-tight tracking-tight text-foreground mb-4">
-              Get in touch
-            </h1>
-            <p className="font-sans text-base md:text-lg leading-relaxed text-muted-foreground">
-              For a question or a message about software work, send a message here or use the listed email address.
-            </p>
-          </div>
-
           <div className="border-t border-border/60 pt-6 space-y-4 font-mono text-xs text-muted-foreground">
             <div>
               <span className="text-foreground/80 font-medium uppercase tracking-wider block mb-1">
@@ -63,7 +55,7 @@ export default function ContactPage() {
 
         {/* Right Column: Interactive Form */}
         <div className="lg:col-span-7">
-          <div className="rounded-lg border border-border/80 bg-surface/30 p-8 shadow-xs">
+          <div className="border-t border-border pt-6">
             <h2 className="font-serif text-2xl text-foreground font-medium mb-6">
               Send a Message
             </h2>

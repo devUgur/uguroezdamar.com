@@ -14,6 +14,16 @@ export function About({ number, hideWhenEmpty = false }: AboutProps) {
   if (hideWhenEmpty && !hasAbout(profile)) return null;
   const experience = byRecency(profile.experience);
 
+  if (!hasAbout(profile)) {
+    return (
+      <section id="about" className="site-container pb-16 md:pb-24" aria-label="Profile">
+        <p className="max-w-xl border-y border-border py-5 text-sm leading-6 text-muted-foreground">
+          Profile details have not been published yet.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section id="about" aria-labelledby="profile-heading" className="site-section">
       <div className="site-container">
@@ -28,7 +38,7 @@ export function About({ number, hideWhenEmpty = false }: AboutProps) {
               Profile
             </p>
             <h2 id="profile-heading" className="max-w-sm text-3xl leading-tight md:text-4xl">
-              Engineering profile
+              Profile and experience
             </h2>
             {number ? (
               <Link href="/about" className="link-underline mt-7 inline-flex min-h-11 items-center gap-3 font-mono text-xs uppercase tracking-[0.13em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
@@ -43,11 +53,7 @@ export function About({ number, hideWhenEmpty = false }: AboutProps) {
                 {profile.headline ? <p className="text-xl leading-[1.55] md:text-2xl md:leading-[1.65]">{profile.headline}</p> : null}
                 {profile.bio ? <p className="mt-6 text-base leading-7 text-muted-foreground md:mt-8 md:text-lg md:leading-8">{profile.bio}</p> : null}
               </div>
-            ) : (
-              <p className="border-y border-border py-6 text-sm leading-6 text-muted-foreground">
-                Profile details have not been published yet.
-              </p>
-            )}
+            ) : null}
 
             {experience.length > 0 ? (
               <ol aria-label="Career experience" className="mt-10 border-t border-border md:mt-14">

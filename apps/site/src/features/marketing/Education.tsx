@@ -14,6 +14,16 @@ export function Education({ number, hideWhenEmpty = false }: EducationProps) {
   if (hideWhenEmpty && !hasEducation(profile)) return null;
   const education = byRecency(profile.education);
 
+  if (!hasEducation(profile)) {
+    return (
+      <section id="education" className="site-container pb-16 md:pb-24" aria-label="Education">
+        <p className="max-w-xl border-y border-border py-5 text-sm leading-6 text-muted-foreground">
+          No education entries have been published yet.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section id="education" aria-labelledby="education-heading" className="site-section">
       <div className="site-container">
@@ -28,7 +38,7 @@ export function Education({ number, hideWhenEmpty = false }: EducationProps) {
               Education
             </p>
             <h2 id="education-heading" className="max-w-sm text-3xl leading-tight md:text-4xl">
-              Learning and study
+              Learning and education
             </h2>
             {number ? (
               <Link href="/education" className="link-underline mt-7 inline-flex min-h-11 items-center gap-3 font-mono text-xs uppercase tracking-[0.13em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
@@ -38,11 +48,7 @@ export function Education({ number, hideWhenEmpty = false }: EducationProps) {
           </div>
 
           <div className="md:col-span-7 md:col-start-6">
-            {education.length === 0 ? (
-              <p className="border-y border-border py-6 text-sm leading-6 text-muted-foreground">
-                No education entries have been published yet.
-              </p>
-            ) : (
+            {education.length > 0 ? (
               <ol className="border-t border-border">
                 {education.map((item) => (
                   <li key={`${item.period.from}-${item.title}`} className="grid grid-cols-1 gap-2 border-b border-border py-6 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-6 md:py-7">
@@ -59,7 +65,7 @@ export function Education({ number, hideWhenEmpty = false }: EducationProps) {
                   </li>
                 ))}
               </ol>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
