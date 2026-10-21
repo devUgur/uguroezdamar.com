@@ -18,7 +18,7 @@ function localizedHtml(pathname: string, content: string) {
   return `<html lang="${german ? "de" : "en"}"><head><link rel="canonical" href="${canonical}" /><link rel="alternate" hrefLang="en" href="${origin}${enPath}" /><link rel="alternate" hrefLang="de" href="${origin}${dePath}" /><title>${content}</title></head><body>${content}</body></html>`;
 }
 
-function siteFetch({ omitSitemapSlug, missingProject }: { omitSitemapSlug?: string; missingProject?: string } = {}) {
+function siteFetch({ omitSitemapSlug, missingProject, wrongGermanTitleLink }: { omitSitemapSlug?: string; missingProject?: string; wrongGermanTitleLink?: string } = {}) {
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(input instanceof Request ? input.url : String(input));
     const method = init?.method ?? "GET";
@@ -33,7 +33,15 @@ function siteFetch({ omitSitemapSlug, missingProject }: { omitSitemapSlug?: stri
         .join("");
       return new Response(`<urlset><loc>${origin}/projects</loc>${entries}</urlset>`, { status: 200 });
     }
-    if (url.pathname === "/projects" || url.pathname === "/de/projects") return new Response(localizedHtml(url.pathname, "ViralSync Video Lab"), { status: 200 });
+    if (url.pathname === "/projects" || url.pathname === "/de/projects") {
+      const german = url.pathname === "/de/projects";
+      const cards = publishedSlugs.map((slug) => {
+        const title = slug === "video-lab" ? "Video Lab" : "ViralSync";
+        const prefix = german && wrongGermanTitleLink !== slug ? "/de" : "";
+        return `<article><h2><a href="${prefix}/projects/${slug}">${title}</a></h2></article>`;
+      }).join("");
+      return new Response(localizedHtml(url.pathname, cards), { status: 200 });
+    }
     if (url.pathname === "/" || url.pathname === "/de") return new Response(localizedHtml(url.pathname, "Portfolio"), { status: 200 });
     if (url.pathname === "/work") return new Response(null, { status: 308 });
     if (url.pathname.startsWith("/projects/") || url.pathname.startsWith("/de/projects/")) {
@@ -77,6 +85,14 @@ describe("portfolio smoke project routes", () => {
 
   it("fails when a published project detail route is a 404", async () => {
     vi.stubGlobal("fetch", siteFetch({ missingProject: "viralsync" }));
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const { smoke } = await import("../tooling/cli/src/commands/smoke.ts");
+
+    expect(await smoke({ site: origin })).toBe(1);
+  });
+
+  it("fails when a German project card title links to the English case study", async () => {
+    vi.stubGlobal("fetch", siteFetch({ wrongGermanTitleLink: "viralsync" }));
     vi.spyOn(console, "log").mockImplementation(() => undefined);
     const { smoke } = await import("../tooling/cli/src/commands/smoke.ts");
 

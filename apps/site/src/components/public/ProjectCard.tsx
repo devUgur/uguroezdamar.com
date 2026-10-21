@@ -26,7 +26,7 @@ export function ProjectCard({ project, index, headingLevel = "h2", preloadCover 
         <p className="page-eyebrow mb-3">{index !== undefined ? <><span>{String(index + 1).padStart(2, "0")}</span><span className="mx-2" aria-hidden="true">/</span></> : null}{[project.category, period].filter(Boolean).join(" · ")}</p>
         <div className="mb-2 flex items-baseline justify-between gap-3">
           <Heading className="font-serif text-2xl font-medium leading-tight text-foreground md:text-3xl">
-            <Link href={`/projects/${project.slug}`} className="rounded-xs decoration-border underline-offset-4 transition-colors hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">{project.title}</Link>
+            <Link href={`${locale === "de" ? "/de" : ""}/projects/${project.slug}`} className="rounded-xs decoration-border underline-offset-4 transition-colors hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">{project.title}</Link>
           </Heading>
           {project.draft ? <span className="shrink-0 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{text.draft}</span> : null}
         </div>

@@ -154,6 +154,8 @@ async function smokeSite(origin: string, commit?: string): Promise<Check[]> {
   const sitemapText = sitemap instanceof Error ? "" : await sitemap.text();
   const catalog = await request(`${origin}/projects`);
   const catalogText = catalog instanceof Error ? "" : await catalog.text();
+  const germanCatalog = await request(`${origin}/de/projects`);
+  const germanCatalogText = germanCatalog instanceof Error ? "" : await germanCatalog.text();
   const contact = `${origin}/api/contact`;
   const forgedClient = forged.report?.client;
 
@@ -193,8 +195,13 @@ async function smokeSite(origin: string, commit?: string): Promise<Check[]> {
       }
     });
     const cover = await request(`${origin}${project.cover}`, { method: "HEAD" });
+    const escapedTitle = project.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const englishTitleLink = new RegExp(`<h[23][^>]*>\\s*<a\\b[^>]*href=["']/projects/${project.slug}["'][^>]*>${escapedTitle}<\\/a>\\s*<\\/h[23]>`, "i");
+    const germanTitleLink = new RegExp(`<h[23][^>]*>\\s*<a\\b[^>]*href=["']/de/projects/${project.slug}["'][^>]*>${escapedTitle}<\\/a>\\s*<\\/h[23]>`, "i");
     const checks: Check[] = [
       { name: `site: ${project.title} card is published`, ok: catalogText.includes(project.title), detail: `missing ${project.title} in /projects` },
+      { name: `site: ${project.title} English card title keeps English route`, ok: englishTitleLink.test(catalogText), detail: `missing English title link /projects/${project.slug}` },
+      { name: `site: ${project.title} German card title keeps German route`, ok: germanTitleLink.test(germanCatalogText), detail: `missing German title link /de/projects/${project.slug}` },
       { name: `site: ${project.title} is in sitemap`, ok: sitemapHasProject, detail: `missing public sitemap route ${path}` },
       { name: `site: ${project.title} case study answers`, ok: !(page instanceof Error) && page.status === 200 && title.test(html), detail: page instanceof Error ? page.message : `HTTP ${page.status}, expected page title ${project.title}` },
       { name: `site: ${project.title} has canonical URL`, ok: canonical, detail: `missing canonical URL for ${project.slug}` },
