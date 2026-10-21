@@ -86,11 +86,13 @@ const LOCALIZED_ROUTES = [
   { en: "/imprint", de: "/de/imprint" },
 ] as const;
 
-function linkTags(html: string): Array<{ rel?: string; href?: string; hrefLang?: string }> {
+function linkTags(html: string): Array<{ rel?: string; href?: string; hrefLang?: string; as?: string; type?: string }> {
   return (html.match(/<link\b[^>]*>/gi) ?? []).map((tag) => ({
     rel: tag.match(/\brel=["']([^"']+)["']/i)?.[1]?.toLowerCase(),
     href: tag.match(/\bhref=["']([^"']+)["']/i)?.[1],
     hrefLang: tag.match(/\bhreflang=["']([^"']+)["']/i)?.[1]?.toLowerCase(),
+    as: tag.match(/\bas=["']([^"']+)["']/i)?.[1]?.toLowerCase(),
+    type: tag.match(/\btype=["']([^"']+)["']/i)?.[1]?.toLowerCase(),
   }));
 }
 
@@ -152,12 +154,23 @@ async function smokeSite(origin: string, commit?: string): Promise<Check[]> {
   const forged = await health(origin, { "x-vercel-forwarded-for": FORGED_ADDRESS, "x-forwarded-for": FORGED_ADDRESS, "x-real-ip": FORGED_ADDRESS });
   const sitemap = await request(`${origin}/sitemap.xml`);
   const sitemapText = sitemap instanceof Error ? "" : await sitemap.text();
+  const home = await request(`${origin}/`);
+  const homeText = home instanceof Error ? "" : await home.text();
   const catalog = await request(`${origin}/projects`);
   const catalogText = catalog instanceof Error ? "" : await catalog.text();
   const germanCatalog = await request(`${origin}/de/projects`);
   const germanCatalogText = germanCatalog instanceof Error ? "" : await germanCatalog.text();
   const contact = `${origin}/api/contact`;
   const forgedClient = forged.report?.client;
+  const monoPreload = linkTags(homeText).find((link) =>
+    link.rel === "preload" && link.as === "font" && link.type === "font/woff2" && /jetbrains[^/]*\.woff2/i.test(link.href ?? ""),
+  );
+  let monoPreloadIsLocal = false;
+  try {
+    if (monoPreload?.href) monoPreloadIsLocal = new URL(monoPreload.href, origin).origin === origin;
+  } catch {
+    monoPreloadIsLocal = false;
+  }
 
   // Only the hosting proxy sets the client address; a local server has none in front of it.
   const proxied = !isLocal(origin);
@@ -217,7 +230,8 @@ async function smokeSite(origin: string, commit?: string): Promise<Check[]> {
   return [
     ...healthChecks("site", healthResult, commit, !proxied),
     ...addressChecks,
-    await status("site: home page", `${origin}/`, 200),
+    { name: "site: home page", ok: !(home instanceof Error) && home.status === 200, detail: home instanceof Error ? home.message : `HTTP ${home.status}, expected 200` },
+    { name: "site: preloads the local JetBrains Mono font", ok: monoPreloadIsLocal, detail: monoPreload?.href ?? "missing local JetBrains Mono WOFF2 preload" },
     ...await localizedRouteChecks(origin),
     { name: "site: project catalog", ok: !(catalog instanceof Error) && catalog.status === 200, detail: catalog instanceof Error ? catalog.message : `HTTP ${catalog.status}, expected 200` },
     await status("site: /work redirects", `${origin}/work`, 308),
