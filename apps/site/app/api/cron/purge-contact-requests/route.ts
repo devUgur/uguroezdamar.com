@@ -1,4 +1,4 @@
-import { deleteExpiredContactRequests, timingSafeEqualsString } from "@ugur/server";
+import { deleteExpiredContactRequests, purgeExpiredAdminData, timingSafeEqualsString } from "@ugur/server";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -15,7 +15,8 @@ export async function GET(request: Request) {
 
   try {
     const deleted = await deleteExpiredContactRequests();
-    return NextResponse.json({ ok: true, deleted });
+    const admin = await purgeExpiredAdminData();
+    return NextResponse.json({ ok: true, deleted, admin });
   } catch {
     // Do not log database errors: drivers may include SQL parameters in their messages.
     console.error("Contact retention job failed");
