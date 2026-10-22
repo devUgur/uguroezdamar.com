@@ -91,7 +91,7 @@ export async function dev(filters: string[], options: DevOptions = {}): Promise<
   const occupied = apps.filter((_, index) => !free[index]);
   if (occupied.length > 0) {
     const list = occupied.map((app) => `${port(app)} (${app})`).join(", ");
-    console.error(`Cannot start dev: port ${list} is already in use. Stop the running app, then retry.`);
+    console.error(`Cannot start dev: port ${list} is already in use. Run \`pnpm kill:ports\` or stop the running app, then retry.`);
     return 1;
   }
 

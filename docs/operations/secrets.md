@@ -56,6 +56,8 @@ pnpm ugur admin create <email>        # erstes Owner-Konto, Passwort per verdeck
 
 Danach genügt `pnpm dev`. `pnpm ugur doctor` prüft Werkzeuge, Anmeldungen und Pflichtschlüssel.
 
+Die tägliche Löschung abgelaufener Kontaktanfragen läuft ausschließlich auf Vercel-Production. Dafür ist `CRON_SECRET` nur für Stage `prod` deklariert und wird mit `pnpm ugur secrets generate --stage prod --apply` erzeugt. Anschließend `pnpm ugur hosting env --stage prod --apply` ausführen, damit Vercel Production den Schlüssel erhält, bevor die Site mit dem Cron-Plan ausgerollt wird. Wert nie anzeigen, kopieren oder in Logs übernehmen. `secrets audit --stage prod` prüft nur den Variablennamen; der erste Cron-Lauf und sein Ergebnis müssen in Vercel kontrolliert werden.
+
 Die CLI gibt Secret-Werte nie aus und übergibt sie auch nicht als Prozessargument: `secrets set`, `generate`, `copy`, `import` und `db provision` schreiben den Wert in eine nur für den eigenen Benutzer lesbare Datei in einem privaten Temp-Verzeichnis, reichen sie als `KEY=@datei` an Infisical und löschen sie sofort wieder.
 
 ## Täglicher Gebrauch
@@ -90,7 +92,7 @@ Lokale Läufe sind keine dritte Stage: Sie nutzen die Secrets und die Datenbank 
 
 ## Rotation und Vorfälle
 
-- Eigene Zufallswerte (`ADMIN_API_KEY`, `CONTACT_RATE_LIMIT_SECRET`): `pnpm ugur secrets generate --rotate --apply`, je Stage. Laufende Deployments erhalten den neuen Wert beim nächsten Sync bzw. Deploy.
+- Eigene Zufallswerte (`ADMIN_API_KEY`, `CONTACT_RATE_LIMIT_SECRET`, `CRON_SECRET`): `pnpm ugur secrets generate --rotate --apply`, je Stage, soweit dort deklariert. `CRON_SECRET` gilt nur für `prod`; nach einer Rotation muss `pnpm ugur hosting env --stage prod --apply` vor dem nächsten Cron-Aufruf ausgeführt werden.
 - Datenbank: Passwort der Neon-Rolle in der Neon-Konsole zurücksetzen, danach `pnpm ugur db provision --apply --overwrite`.
 - R2, Screenshot-Dienst und `REVALIDATE_SECRET`: Der Code nutzt sie seit [ADR 0019](../architecture/decisions/0019-content-from-git.md) nicht mehr; das Manifest führt sie als zurückgezogen. Das R2-Token im Cloudflare-Dashboard widerrufen und die Schlüssel mit `pnpm ugur secrets prune --apply` je Stage entfernen.
 - Der frühere MongoDB-Atlas-Cluster existiert nicht mehr (Hostname löst nicht mehr auf). `MONGODB_URI` ist zurückgezogen; `secrets audit` meldet den Schlüssel, falls er wieder auftaucht.

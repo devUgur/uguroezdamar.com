@@ -36,7 +36,7 @@ export async function Work({ number, locale = "en" }: { number: string; locale?:
                 </Link>
               </div>
             ) : (
-              <ol className="grid grid-cols-1 border-t border-border xl:grid-cols-2 xl:gap-x-12">
+              <ol className="project-grid project-grid--featured">
                 {projects.map((project, index) => (
                   <SelectedProjectCard key={project.slug} project={project} index={index} preloadCover={index === firstCoverIndex} locale={locale} />
                 ))}

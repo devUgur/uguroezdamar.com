@@ -86,8 +86,9 @@ export async function POST(request: Request) {
   try {
     const id = await createContactRequest(parsed.data as ContactInput);
     return NextResponse.json({ ok: true, id, status: "saved" });
-  } catch (error) {
-    console.error("Failed to save contact request:", error);
+  } catch {
+    // Database driver errors can include query details or submitted values. Keep them out of logs.
+    console.error("Failed to save contact request");
     return NextResponse.json({ ok: false, error: "Failed to save message" }, { status: 500 });
   }
 }

@@ -15,6 +15,20 @@
       "when": 1792437059677,
       "tag": "0001_smiling_rockslide",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792615279366,
+      "tag": "0002_minor_vision",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792615844209,
+      "tag": "0003_bored_grey_gargoyle",
+      "breakpoints": true
     }
   ]
 }

@@ -69,7 +69,7 @@ Feldbewertungen der Core Web Vitals verwenden das 75. Perzentil: LCP ≤ 2,5 s, 
 ## Offene Freigaben und externe Voraussetzungen
 
 - Vor Lokalisierungs-Release müssen Übersetzungen der realen Projekttexte redaktionell bestätigt werden.
-- `/privacy` und `/imprint` enthalten weiterhin erkennbare Platzhalter. Betreiberangaben und Datenschutztext müssen vor einer rechtlich vollständigen Veröffentlichung durch den Owner bestätigt werden; eine Übersetzung ist kein Ersatz dafür.
+- `/privacy` und `/imprint` wurden in technische, zweisprachige Entwürfe mit klar markierten offenen Betreiberangaben überführt. Sie sind weiterhin keine finalen Rechtstexte. Owner- und Rechtsprüfung sowie die offene Anbieter-/Aufbewahrungsprüfung aus [Datenschutz- und Anbieterinventar](../legal/privacy-and-provider-inventory.md) bleiben Produktionsgates.
 - Die Marketing-Seite und das Portal haben getrennte Deployment-/Smoke-Pfade. Dieser R3-Plan betrifft nur `apps/site`.
 - Die eigenständigen ViralSync-/Video-Lab-Produktionen haben eigene Laufzeit-, Routing-, Inhalts- und Rechtsgates im [Live- und Importplan](portfolio-live-and-import-plan.md).
 

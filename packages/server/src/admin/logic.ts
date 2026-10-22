@@ -207,7 +207,10 @@ export async function clearLoginAttempts(ip?: string | null) {
 }
 
 export async function countContactRequests() {
-  const [row] = await getDb().select({ value: count() }).from(contactRequests);
+	const [row] = await getDb()
+		.select({ value: count() })
+		.from(contactRequests)
+		.where(gt(contactRequests.expiresAt, new Date()));
   return row?.value ?? 0;
 }
 

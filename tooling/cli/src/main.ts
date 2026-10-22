@@ -2,6 +2,7 @@ import { parseArgs } from "node:util";
 import { db } from "./commands/db.ts";
 import { dev, localRun } from "./commands/dev.ts";
 import { doctor } from "./commands/doctor.ts";
+import { killPorts } from "./commands/kill-ports.ts";
 import {
   secretsAudit,
   secretsCopy,
@@ -26,6 +27,7 @@ const HELP = `uguroezdamar.com CLI — pnpm ugur <command>
   doctor                     Check tools, logins and required secrets
   dev [--filter site|portal] Run the site with dev secrets injected and localhost addresses
       [--all]                (--filter portal for the portal, --all for both)
+  kill:ports [ports…] [--all] [-p <port>]  Stop processes listening on local app ports (3100, 3101, 3102, 3103, 4983 by default)
   run -- <cmd>               Run a command with secrets and localhost addresses (e.g. a local build)
   smoke --site <url>         Check a deployment over HTTP: commit, database, client address,
       [--portal <url>]       refusals. Stores nothing. --commit <sha> pins the expected commit
@@ -64,6 +66,7 @@ const { values, positionals } = parseArgs({
   options: {
     stage: { type: "string" },
     filter: { type: "string", multiple: true },
+    port: { type: "string", multiple: true, short: "p" },
     from: { type: "string" },
     to: { type: "string" },
     overwrite: { type: "boolean", default: false },
@@ -85,6 +88,13 @@ async function main(): Promise<number> {
   if (values.help || !command) {
     console.log(HELP);
     return 0;
+  }
+  if (command === "kill:ports" || command === "kill-ports" || (command === "kill" && sub === "ports")) {
+    const cliPorts = [
+      ...(values.port ?? []),
+      ...(command === "kill" && sub === "ports" ? positionals.slice(2) : positionals.slice(1)),
+    ];
+    return killPorts({ ports: cliPorts, all: values.all });
   }
   const stage = parseStage(values.stage);
   switch (`${command} ${sub ?? ""}`.trim()) {

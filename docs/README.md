@@ -11,6 +11,7 @@ Diese Dokumentation ist die zentrale, gepflegte Referenz für Architektur, Engin
 | [Engineering-Qualität](engineering/quality.md) | Lint, Typecheck, Tests, Guards, CI und Merge-Gates |
 | [Abhängigkeitsmatrix](engineering/dependency-matrix.md) | unterstützte Laufzeiten, Paketstände, Upgrade-Entscheidungen und Pflege |
 | [Sicherheit](security/README.md) | Authentifizierung, Autorisierung, Daten, Uploads und Secrets |
+| [Datenschutz- und Anbieterinventar](legal/privacy-and-provider-inventory.md) | technische Datenflüsse, Kontaktaufbewahrung und noch offene Betreiber-/Providerfreigaben |
 | [Content & Portfolio](product/content-and-portfolio.md) | Inhaltsmodell, Publish-Entscheidung und redaktionelle Qualität |
 | [Portfolio R3: Ladezeit, Interaktion und Lokalisierung](product/portfolio-r3-experience-plan.md) | Font-Performance, Cursorbewegung, zweisprachige Routen und Release-Abnahme |
 | [Secrets & Entwicklungsumgebung](operations/secrets.md) | Infisical, Secrets-Manifest, `pnpm ugur`-CLI, Datenbank-Befehle, Rotation |

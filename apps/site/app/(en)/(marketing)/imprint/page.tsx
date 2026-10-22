@@ -1,15 +1,12 @@
-import { PageIntro } from "@/src/components/public/PageIntro";
 import type { Metadata } from "next";
+import { ImprintNotice } from "@/src/components/public/ImprintNotice";
 
-export const metadata: Metadata = { title: "Imprint", alternates: { canonical: "/imprint", languages: { en: "/imprint", de: "/de/imprint" } } };
+export const metadata: Metadata = {
+  title: "Imprint",
+  description: "Provider information for the portfolio website.",
+  alternates: { canonical: "/imprint", languages: { en: "/imprint", de: "/de/imprint" } },
+};
 
 export default function ImprintPage() {
-  return (
-    <article className="site-container py-16 md:py-24">
-      <PageIntro section="Legal" title="Imprint" description="Legal disclosure." />
-      <div className="mt-12 max-w-3xl border-t border-border pt-6 text-sm leading-7 text-muted-foreground">
-        <p>The complete provider information still needs to be provided and reviewed before this page can serve as a legally complete disclosure.</p>
-      </div>
-    </article>
-  );
+  return <ImprintNotice locale="en" />;
 }

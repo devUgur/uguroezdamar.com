@@ -76,7 +76,8 @@ export const contactRequests = pgTable("contact_requests", {
 	message: text("message").notNull(),
 	source: text("source").notNull().default("website"),
 	createdAt: timestamptz("created_at").notNull().defaultNow(),
-});
+	expiresAt: timestamptz("expires_at").notNull().default(sql`now() + interval '90 days'`),
+}, (table) => [index("contact_requests_expires_at_idx").on(table.expiresAt)]);
 
 export const contactRateLimits = pgTable(
 	"contact_rate_limits",

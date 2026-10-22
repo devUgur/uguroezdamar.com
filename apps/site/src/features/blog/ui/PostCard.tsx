@@ -7,8 +7,8 @@ import { type Locale } from "@/src/features/navigation/copy";
 export function PostCard({ post, locale = "en" }: { post: PostRecord; locale?: Locale }) {
   const base = locale === "de" ? "/de" : "";
   return (
-    <article className="border-t border-border py-6 md:py-8">
-      {post.date ? <p className="page-eyebrow mb-3">{post.date}</p> : null}
+    <article className="post-card">
+      {post.date ? <p className="page-eyebrow mb-4">{post.date}</p> : null}
       <h2 className="font-serif text-2xl leading-tight md:text-3xl">
         <Link href={`${base}/blog/${post.slug}`} className="hover:underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
           {post.title}
