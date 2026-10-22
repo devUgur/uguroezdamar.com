@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import argon2 from "argon2";
-import { and, count, desc, eq, gt, gte, isNull } from "drizzle-orm";
+import { and, count, desc, eq, gt, gte, isNotNull, isNull, lt, or } from "drizzle-orm";
 import { getDb, isUuid, omit } from "../db/client";
 import { adminInvites, adminLoginAttempts, adminSessions, admins, contactRequests } from "../db/schema";
 import { env } from "../env";
@@ -226,4 +226,27 @@ export async function countRecentFailedLoginAttempts(ip?: string | null, windowS
     .from(adminLoginAttempts)
     .where(and(eq(adminLoginAttempts.ip, ip ?? "unknown"), gte(adminLoginAttempts.createdAt, since)));
   return row?.value ?? 0;
+}
+
+/**
+ * Remove expired authentication metadata during the authenticated daily retention job.
+ * Failed login rows contain a source IP and are retained only for the abuse-control window.
+ */
+export async function purgeExpiredAdminData(now = new Date()) {
+  const loginAttemptCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const db = getDb();
+  return db.transaction(async (tx) => {
+    const sessions = await tx.delete(adminSessions).where(lt(adminSessions.expiresAt, now)).returning({ id: adminSessions.id });
+    const invites = await tx.delete(adminInvites)
+      .where(or(lt(adminInvites.expiresAt, now), isNotNull(adminInvites.usedAt)))
+      .returning({ id: adminInvites.id });
+    const loginAttempts = await tx.delete(adminLoginAttempts)
+      .where(lt(adminLoginAttempts.createdAt, loginAttemptCutoff))
+      .returning({ id: adminLoginAttempts.id });
+    return {
+      sessions: sessions.length,
+      invites: invites.length,
+      loginAttempts: loginAttempts.length,
+    };
+  });
 }

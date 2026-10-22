@@ -23,6 +23,7 @@ export {
 	recordFailedLoginAttempt,
 	clearLoginAttempts,
 	countRecentFailedLoginAttempts,
+	purgeExpiredAdminData,
 	timingSafeEqualsString,
 	countContactRequests,
 	listAdmins,
