@@ -3,34 +3,36 @@ import { PageIntro } from "./PageIntro";
 
 const content = {
   en: {
-    section: "Legal · draft for operator review",
+    section: "Legal · provider information",
     title: "Imprint",
-    lede: "Provider information for this portfolio. The operator must confirm the missing details before this page is complete.",
-    notice: "Provider address still required",
-    noticeText: "The source repository contains no postal address. It must be supplied and reviewed by the operator before this page is treated as a complete legal disclosure.",
+    lede: "Provider and contact information for this portfolio website.",
+    notice: "Final legal status review remains open",
+    noticeText: "The operator identity and postal address were confirmed for reuse from the ViralSync legal records on 22 October 2026. The applicability of the statutory disclosure requirements and any activity-specific details still require review. This page remains a technical draft until that review is complete.",
     provider: "Provider",
     name: "Ugur Özdamar",
-    address: "Postal address: to be completed by the operator",
+    address: "Stockumer Straße 219, 44225 Dortmund, Germany",
     contact: "Contact",
-    email: "Email",
+    legalEmail: "Legal enquiries",
+    phone: "Telephone",
     conditions: "Additional information",
-    conditionsText: "Whether register, VAT, professional or supervisory details apply depends on the operator's status and activity. Confirm applicability under section 5 DDG before release.",
-    updated: "Last updated 21 October 2026. Technical draft; not legal advice.",
+    conditionsText: "This page identifies the operator as a natural person and does not claim a registered company, commercial register entry or professional licence. Whether further occupational or supervisory details must be disclosed depends on the operator's activity and requires final review.",
+    updated: "Last updated 22 October 2026. Technical draft pending legal review.",
   },
   de: {
-    section: "Rechtliches · Entwurf zur Betreiberprüfung",
+    section: "Rechtliches · Anbieterangaben",
     title: "Impressum",
-    lede: "Anbieterangaben für dieses Portfolio. Die fehlenden Angaben muss der Betreiber vor Fertigstellung bestätigen.",
-    notice: "Anschrift des Anbieters fehlt noch",
-    noticeText: "Im Repository ist keine postalische Anschrift hinterlegt. Der Betreiber muss sie ergänzen und prüfen, bevor diese Seite als vollständige Anbieterkennzeichnung gelten kann.",
+    lede: "Anbieter- und Kontaktangaben für diese Portfolio-Website.",
+    notice: "Abschließende Prüfung des Rechtsstatus steht noch aus",
+    noticeText: "Betreiberidentität und Postanschrift wurden am 22. Oktober 2026 zur Übernahme aus den ViralSync-Rechtsangaben bestätigt. Die Anwendbarkeit der gesetzlichen Informationspflichten und mögliche tätigkeitsbezogene Zusatzangaben müssen noch geprüft werden. Bis zum Abschluss dieser Prüfung bleibt diese Seite ein technischer Entwurf.",
     provider: "Anbieter",
     name: "Ugur Özdamar",
-    address: "Postanschrift: vom Betreiber zu ergänzen",
+    address: "Stockumer Straße 219, 44225 Dortmund, Deutschland",
     contact: "Kontakt",
-    email: "E-Mail",
+    legalEmail: "Rechtliche Anfragen",
+    phone: "Telefon",
     conditions: "Weitere Angaben",
-    conditionsText: "Ob Register-, Umsatzsteuer-, Berufs- oder Aufsichtsangaben gelten, hängt vom Status und der Tätigkeit des Anbieters ab. Die Anwendbarkeit von § 5 DDG muss vor der Freigabe geprüft werden.",
-    updated: "Zuletzt aktualisiert am 21. Oktober 2026. Technischer Entwurf; keine Rechtsberatung.",
+    conditionsText: "Als Anbieter wird eine natürliche Person genannt; eine eingetragene Gesellschaft, ein Handelsregistereintrag oder eine Berufszulassung wird nicht behauptet. Ob abhängig von der Tätigkeit weitere berufliche oder aufsichtsrechtliche Angaben erforderlich sind, muss abschließend geprüft werden.",
+    updated: "Zuletzt aktualisiert am 22. Oktober 2026. Technischer Entwurf; Rechtsprüfung steht noch aus.",
   },
 } as const;
 
@@ -54,7 +56,10 @@ export function ImprintNotice({ locale }: { locale: Locale }) {
           </section>
           <section className="grid gap-3 py-6 md:grid-cols-[minmax(12rem,1fr)_2fr] md:gap-8 md:py-8">
             <h2 className="font-serif text-2xl">{text.contact}</h2>
-            <p className="text-sm leading-7 text-muted-foreground">{text.email}: <a href="mailto:ugur.oezdamar@itc-studenten.de" className="text-foreground underline underline-offset-4">ugur.oezdamar@itc-studenten.de</a></p>
+            <div className="space-y-1 text-sm leading-7 text-muted-foreground">
+              <p>{text.legalEmail}: <a href="mailto:legal@viralsync.io" className="text-foreground underline underline-offset-4">legal@viralsync.io</a></p>
+              <p>{text.phone}: <a href="tel:+4915126546603" className="text-foreground underline underline-offset-4">+49 151 26546603</a></p>
+            </div>
           </section>
           <section className="grid gap-3 py-6 md:grid-cols-[minmax(12rem,1fr)_2fr] md:gap-8 md:py-8">
             <h2 className="font-serif text-2xl">{text.conditions}</h2>
