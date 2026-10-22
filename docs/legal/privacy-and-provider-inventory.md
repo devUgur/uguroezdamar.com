@@ -38,7 +38,7 @@ Vor dem nächsten ungeschützten Production-Promote diese Angaben anhand echter 
 
 ## Keine generischen AGB ohne Vertragsangebot
 
-Für eine reine Portfolio-/Kontaktseite wird in diesem Stand keine inhaltsleere AGB-Seite ergänzt. Sobald konkrete kostenpflichtige Leistungen oder Online-Verträge angeboten werden, ist ein separates Vertrags-/Widerrufs-/Verbraucherrecht-Review erforderlich. Projekt-Casestudies sind keine Leistungszusagen.
+Der Betreiber hat am 22.10.2026 bestätigt: Das Portfolio bietet derzeit keine Vertrags- oder Checkout-Leistungen an; generische AGB sollen deshalb nicht veröffentlicht werden. Diese Bestätigung gilt für uguroezdamar.com. Sie trifft keine Aussage über ViralSync oder andere Projekte. Sobald auf dem Portfolio konkrete kostenpflichtige Leistungen oder Online-Verträge angeboten werden, ist vor deren Veröffentlichung ein separates, angebotsbezogenes Vertrags-/Widerrufs-/Verbraucherrecht-Review erforderlich. Projekt-Casestudies sind keine Leistungszusagen.
 
 ## Offizielle Quellen für die Prüfung
 
