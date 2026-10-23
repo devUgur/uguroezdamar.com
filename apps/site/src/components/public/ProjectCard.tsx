@@ -1,8 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
 import { formatPeriod, projectLinks, type Project } from "@/src/content/projects";
+import { ProjectCover } from "@/src/components/public/ProjectCover";
 import { copy, type Locale } from "@/src/features/navigation/copy";
 
 export function ProjectCard({ project, index, headingLevel = "h2", preloadCover = false, locale = "en" }: { project: Project; index?: number; headingLevel?: "h2" | "h3"; preloadCover?: boolean; locale?: Locale }) {
@@ -15,9 +15,7 @@ export function ProjectCard({ project, index, headingLevel = "h2", preloadCover 
     <article className="project-card group">
       {project.cover ? (
         <figure className="project-card__cover">
-          <div className="relative aspect-[16/9] w-full overflow-hidden bg-background">
-            <Image src={project.cover.src} alt={project.cover.alt} fill preload={preloadCover} sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 44vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.02] motion-reduce:transition-none motion-reduce:group-hover:scale-100" />
-          </div>
+          <ProjectCover cover={project.cover} preload={preloadCover} sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 44vw" />
           <figcaption className="min-h-14 px-5 py-2 text-xs leading-5 text-muted-foreground md:px-8">
             {project.cover.caption ?? <span aria-hidden="true">&nbsp;</span>}
           </figcaption>

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { compileMdx } from "@/src/content/mdx";
 import { ArticleShell } from "@/src/components/public/ArticleShell";
+import { ProjectCover } from "@/src/components/public/ProjectCover";
 import { formatPeriod, getProjectBySlug, getProjects, projectLinks } from "@/src/content/projects";
 
 type Params = { params: Promise<{ slug: string }> };
@@ -66,9 +66,7 @@ export default async function ProjectDetailPage({ params }: Params) {
 
       {project.cover ? (
         <figure className="mt-10 md:mt-14">
-          <div className="relative aspect-video overflow-hidden border-y border-border bg-surface">
-            <Image src={project.cover.src} alt={project.cover.alt} fill priority sizes="(max-width: 1280px) 100vw, 1200px" className="object-cover" />
-          </div>
+          <ProjectCover cover={project.cover} preload sizes="(max-width: 1280px) 100vw, 1200px" />
           {project.cover.caption ? <figcaption className="mt-2 text-xs leading-5 text-muted-foreground">{project.cover.caption}</figcaption> : null}
         </figure>
       ) : null}

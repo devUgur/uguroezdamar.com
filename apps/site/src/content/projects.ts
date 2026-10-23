@@ -41,6 +41,8 @@ export const ProjectFrontmatterSchema = z
         src: z.string().startsWith("/projects/"),
         alt: z.string().min(1),
         caption: z.string().min(1).optional(),
+        /** Describes the approved asset itself; never infer a device from its project. */
+        frame: z.enum(["browser", "mobile", "none"]),
       })
       .optional(),
     repositoryVisibility: z.enum(["public", "private", "none"]),
