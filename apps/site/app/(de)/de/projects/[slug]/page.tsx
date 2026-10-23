@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { compileMdx } from "@/src/content/mdx";
 import { ArticleShell } from "@/src/components/public/ArticleShell";
+import { ProjectCover } from "@/src/components/public/ProjectCover";
 import { formatPeriod, getProjectBySlug, getProjects, projectLinks } from "@/src/content/projects";
 
 type Params = { params: Promise<{ slug: string }> };
@@ -39,7 +39,7 @@ export default async function GermanProjectDetail({ params }: Params) {
         <p className="page-eyebrow page-intro__eyebrow"><Link href="/de/projects" className="link-underline">Projekte</Link><span className="mx-2 text-border">/</span>{project.category}{project.draft ? <span className="ml-3 border border-foreground/30 px-2 py-0.5 text-foreground">Entwurf</span> : null}</p>
         <div className="page-intro__content"><h1 className="page-title">{project.title}</h1><p className="page-lede">{project.summary}</p></div>
       </header>
-      {project.cover ? <figure className="mt-10 md:mt-14"><div className="relative aspect-video overflow-hidden border-y border-border bg-surface"><Image src={project.cover.src} alt={project.cover.alt} fill priority sizes="(max-width: 1280px) 100vw, 1200px" className="object-cover" /></div>{project.cover.caption ? <figcaption className="mt-2 text-xs leading-5 text-muted-foreground">{project.cover.caption}</figcaption> : null}</figure> : null}
+      {project.cover ? <figure className="mt-10 md:mt-14"><ProjectCover cover={project.cover} preload sizes="(max-width: 1280px) 100vw, 1200px" />{project.cover.caption ? <figcaption className="mt-2 text-xs leading-5 text-muted-foreground">{project.cover.caption}</figcaption> : null}</figure> : null}
       <div className="mt-12 grid grid-cols-1 gap-12 md:mt-16 md:grid-cols-12 md:gap-8">
         <aside className="md:col-span-4" aria-label="Projektdetails"><dl className="border-t border-border">{facts.map((fact) => <div key={fact.label} className="grid grid-cols-[6rem_minmax(0,1fr)] gap-4 border-b border-border py-4"><dt className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">{fact.label}</dt><dd className="text-sm leading-6">{fact.value}</dd></div>)}</dl>
           <h2 className="mt-8 font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">Technologien</h2><ul className="mt-3 flex flex-wrap gap-1.5">{project.technologies.map((technology) => <li key={technology} className="border border-border bg-surface px-2 py-1 font-mono text-[11px] text-foreground/80">{technology}</li>)}</ul>
