@@ -13,7 +13,7 @@ export function localizedPath(pathname: string, locale: Locale): string {
 
 export const copy = {
   en: {
-    nav: ["Projects", "About", "Contact"], skip: "Skip to main content", mainNav: "Main navigation", footerNav: "Footer navigation", themeToggle: "Toggle theme",
+    nav: ["Projects", "Contact"], skip: "Skip to main content", mainNav: "Main navigation", footerNav: "Footer navigation", themeToggle: "Toggle theme",
     contact: "Contact", imprint: "Imprint", privacy: "Privacy", openMenu: "Open navigation menu", closeMenu: "Close navigation menu",
     project: "Project catalog", projects: "Projects", projectDescription: "Case studies of software I have built: the problem, the solution and the architecture behind it.",
     noProjects: "No projects have been published yet.", caseStudy: "View case study", draft: "Draft", technologies: "Technologies",
@@ -26,7 +26,7 @@ export const copy = {
     emptyProfile: "Profile details have not been published yet.", emptyEducation: "No education entries have been published yet.",
   },
   de: {
-    nav: ["Projekte", "Profil", "Kontakt"], skip: "Zum Hauptinhalt springen", mainNav: "Hauptnavigation", footerNav: "Fußnavigation", themeToggle: "Darstellung wechseln",
+    nav: ["Projekte", "Kontakt"], skip: "Zum Hauptinhalt springen", mainNav: "Hauptnavigation", footerNav: "Fußnavigation", themeToggle: "Darstellung wechseln",
     contact: "Kontakt", imprint: "Impressum", privacy: "Datenschutz", openMenu: "Navigationsmenü öffnen", closeMenu: "Navigationsmenü schließen",
     project: "Projektübersicht", projects: "Projekte", projectDescription: "Ausgewählte Softwareprojekte: die Herausforderung, die Lösung und die technische Architektur.",
     noProjects: "Es wurden noch keine Projekte veröffentlicht.", caseStudy: "Fallstudie ansehen", draft: "Entwurf", technologies: "Technologien",

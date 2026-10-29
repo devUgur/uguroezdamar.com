@@ -15,8 +15,7 @@ export function SiteHeader() {
   const base = locale === "de" ? "/de" : "";
   const navLinks = [
     { href: `${base}/projects`, label: text.nav[0] },
-    { href: `${base}/${locale === "de" ? "about" : "about"}`, label: text.nav[1] },
-    { href: `${base}/contact`, label: text.nav[2] },
+    { href: `${base}/contact`, label: text.nav[1] },
   ];
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
