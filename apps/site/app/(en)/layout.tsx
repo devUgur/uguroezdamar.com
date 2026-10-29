@@ -14,6 +14,21 @@ export const metadata: Metadata = {
   },
   description:
     "Software Engineering · Digital Products. Full-stack development, scalable applications, and thoughtful engineering by Ugur Özdamar.",
+  openGraph: {
+    title: "Ugur Özdamar – Software Engineering · Digital Products",
+    description:
+      "Full-stack development, scalable applications, and thoughtful engineering by Ugur Özdamar.",
+    url: canonicalOrigin,
+    siteName: "Ugur Özdamar",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Ugur Özdamar – Software Engineering · Digital Products",
+    description:
+      "Full-stack development, scalable applications, and thoughtful engineering by Ugur Özdamar.",
+  },
 };
 
 export default function RootLayout({
