@@ -229,4 +229,73 @@ describe("POST /api/contact contract", () => {
     expect(res.headers.get("Location")).toContain("error=invalid_input");
     expect(mockCreateContactRequest).not.toHaveBeenCalled();
   });
+
+  it("strictly enforces same-origin allowed paths and blocks open-redirect via attacker referer", async () => {
+    const { POST } = await import("../apps/site/app/api/contact/route");
+    const formData = new URLSearchParams({
+      name: "Jane",
+      email: "jane@example.com",
+      message: "Hello",
+    });
+    const res = await POST(
+      new Request("https://uguroezdamar.com/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "x-vercel-forwarded-for": "198.51.100.10",
+          Referer: "https://evil-attacker.example/phishing",
+        },
+        body: formData.toString(),
+      }),
+    );
+    expect(res.status).toBe(303);
+    // Must strictly fallback to site's own /contact, never evil-attacker.example
+    expect(res.headers.get("Location")).toBe("https://uguroezdamar.com/contact?sent=true");
+  });
+
+  it("redirects with rate_limited error when rate limit is exceeded on No-JS form", async () => {
+    mockConsumeContactRateLimit.mockResolvedValueOnce({ allowed: false, remaining: 0, retryAfterSeconds: 300 });
+    const { POST } = await import("../apps/site/app/api/contact/route");
+    const formData = new URLSearchParams({
+      name: "Jane",
+      email: "jane@example.com",
+      message: "Hello",
+    });
+    const res = await POST(
+      new Request("https://uguroezdamar.com/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "x-vercel-forwarded-for": "198.51.100.10",
+          Referer: "https://uguroezdamar.com/de/contact",
+        },
+        body: formData.toString(),
+      }),
+    );
+    expect(res.status).toBe(303);
+    expect(res.headers.get("Location")).toBe("https://uguroezdamar.com/de/contact?error=rate_limited");
+  });
+
+  it("redirects with server_error when storage fails on No-JS form", async () => {
+    mockCreateContactRequest.mockRejectedValueOnce(new Error("db down"));
+    const { POST } = await import("../apps/site/app/api/contact/route");
+    const formData = new URLSearchParams({
+      name: "Jane",
+      email: "jane@example.com",
+      message: "Hello",
+    });
+    const res = await POST(
+      new Request("https://uguroezdamar.com/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "x-vercel-forwarded-for": "198.51.100.10",
+          Referer: "https://uguroezdamar.com/contact",
+        },
+        body: formData.toString(),
+      }),
+    );
+    expect(res.status).toBe(303);
+    expect(res.headers.get("Location")).toBe("https://uguroezdamar.com/contact?error=server_error");
+  });
 });

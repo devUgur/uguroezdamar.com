@@ -8,6 +8,31 @@ import { copy, type Locale } from "@/src/features/navigation/copy";
 
 type State = { ok: true } | { ok: false; error: string } | null;
 
+const ERROR_MESSAGES = {
+  en: {
+    invalid_input: "Please check your details and try again.",
+    rate_limited: "Too many requests. Please try again later.",
+    server_error: "Your message could not be saved right now.",
+  },
+  de: {
+    invalid_input: "Bitte überprüfen Sie Ihre Angaben und versuchen Sie es erneut.",
+    rate_limited: "Zu viele Anfragen. Bitte versuchen Sie es später erneut.",
+    server_error: "Ihre Nachricht konnte momentan nicht gespeichert werden.",
+  },
+} as const;
+
+function resolveErrorMessage(codeOrMessage: string | undefined, locale: Locale): string {
+  if (!codeOrMessage) return "";
+  const dict = ERROR_MESSAGES[locale];
+  if (codeOrMessage === "invalid_input" || codeOrMessage === "Invalid input" || codeOrMessage === "Invalid JSON") {
+    return dict.invalid_input;
+  }
+  if (codeOrMessage === "rate_limited" || codeOrMessage.includes("Too many requests")) {
+    return dict.rate_limited;
+  }
+  return dict.server_error;
+}
+
 export function ContactForm({
   locale = "en",
   initialSent = false,
@@ -19,8 +44,9 @@ export function ContactForm({
 }) {
   const text = copy[locale];
   const [privacyBefore, privacyAfter = ""] = text.contactPrivacyNote.split(text.contactPrivacyLink);
+  const initialErrorMessage = initialError ? resolveErrorMessage(initialError, locale) : undefined;
   const [state, setState] = useState<State>(
-    initialSent ? { ok: true } : initialError ? { ok: false, error: text.sendError } : null,
+    initialSent ? { ok: true } : initialErrorMessage ? { ok: false, error: initialErrorMessage } : null,
   );
   const [pending, setPending] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -41,10 +67,10 @@ export function ContactForm({
         setState({ ok: true });
         formRef.current?.reset();
       } else {
-        setState({ ok: false, error: data.error ?? text.sendError });
+        setState({ ok: false, error: resolveErrorMessage(data.error, locale) });
       }
     } catch {
-      setState({ ok: false, error: text.sendError });
+      setState({ ok: false, error: resolveErrorMessage("server_error", locale) });
     } finally {
       setPending(false);
     }
@@ -128,3 +154,5 @@ export function ContactForm({
     </form>
   );
 }
+
+export default ContactForm;

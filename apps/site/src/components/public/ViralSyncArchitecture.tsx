@@ -21,8 +21,16 @@ export function ViralSyncArchitecture({ locale = "en" }: ViralSyncArchitecturePr
       title: de ? "Edge API" : "Edge API Tier",
       runtime: "Hono · Cloudflare Workers",
       items: de
-        ? ["Weltweite Edge-Ausführung (< 50ms)", "Entkoppelte Veröffentlichungs-Routen", "Provider-Fähigkeiten-Manifest"]
-        : ["Global Edge Execution (< 50ms)", "Decoupled Publishing Routes", "Provider Capability Manifest"],
+        ? [
+            "Geografisch verteilte API-Ausführung nahe an den Nutzern",
+            "Entkoppelte Veröffentlichungs-Routen",
+            "Provider-Fähigkeiten-Manifest",
+          ]
+        : [
+            "Geographically distributed API execution close to users",
+            "Decoupled Publishing Routes",
+            "Provider Capability Manifest",
+          ],
     },
     {
       id: "data",
