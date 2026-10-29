@@ -34,6 +34,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     // Drafts may appear in protected previews, but never belong in search indexes.
     robots: project.draft ? { index: false, follow: false } : undefined,
     openGraph: { title: project.title, description: project.summary, images: project.cover ? [project.cover.src] : undefined },
+    twitter: { card: "summary_large_image",  title: project.title, description: project.summary, images: project.cover ? [project.cover.src] : undefined  },
   };
 }
 

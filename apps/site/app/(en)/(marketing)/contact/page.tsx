@@ -4,12 +4,27 @@ import { PageIntro } from "@/src/components/public/PageIntro";
 import type { Metadata } from "next";
 
 export const runtime = "nodejs";
-export const metadata: Metadata = { title: "Contact", alternates: { canonical: "/contact", languages: { en: "/contact", de: "/de/contact" } } };
+export const metadata: Metadata = {
+  title: "Contact",
+  alternates: { canonical: "/contact", languages: { en: "/contact", de: "/de/contact" } },
+};
 
-export default function ContactPage() {
+type ContactPageProps = {
+  searchParams?: Promise<{ sent?: string; error?: string }>;
+};
+
+export default async function ContactPage({ searchParams }: ContactPageProps) {
+  const params = await searchParams;
+  const initialSent = params?.sent === "true";
+  const initialError = params?.error;
+
   return (
     <div className="site-container py-16 md:py-24">
-      <PageIntro section="Direct contact" title="Get in touch" description="For a question or a message about software work, send a message here or use the listed email address." />
+      <PageIntro
+        section="Direct contact"
+        title="Get in touch"
+        description="For a question or a message about software work, send a message here or use the listed email address."
+      />
       <div className="mt-12 grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-16 items-start">
         {/* Left Column: Direct info & context */}
         <div className="lg:col-span-5 space-y-8">
@@ -59,7 +74,7 @@ export default function ContactPage() {
             <h2 className="font-serif text-2xl text-foreground font-medium mb-6">
               Send a Message
             </h2>
-            <ContactForm />
+            <ContactForm initialSent={initialSent} initialError={initialError} />
           </div>
         </div>
       </div>

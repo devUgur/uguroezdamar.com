@@ -32,6 +32,17 @@ export function SiteFooter({ locale = "en" }: { locale?: Locale }) {
                 </Link>
               </li>
             ))}
+            <li key="github">
+              <a
+                href="https://github.com/devUgur"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 items-center gap-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              >
+                GitHub
+                <span aria-hidden="true" className="text-xs">↗</span>
+              </a>
+            </li>
           </ul>
         </nav>
       </div>
