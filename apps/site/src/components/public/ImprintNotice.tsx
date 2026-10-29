@@ -6,29 +6,25 @@ const content = {
     section: "Legal · provider information",
     title: "Imprint",
     lede: "Provider and contact information for this portfolio website.",
-    provider: "Provider",
+    provider: "Provider information",
     name: "Ugur Özdamar",
     address: "Stockumer Straße 219, 44225 Dortmund, Germany",
     contact: "Contact",
     legalEmail: "Legal enquiries",
     phone: "Telephone",
-    conditions: "Additional information",
-    conditionsText: "The provider is identified as a natural person. No company or commercial register entry is stated.",
-    updated: "Last updated 22 October 2026.",
+    updated: "Last updated 29 October 2026.",
   },
   de: {
     section: "Rechtliches · Anbieterangaben",
     title: "Impressum",
     lede: "Anbieter- und Kontaktangaben für diese Portfolio-Website.",
-    provider: "Anbieter",
+    provider: "Angaben zum Diensteanbieter",
     name: "Ugur Özdamar",
     address: "Stockumer Straße 219, 44225 Dortmund, Deutschland",
     contact: "Kontakt",
-    legalEmail: "Rechtliche Anfragen",
+    legalEmail: "E-Mail für rechtliche Anfragen",
     phone: "Telefon",
-    conditions: "Weitere Angaben",
-    conditionsText: "Der Anbieter wird als natürliche Person genannt. Eine Gesellschaft oder ein Handelsregistereintrag wird nicht angegeben.",
-    updated: "Zuletzt aktualisiert am 22. Oktober 2026.",
+    updated: "Zuletzt aktualisiert am 29. Oktober 2026.",
   },
 } as const;
 
@@ -53,13 +49,11 @@ export function ImprintNotice({ locale }: { locale: Locale }) {
               <p>{text.phone}: <a href="tel:+4915126546603" className="text-foreground underline underline-offset-4">+49 151 26546603</a></p>
             </div>
           </section>
-          <section className="grid gap-3 py-6 md:grid-cols-[minmax(12rem,1fr)_2fr] md:gap-8 md:py-8">
-            <h2 className="font-serif text-2xl">{text.conditions}</h2>
-            <p className="text-sm leading-7 text-muted-foreground">{text.conditionsText}</p>
-          </section>
         </div>
         <p className="mt-7 text-xs leading-6 text-muted-foreground">{text.updated}</p>
       </div>
     </article>
   );
 }
+
+export default ImprintNotice;

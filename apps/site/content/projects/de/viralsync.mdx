@@ -39,8 +39,30 @@ Wer auf mehreren sozialen Netzwerken veröffentlicht, wiederholt dieselbe Arbeit
 
 ViralSync entsteht als gemeinsamer Arbeitsbereich für Markenkanäle, eine Medienbibliothek und einen überprüfbaren Veröffentlichungsprozess. Der aktuelle Entwicklungsstand umfasst die Grundlagen für Organisationen und Marken, die Medienbibliothek und die ersten Kanalverbindungen. Veröffentlichung, Analytics und die Assistenzoberfläche werden noch fertiggestellt. Produktionskontrollen und Freigaben der Anbieter befinden sich weiterhin in Prüfung. Diese Portfolioseite beschreibt das Projekt und ist kein Angebot einer allgemein verfügbaren Plattform.
 
-## Architektur
+## Architektur & Systemdesign
 
-Das Produkt ist ein Monorepo mit einer Next.js-Webanwendung und einer Hono-API auf Cloudflare Workers. Jedes soziale Netzwerk ist hinter einer Provider-Schnittstelle mit einem Manifest für unterstützte Kanäle und Einstellungen gekapselt. In Tests kann ein simuliertes Netzwerk diese Schnittstelle ersetzen.
+Die Plattform ist als typsicheres Monorepo mit klarer Trennung von Frontend, Edge-API und Domänenlogik aufgebaut:
 
-Domänenregeln, Anwendungsfälle, Datenbankzugriff und Agent sind getrennte Pakete. Dadurch verwenden Webanwendung, API und Agent dieselben Implementierungen. Marketingseite und Nutzerdokumentation sind eigenständige statische Websites.
+- **Webanwendung:** Next.js App Router mit React Server Components, Server Actions und optimistischen Kalenderansichten.
+- **Edge API:** Schlankes Hono-Framework auf Cloudflare Workers für weltweite Ausführung mit minimaler Latenz.
+- **Datenbank:** Neon Serverless PostgreSQL mit Connection Pooling, schema-validierten Migrationen über Drizzle ORM und Zod.
+- **Provider-Ports:** Jedes externe Netzwerk (Instagram, TikTok, YouTube, LinkedIn) ist hinter einer einheitlichen Provider-Schnittstelle mit eigenem Konfigurationsmanifest gekapselt.
+
+```
+[ Next.js Web-App ]  <-->  [ Hono Edge API (Cloudflare Workers) ]
+                                   |
+         +-------------------------+-------------------------+
+         |                                                   |
+[ Neon PostgreSQL (Drizzle) ]                     [ Provider-Adapter-Ports ]
+                                                   |-- Instagram Adapter
+                                                   |-- TikTok Adapter
+                                                   |-- Mock Provider (Tests)
+```
+
+## Technische Entscheidungen & Qualitätskriterien
+
+1. **Gemeinsam genutzte Domänenlogik:** Domänenregeln und Geschäftslogik liegen in unabhängigen Workspace-Paketen. Webanwendung und Edge-API teilen sich exakt dieselben Validierungen und Invarianten ohne Redundanz.
+2. **Automatisierte Tests mit Mock-Providern:** Die Testsuite ersetzt externe Plattformen durch simulierte Mock-Adapter. Der gesamte Planungs- und Veröffentlichungsablauf wird automatisiert getestet, ohne Netzwerk-Rate-Limits oder Produktionsschlüssel zu beanspruchen.
+3. **Klar definierte Entwicklungsstände:**
+   - *Implementiert und verifiziert:* Multi-Tenant-Organisationsstruktur, Medienbibliothek und Planungspipeline mit Mock-Adaptern.
+   - *Geplante private Beta:* Live-OAuth-Anbindung der Netzwerke, automatisierte Publishing-Warteschlangen und KI-Assistenz.

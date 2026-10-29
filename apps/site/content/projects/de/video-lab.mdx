@@ -38,6 +38,16 @@ Video Lab plant, bevor Kosten entstehen. Ein Director-Agent übersetzt eine Idee
 
 Die Anwendung ist local-first und wird nicht als gehosteter Dienst angeboten. Diese Seite stellt das Projekt und sein synthetisches Storyboard vor, keine öffentliche Produktdemo.
 
+## Dokumentierter 5-Stufen-Workflow
+
+Video Lab setzt vor jedem kostenpflichtigen Modulaufruf einen strukturierten Freigabeprozess durch:
+
+1. **Idee und Anforderungen:** Festlegung von Thema, Story-Struktur, Tonalität, Schnittstil und Bildparametern.
+2. **KI-Szenenplan mit Kostenschätzung:** Ein Director-Agent erstellt ein detailliertes Drehbuch, exakte Prompts für Bild und Audio sowie ein transparentes Budget je Anbieter.
+3. **Benutzerprüfung und Freigabe:** Erst wenn die nutzende Person den Plan geprüft und bestätigt hat, beginnen kostenpflichtige Modellaufrufe. Planänderungen erfordern eine neue Freigabe.
+4. **Generierung und Rendering:** Asynchrone Modellanfragen an Provider (OpenAI, fal.ai, ElevenLabs oder Modal) mit lokalem FFmpeg-Compositing zu Szenenclips.
+5. **Ergebnisprüfung und MP4-Export:** Vorschau der zusammengefügten Timeline, Feinschliff von Schnitt und Audio sowie finaler Export als MP4.
+
 ## Architektur
 
 Provider wie OpenAI, Google, fal.ai und ElevenLabs werden mit eigenen Schlüsseln der nutzenden Person angebunden. Diese werden zusammen mit dem Hauptschlüssel verschlüsselt im Betriebssystem-Schlüsselbund gespeichert. Selbst gehostete offene Modelle laufen über ein Gateway auf Modal.
