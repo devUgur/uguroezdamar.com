@@ -21,6 +21,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     alternates: { canonical: `/de/projects/${project.slug}`, languages: { en: `/projects/${project.slug}`, de: `/de/projects/${project.slug}` } },
     robots: project.draft ? { index: false, follow: false } : undefined,
     openGraph: { title: project.title, description: project.summary, images: project.cover ? [project.cover.src] : undefined },
+    twitter: { card: "summary_large_image",  title: project.title, description: project.summary, images: project.cover ? [project.cover.src] : undefined  },
   };
 }
 export default async function GermanProjectDetail({ params }: Params) {

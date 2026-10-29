@@ -6,8 +6,13 @@ import path from "node:path";
 import { compileMDX } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
 import { parse } from "yaml";
+import { ViralSyncArchitecture } from "@/src/components/public/ViralSyncArchitecture";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+const MDX_COMPONENTS = {
+  ViralSyncArchitecture,
+};
 
 /** Where the repository keeps the site's content, e.g. `content/projects`. */
 export function contentDir(...segments: string[]): string {
@@ -68,6 +73,7 @@ export async function readContentFiles(dir: string): Promise<ContentFile[]> {
 export async function compileMdx(source: string) {
   const { content } = await compileMDX({
     source,
+    components: MDX_COMPONENTS,
     options: { mdxOptions: { remarkPlugins: [remarkGfm] } },
   });
   return content;

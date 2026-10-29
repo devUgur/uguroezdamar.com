@@ -1,14 +1,13 @@
 ---
-# Deutsche Fassung der am 21.10.2026 vom Projektinhaber freigegebenen öffentlichen Fallstudie.
 title: ViralSync
-summary: Eine Social-Media-Operations-Plattform in einer frühen Entwicklungsphase. Sie bündelt Markenkanäle, Medien, Beitragsplanung und Anbieter-Workflows in einem Arbeitsbereich.
+summary: Eine Social-Media-Plattform in Entwicklung, die Markenkanäle, Medien, Beitragsplanung und Provider-Workflows in einem Arbeitsbereich bündelt.
 category: SaaS-Plattform
 status: active
-role: Produktinhaber und Entwickler
+role: Product Owner und Entwickler
 contributions:
-  - Aufbau der Organisations- und Marken-Workflows, der Medienbibliothek sowie der Grundlage für Kanalverbindungen.
-  - Strukturierung des Produkts mit gemeinsam genutzter Domänenlogik, einer Next.js-Anwendung und einer Hono-API auf Cloudflare Workers.
-  - Serverseitige Einladungs- und Anbieterfreigaben für eine geplante private Beta; der Produktionsstart wird separat geprüft.
+  - Entwicklung der Workflows für Organisationen und Marken, der Medienbibliothek und der Kanalverbindungen.
+  - Architektur mit gemeinsam genutzter Domänenlogik, Next.js-Webanwendung und Hono-API auf Cloudflare Workers.
+  - Serverseitige Einladungs- und Freigabemechanismen für eine geplante geschlossene Beta; die spätere Bereitstellung bleibt ein eigenständiger Schritt.
 featured: true
 displayOrder: 10
 draft: false
@@ -25,8 +24,8 @@ links:
 repositoryVisibility: private
 cover:
   src: /projects/viralsync/calendar-month-light.webp
-  alt: Monatlicher Veröffentlichungskalender von ViralSync mit synthetischen Beispielbeiträgen für Healthy Life.
-  caption: Synthetischer Healthy-Life-Demokalender mit Beispielbeiträgen.
+  alt: Monatskalender in ViralSync mit beispielhaften Beiträgen der Demo-Marke Healthy Life.
+  caption: Beispielhafter Monatskalender der Demo-Marke Healthy Life mit Musterbeiträgen.
   frame: browser
 updatedAt: 2026-10-21
 ---
@@ -48,16 +47,7 @@ Die Plattform ist als typsicheres Monorepo mit klarer Trennung von Frontend, Edg
 - **Datenbank:** Neon Serverless PostgreSQL mit Connection Pooling, schema-validierten Migrationen über Drizzle ORM und Zod.
 - **Provider-Ports:** Jedes externe Netzwerk (Instagram, TikTok, YouTube, LinkedIn) ist hinter einer einheitlichen Provider-Schnittstelle mit eigenem Konfigurationsmanifest gekapselt.
 
-```
-[ Next.js Web-App ]  <-->  [ Hono Edge API (Cloudflare Workers) ]
-                                   |
-         +-------------------------+-------------------------+
-         |                                                   |
-[ Neon PostgreSQL (Drizzle) ]                     [ Provider-Adapter-Ports ]
-                                                   |-- Instagram Adapter
-                                                   |-- TikTok Adapter
-                                                   |-- Mock Provider (Tests)
-```
+<ViralSyncArchitecture locale="de" />
 
 ## Technische Entscheidungen & Qualitätskriterien
 

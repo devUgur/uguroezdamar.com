@@ -17,11 +17,20 @@ export const metadata: Metadata = {
     siteName: "Ugur Özdamar",
     locale: "de_DE",
     type: "website",
+    images: [
+      {
+        url: "/og-image-de.png",
+        width: 1200,
+        height: 630,
+        alt: "Ugur Özdamar – Softwareentwicklung · Digitale Produkte",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Ugur Özdamar – Softwareentwicklung · Digitale Produkte",
     description: "Full-Stack-Entwicklung, skalierbare Anwendungen und durchdachte technische Lösungen von Ugur Özdamar.",
+    images: ["/og-image-de.png"],
   },
 };
 

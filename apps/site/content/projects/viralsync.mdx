@@ -55,16 +55,7 @@ The platform is designed as a type-safe monorepo separating web frontends, API b
 - **Data Persistence:** Neon Serverless PostgreSQL with connection pooling, migrations managed via Drizzle ORM, and schema validation with Zod.
 - **Provider Adapters:** Every external social network (Instagram, TikTok, YouTube, LinkedIn) is encapsulated behind a strict provider interface with its own configuration manifest.
 
-```
-[ Next.js Web App ]  <-->  [ Hono Edge API (Cloudflare Workers) ]
-                                   |
-         +-------------------------+-------------------------+
-         |                                                   |
-[ Neon PostgreSQL (Drizzle) ]                     [ Provider Adapter Ports ]
-                                                   |-- Instagram Adapter
-                                                   |-- TikTok Adapter
-                                                   |-- Mock Provider (Testing)
-```
+<ViralSyncArchitecture locale="en" />
 
 ## Engineering Decisions & Quality Gates
 

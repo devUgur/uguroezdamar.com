@@ -178,4 +178,55 @@ describe("POST /api/contact contract", () => {
     expect(res.status).toBe(503);
     expect(mockCreateContactRequest).not.toHaveBeenCalled();
   });
+
+  it("supports standard form submission without JS via application/x-www-form-urlencoded and redirects with 303", async () => {
+    const { POST } = await import("../apps/site/app/api/contact/route");
+    const formData = new URLSearchParams({
+      name: "Jane",
+      email: "jane@example.com",
+      message: "Hello via pure HTML form",
+    });
+    const res = await POST(
+      new Request("https://uguroezdamar.com/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "x-vercel-forwarded-for": "198.51.100.10",
+          Referer: "https://uguroezdamar.com/contact",
+        },
+        body: formData.toString(),
+      }),
+    );
+    expect(res.status).toBe(303);
+    expect(res.headers.get("Location")).toBe("https://uguroezdamar.com/contact?sent=true");
+    expect(mockCreateContactRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Jane",
+        email: "jane@example.com",
+        message: "Hello via pure HTML form",
+      }),
+    );
+  });
+
+  it("redirects with error parameter on invalid form data submission without JS", async () => {
+    const { POST } = await import("../apps/site/app/api/contact/route");
+    const formData = new URLSearchParams({
+      name: "",
+      email: "invalid-email",
+      message: "",
+    });
+    const res = await POST(
+      new Request("https://uguroezdamar.com/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Referer: "https://uguroezdamar.com/contact",
+        },
+        body: formData.toString(),
+      }),
+    );
+    expect(res.status).toBe(303);
+    expect(res.headers.get("Location")).toContain("error=invalid_input");
+    expect(mockCreateContactRequest).not.toHaveBeenCalled();
+  });
 });
