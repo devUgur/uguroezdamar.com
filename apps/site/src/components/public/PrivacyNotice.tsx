@@ -19,7 +19,7 @@ const content = {
         title: "Website delivery and technical data",
         body: (
           <>
-            The portfolio is hosted by Vercel Inc. (440 N Barranca Ave #4133, Covina, CA 91723, USA). Cloudflare, Inc. (101 Townsend St., San Francisco, CA 94107, USA) manages DNS records; website entries are configured DNS-only so requests are served directly by Vercel. Providers process technical connection data (IP address, requested path, timestamp, and protocol headers) to resolve domains, deliver assets, protect infrastructure, and diagnose errors. The legal basis is Article 6(1)(f) GDPR (legitimate interest in secure, reliable portfolio operations). Vercel retains runtime logs for up to one hour. Neon, Inc. hosts the PostgreSQL database in the AWS region Frankfurt am Main, Germany (EU), with a point-in-time recovery window of up to six hours. Both Vercel Inc. and Cloudflare, Inc. are actively certified under the EU-U.S. Data Privacy Framework (DPF).
+            The portfolio is hosted by Vercel Inc. (440 N Barranca Ave #4133, Covina, CA 91723, USA). Delivery for this project is routed via Vercel&apos;s edge network and Frankfurt am Main (region fra1). Cloudflare, Inc. (101 Townsend St., San Francisco, CA 94107, USA) manages DNS records; website entries are configured DNS-only so requests are served directly by Vercel. Providers process technical connection data (IP address, requested path, timestamp, and protocol headers) to resolve domains, deliver assets, protect infrastructure, and diagnose errors. The legal basis is Article 6(1)(f) GDPR (legitimate interest in secure, reliable portfolio operations). Vercel retains runtime logs on the current plan for up to one hour. Both Vercel Inc. and Cloudflare, Inc. are actively certified under the EU-U.S. Data Privacy Framework (DPF).
           </>
         ),
       },
@@ -27,7 +27,7 @@ const content = {
         title: "Contact form",
         body: (
           <>
-            Submitting the contact form stores your name, email address, and message in the Neon PostgreSQL database located in Frankfurt am Main, Germany. The operator reviews and manages messages via a protected administrative portal. The form does not dispatch automated marketing or email relays. The provision of personal data is voluntary, but necessary to receive and reply to your enquiry. No automated decision-making or profiling takes place. Requests are scheduled for deletion 90 days after receipt, or 90 days after being marked as resolved. An automated daily production task deletes expired records. The legal basis is Article 6(1)(b) GDPR for pre-contractual inquiries or Article 6(1)(f) GDPR for other correspondence. Please do not submit confidential credentials or sensitive personal data.
+            Submitting the contact form stores your name, email address, and message in a PostgreSQL database managed by Neon, Inc. (Palo Alto, CA, USA) with data stored in the AWS region Frankfurt am Main, Germany (EU). The operator reviews and manages messages via a protected administrative portal. The form does not dispatch automated marketing or email relays. The provision of personal data is voluntary, but necessary to receive and reply to your enquiry. No automated decision-making or profiling takes place. Requests are scheduled for deletion 90 days after receipt, or 90 days after being marked as resolved. An automated daily production task deletes expired records. The legal basis is Article 6(1)(b) GDPR for pre-contractual inquiries or Article 6(1)(f) GDPR for other correspondence. Please do not submit confidential credentials or sensitive personal data.
           </>
         ),
       },
@@ -35,7 +35,7 @@ const content = {
         title: "Email enquiries",
         body: (
           <>
-            If you send an email to <a href="mailto:ugur.oezdamar@itc-studenten.de">ugur.oezdamar@itc-studenten.de</a> or privacy requests to <a href="mailto:privacy@viralsync.io">privacy@viralsync.io</a>, your email address, message body, and attachments are processed to answer your request. Inquiries sent to <a href="mailto:privacy@viralsync.io">privacy@viralsync.io</a> are forwarded via Cloudflare Email Routing to a Google mailbox. Google LLC is actively certified under the EU-U.S. Data Privacy Framework. Standard consumer Gmail accounts do not provide a separate Art. 28 GDPR DPA (unlike Google Workspace); data processing relies on Google LLC&apos;s active DPF certification. Routine correspondence is deleted within 90 days of handling unless statutory retention obligations apply. The legal basis is Article 6(1)(b) GDPR or Article 6(1)(f) GDPR.
+            If you send an email to <a href="mailto:ugur.oezdamar@itc-studenten.de">ugur.oezdamar@itc-studenten.de</a> or privacy requests to <a href="mailto:privacy@viralsync.io">privacy@viralsync.io</a>, your email address, message body, and attachments are processed to answer your request. Inquiries sent to <a href="mailto:privacy@viralsync.io">privacy@viralsync.io</a> are forwarded via Cloudflare Email Routing to a private Google inbox. Google LLC (Mountain View, CA, USA) is actively certified under the EU-U.S. Data Privacy Framework. Standard consumer Gmail accounts do not provide a separate Article 28 GDPR Data Processing Addendum (which is reserved for Google Workspace business accounts); processing relies on Google LLC&apos;s active DPF certification and consumer terms. Routine correspondence is deleted within 90 days of handling unless statutory retention obligations apply. The legal basis is Article 6(1)(b) GDPR or Article 6(1)(f) GDPR.
           </>
         ),
       },
@@ -56,18 +56,26 @@ const content = {
         ),
       },
       {
-        title: "Recipients, third-country transfers and your rights",
+        title: "Recipients, third-country transfers and contractual status",
         body: (
           <>
-            Data processing involves the following recipients:
-            <ul className="mt-2 list-disc space-y-1 pl-5">
-              <li><strong>Vercel Inc. (USA):</strong> Web hosting and edge CDN. Active participant in the EU-U.S. Data Privacy Framework; Standard Contractual Clauses (SCCs) in Vercel&apos;s DPA.</li>
-              <li><strong>Cloudflare, Inc. (USA):</strong> Authoritative DNS and email forwarding. Active participant in the EU-U.S. Data Privacy Framework.</li>
-              <li><strong>Google LLC (USA):</strong> Mailbox for incoming forwarded correspondence. Active participant in the EU-U.S. Data Privacy Framework.</li>
-              <li><strong>Neon, Inc. (EU / Germany):</strong> Serverless database hosted in Frankfurt am Main, Germany.</li>
+            Data processing involves the following recipients and contractual arrangements:
+            <ul className="mt-2 list-disc space-y-2 pl-5">
+              <li>
+                <strong>Vercel Inc. (USA) – Web Hosting:</strong> U.S. company with deployment servers in Frankfurt am Main (fra1). Active participant in the EU-U.S. Data Privacy Framework. Vercel provides a formal Data Processing Addendum (Art. 28 GDPR) with Standard Contractual Clauses (SCCs) for team and enterprise tiers; direct non-commercial platform usage relies on Vercel&apos;s DPF certification.
+              </li>
+              <li>
+                <strong>Neon, Inc. (USA) – Database:</strong> U.S. company based in Palo Alto, CA. The actual PostgreSQL database instances and stored data reside in the AWS region Frankfurt am Main, Germany (EU). Neon provides a Data Processing Addendum with EU Standard Contractual Clauses.
+              </li>
+              <li>
+                <strong>Cloudflare, Inc. (USA) – DNS & Email Forwarding:</strong> U.S. company. Active participant in the EU-U.S. Data Privacy Framework.
+              </li>
+              <li>
+                <strong>Google LLC (USA) – Mailbox Delivery:</strong> U.S. company. Active participant in the EU-U.S. Data Privacy Framework. For personal Gmail destination addresses, processing takes place under Google consumer terms and DPF; a formal business DPA is not provided for non-Workspace consumer mailboxes.
+              </li>
             </ul>
             <p className="mt-3">
-              Where data is processed in the United States, transfers rely on the European Commission&apos;s adequacy decision for the EU-U.S. Data Privacy Framework (Article 45 GDPR) and supplementary standard contractual clauses where applicable. You have the right to request access (Art. 15 GDPR), rectification (Art. 16), erasure (Art. 17), restriction (Art. 18), data portability (Art. 20), and to object to processing based on legitimate interests (Art. 21). You also have the right to lodge a complaint with a data protection authority, such as the <a href="https://www.ldi.nrw.de/beschwerde" target="_blank" rel="noopener noreferrer">Landesbeauftragte für Datenschutz und Informationsfreiheit NRW</a>.
+              Where data is transferred to the United States, transfers rely on the European Commission&apos;s adequacy decision for the EU-U.S. Data Privacy Framework (Article 45 GDPR) and Standard Contractual Clauses where applicable. You have the right to request access (Art. 15 GDPR), rectification (Art. 16), erasure (Art. 17), restriction (Art. 18), data portability (Art. 20), and to object to processing based on legitimate interests (Art. 21). You also have the right to lodge a complaint with a supervisory authority, such as the <a href="https://www.ldi.nrw.de/beschwerde" target="_blank" rel="noopener noreferrer">Landesbeauftragte für Datenschutz und Informationsfreiheit NRW</a>.
             </p>
           </>
         ),
@@ -92,7 +100,7 @@ const content = {
         title: "Auslieferung der Website und technische Daten",
         body: (
           <>
-            Das Portfolio wird bei Vercel Inc. (440 N Barranca Ave #4133, Covina, CA 91723, USA) gehostet. Cloudflare, Inc. (101 Townsend St., San Francisco, CA 94107, USA) verwaltet die DNS-Einträge; die Website-Einträge sind DNS-only konfiguriert, sodass Seitenaufrufe direkt von Vercel ausgeliefert werden. Beide Anbieter verarbeiten technische Verbindungsdaten (IP-Adresse, Pfad, Zeitstempel, HTTP-Header), um Anfragen aufzulösen, auszuliefern, die Plattform abzusichern und Störungen zu beheben. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einem stabilen und sicheren Betrieb). Vercel Runtime-Logs werden bis zu einer Stunde aufbewahrt. Die Datenbank wird von Neon, Inc. in der Region Frankfurt am Main (Deutschland, EU) betrieben. Vercel Inc. und Cloudflare, Inc. sind als aktive Teilnehmer unter dem EU-U.S. Data Privacy Framework (DPF) beim US-Handelsministerium zertifiziert.
+            Das Portfolio wird bei Vercel Inc. (440 N Barranca Ave #4133, Covina, CA 91723, USA) gehostet. Die Auslieferung erfolgt für dieses Projekt über die Edge-Infrastruktur sowie das Vercel-Rechenzentrum in Frankfurt am Main (Region fra1). Cloudflare, Inc. (101 Townsend St., San Francisco, CA 94107, USA) verwaltet die DNS-Einträge; die Website-Einträge sind DNS-only konfiguriert, sodass Seitenaufrufe direkt von Vercel ausgeliefert werden. Beide Anbieter verarbeiten technische Verbindungsdaten (IP-Adresse, Pfad, Zeitstempel, HTTP-Header), um Anfragen aufzulösen, auszuliefern, die Plattform abzusichern und Störungen zu beheben. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einem stabilen und sicheren Betrieb). Vercel Runtime-Logs werden bis zu einer Stunde aufbewahrt. Vercel Inc. und Cloudflare, Inc. sind als aktive Teilnehmer unter dem EU-U.S. Data Privacy Framework (DPF) beim US-Handelsministerium zertifiziert.
           </>
         ),
       },
@@ -100,7 +108,7 @@ const content = {
         title: "Kontaktformular",
         body: (
           <>
-            Wenn Sie das Formular absenden, speichert die Website Ihren Namen, Ihre E-Mail-Adresse und Ihre Nachricht in einer Neon-PostgreSQL-Datenbank in Frankfurt am Main. Der Betreiber kann Anfragen dort in einem geschützten Portal einsehen und bearbeiten. Das Formular versendet keine automatisierten E-Mails. Die Bereitstellung Ihrer personenbezogenen Daten ist freiwillig, jedoch erforderlich, um Ihre Anfrage zuzuordnen und zu beantworten. Es findet keine automatisierte Entscheidungsfindung oder Profiling statt. Eine Anfrage wird 90 Tage nach Eingang oder 90 Tage nach Erledigung zur Löschung vorgesehen und durch eine tägliche automatisierte Aufgabe physisch gelöscht. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO für vorvertragliche Anfragen oder Art. 6 Abs. 1 lit. f DSGVO für allgemeine Anfragen. Bitte übermitteln Sie keine vertraulichen Passwörter oder sensiblen Daten.
+            Wenn Sie das Formular absenden, speichert die Website Ihren Namen, Ihre E-Mail-Adresse und Ihre Nachricht in einer PostgreSQL-Datenbank des Anbieters Neon, Inc. (Palo Alto, CA, USA). Der Server und die gespeicherten Daten liegen in der AWS-Region Frankfurt am Main (Deutschland, EU). Der Betreiber kann Anfragen dort in einem geschützten Portal einsehen und bearbeiten. Das Formular versendet keine automatisierten E-Mails. Die Bereitstellung Ihrer personenbezogenen Daten ist freiwillig, jedoch erforderlich, um Ihre Anfrage zuzuordnen und zu beantworten. Es findet keine automatisierte Entscheidungsfindung oder Profiling statt. Eine Anfrage wird 90 Tage nach Eingang oder 90 Tage nach Erledigung zur Löschung vorgesehen und durch eine tägliche automatisierte Aufgabe physisch gelöscht. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO für vorvertragliche Anfragen oder Art. 6 Abs. 1 lit. f DSGVO für allgemeine Anfragen. Bitte übermitteln Sie keine vertraulichen Passwörter oder sensiblen Daten.
           </>
         ),
       },
@@ -108,7 +116,7 @@ const content = {
         title: "Anfragen per E-Mail",
         body: (
           <>
-            Wenn Sie an <a href="mailto:ugur.oezdamar@itc-studenten.de">ugur.oezdamar@itc-studenten.de</a> oder <a href="mailto:privacy@viralsync.io">privacy@viralsync.io</a> schreiben, werden Ihre E-Mail-Adresse, der Inhalt und eventuelle Anhänge zur Beantwortung verarbeitet. Anfragen an <a href="mailto:privacy@viralsync.io">privacy@viralsync.io</a> werden über Cloudflare Email Routing an ein Google-Postfach weitergeleitet. Google LLC ist aktiver Teilnehmer des EU-U.S. Data Privacy Framework. Für private Google-Konten besteht (im Gegensatz zu Google Workspace) kein gesonderter Art. 28 DSGVO Auftragsverarbeitungsvertrag; die Verarbeitung stützt sich auf die DPF-Zertifizierung von Google LLC. E-Mails werden spätestens 90 Tage nach Abschluss der Bearbeitung gelöscht, sofern keine gesetzlichen Aufbewahrungsfristen entgegenstehen. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b bzw. f DSGVO.
+            Wenn Sie an <a href="mailto:ugur.oezdamar@itc-studenten.de">ugur.oezdamar@itc-studenten.de</a> oder <a href="mailto:privacy@viralsync.io">privacy@viralsync.io</a> schreiben, werden Ihre E-Mail-Adresse, der Inhalt und eventuelle Anhänge zur Beantwortung verarbeitet. Anfragen an <a href="mailto:privacy@viralsync.io">privacy@viralsync.io</a> werden über Cloudflare Email Routing an ein privates Gmail-Postfach weitergeleitet. Google LLC (Mountain View, CA, USA) ist aktiver Teilnehmer des EU-U.S. Data Privacy Framework. Für private Gmail-Konten besteht (im Gegensatz zu Google Workspace) kein gesonderter Art. 28 DSGVO Auftragsverarbeitungsvertrag; die Verarbeitung stützt sich auf die DPF-Zertifizierung von Google LLC und die Nutzungsbedingungen für Verbraucher. E-Mails werden spätestens 90 Tage nach Abschluss der Bearbeitung gelöscht, sofern keine gesetzlichen Aufbewahrungsfristen entgegenstehen. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b bzw. f DSGVO.
           </>
         ),
       },
@@ -129,18 +137,26 @@ const content = {
         ),
       },
       {
-        title: "Empfänger, Drittlandtransfers und Ihre Rechte",
+        title: "Empfänger, Drittlandtransfers und Vertragsgrundlagen",
         body: (
           <>
             An der Verarbeitung wirken folgende Dienstleister mit:
-            <ul className="mt-2 list-disc space-y-1 pl-5">
-              <li><strong>Vercel Inc. (USA):</strong> Hosting und Content Delivery. Aktiver Teilnehmer des EU-U.S. Data Privacy Framework; Standardvertragsklauseln (SCCs) im Vercel-DPA.</li>
-              <li><strong>Cloudflare, Inc. (USA):</strong> Autoritatives DNS und E-Mail-Weiterleitung. Aktiver Teilnehmer des EU-U.S. Data Privacy Framework.</li>
-              <li><strong>Google LLC (USA):</strong> Postfachempfang weitergeleiteter Datenschutzanfragen. Aktiver Teilnehmer des EU-U.S. Data Privacy Framework.</li>
-              <li><strong>Neon, Inc. (EU / Deutschland):</strong> Serverlose PostgreSQL-Datenbank mit Standort in Frankfurt am Main.</li>
+            <ul className="mt-2 list-disc space-y-2 pl-5">
+              <li>
+                <strong>Vercel Inc. (USA) – Hosting:</strong> US-Unternehmen mit Rechenzentrumsauslieferung in Frankfurt am Main (fra1). Aktiver Teilnehmer des EU-U.S. Data Privacy Framework. Vercel bietet ein standardisiertes Data Processing Addendum (Art. 28 DSGVO) mit Standardvertragsklauseln (SCCs) für Team- und Pro-Tarife an; bei nichtkommerzieller Plattformnutzung stützt sich die Übermittlung auf die DPF-Zertifizierung.
+              </li>
+              <li>
+                <strong>Neon, Inc. (USA) – Datenbank:</strong> US-Unternehmen mit Sitz in Palo Alto, CA. Der physische Speicherort und die PostgreSQL-Datenbankinstanz befinden sich in der AWS-Region Frankfurt am Main, Deutschland (EU). Neon stellt ein Data Processing Addendum mit Standardvertragsklauseln bereit.
+              </li>
+              <li>
+                <strong>Cloudflare, Inc. (USA) – DNS & E-Mail-Routing:</strong> US-Unternehmen. Aktiver Teilnehmer des EU-U.S. Data Privacy Framework.
+              </li>
+              <li>
+                <strong>Google LLC (USA) – Postfachempfang:</strong> US-Unternehmen. Aktiver Teilnehmer des EU-U.S. Data Privacy Framework. Bei privaten Endnutzer-Postfächern erfolgt die Verarbeitung unter den Google-Nutzungsbedingungen und der DPF-Zertifizierung; ein förmlicher AVV nach Art. 28 DSGVO wird für private Postfächer nicht angeboten.
+              </li>
             </ul>
             <p className="mt-3">
-              Soweit Daten in den USA verarbeitet werden, erfolgt die Übermittlung auf Grundlage des Angemessenheitsbeschlusses der Europäischen Kommission für das EU-U.S. Data Privacy Framework (Art. 45 DSGVO) sowie gegebenenfalls ergänzender Standardvertragsklauseln. Sie haben das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21). Sie haben zudem das Recht auf Beschwerde bei einer Aufsichtsbehörde, beispielsweise der <a href="https://www.ldi.nrw.de/beschwerde" target="_blank" rel="noopener noreferrer">Landesbeauftragten für Datenschutz und Informationsfreiheit Nordrhein-Westfalen</a>.
+              Soweit Daten in den USA verarbeitet werden, erfolgt die Übermittlung auf Grundlage des Angemessenheitsbeschlusses der Europäischen Kommission für das EU-U.S. Data Privacy Framework (Art. 45 DSGVO) sowie Standardvertragsklauseln, soweit anwendbar. Sie haben das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21). Sie haben zudem das Recht auf Beschwerde bei einer Aufsichtsbehörde, beispielsweise der <a href="https://www.ldi.nrw.de/beschwerde" target="_blank" rel="noopener noreferrer">Landesbeauftragten für Datenschutz und Informationsfreiheit Nordrhein-Westfalen</a>.
             </p>
           </>
         ),

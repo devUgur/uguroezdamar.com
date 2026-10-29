@@ -5,33 +5,41 @@ import { clientAddress } from "@/src/lib/client-address";
 export const runtime = "nodejs";
 
 const MAX_REQUEST_BYTES = 16 * 1024;
+const ALLOWED_REDIRECT_PATHS = new Set(["/contact", "/de/contact"]);
 
-function getRedirectUrl(request: Request, params: { sent?: boolean; error?: string }): URL {
+export type ContactErrorCode = "invalid_input" | "rate_limited" | "server_error";
+
+function getRedirectUrl(
+  request: Request,
+  params: { sent?: boolean; error?: ContactErrorCode }
+): URL {
   const referer = request.headers.get("referer");
-  let targetUrl: URL;
+  let targetPath = "/contact";
+
   if (referer) {
     try {
-      const ref = new URL(referer);
-      if (ref.origin === new URL(request.url).origin) {
-        targetUrl = ref;
-      } else {
-        targetUrl = new URL("/contact", request.url);
+      const refUrl = new URL(referer);
+      const requestUrl = new URL(request.url);
+      // Strictly restrict redirect targets to allowed same-origin contact routes
+      if (refUrl.origin === requestUrl.origin && ALLOWED_REDIRECT_PATHS.has(refUrl.pathname)) {
+        targetPath = refUrl.pathname;
+      } else if (refUrl.pathname.startsWith("/de")) {
+        targetPath = "/de/contact";
       }
     } catch {
-      targetUrl = new URL("/contact", request.url);
+      targetPath = "/contact";
     }
-  } else {
-    targetUrl = new URL("/contact", request.url);
   }
 
+  const target = new URL(targetPath, request.url);
   if (params.sent) {
-    targetUrl.searchParams.set("sent", "true");
-    targetUrl.searchParams.delete("error");
+    target.searchParams.set("sent", "true");
+    target.searchParams.delete("error");
   } else if (params.error) {
-    targetUrl.searchParams.set("error", params.error);
-    targetUrl.searchParams.delete("sent");
+    target.searchParams.set("error", params.error);
+    target.searchParams.delete("sent");
   }
-  return targetUrl;
+  return target;
 }
 
 export async function POST(request: Request) {
@@ -112,7 +120,7 @@ export async function POST(request: Request) {
   const address = clientAddress(request.headers);
   if (!address) {
     if (!isJson) {
-      return NextResponse.redirect(getRedirectUrl(request, { error: "service_unavailable" }), { status: 303 });
+      return NextResponse.redirect(getRedirectUrl(request, { error: "server_error" }), { status: 303 });
     }
     return NextResponse.json({ ok: false, error: "Contact service temporarily unavailable" }, { status: 503 });
   }
@@ -123,7 +131,7 @@ export async function POST(request: Request) {
   } catch {
     console.error("Contact rate limit unavailable");
     if (!isJson) {
-      return NextResponse.redirect(getRedirectUrl(request, { error: "service_unavailable" }), { status: 303 });
+      return NextResponse.redirect(getRedirectUrl(request, { error: "server_error" }), { status: 303 });
     }
     return NextResponse.json({ ok: false, error: "Contact service temporarily unavailable" }, { status: 503 });
   }
@@ -146,7 +154,7 @@ export async function POST(request: Request) {
   } catch {
     console.error("Failed to save contact request");
     if (!isJson) {
-      return NextResponse.redirect(getRedirectUrl(request, { error: "storage_failed" }), { status: 303 });
+      return NextResponse.redirect(getRedirectUrl(request, { error: "server_error" }), { status: 303 });
     }
     return NextResponse.json({ ok: false, error: "Failed to save message" }, { status: 500 });
   }
