@@ -17,7 +17,7 @@ function escapeXml(unsafe) {
   });
 }
 
-function buildSvg({ locale, title, subtitle, eyebrow, tags }) {
+function buildSvg({ title, subtitle, eyebrow, tags }) {
   const fontSans = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
   const fontSerif = "Georgia, Cambria, 'Times New Roman', serif";
   const fontMono = "'JetBrains Mono', Menlo, Monaco, Consolas, monospace";
