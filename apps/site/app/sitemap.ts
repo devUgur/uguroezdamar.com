@@ -16,7 +16,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     getAllPosts("en"),
     getAllPosts("de"),
   ]);
-  const pages = ["/", "/projects", "/blog", "/contact", "/privacy", "/imprint"];
+  const pages = ["/", "/projects", "/contact", "/privacy", "/imprint"];
+  if (posts.length > 0 || germanPosts.length > 0) pages.push("/blog");
   if (hasAbout(profile)) pages.push("/about");
   if (hasEducation(profile)) pages.push("/education");
   const germanPagePaths = pages.map((page) => page === "/" ? "/de" : `/de${page}`);

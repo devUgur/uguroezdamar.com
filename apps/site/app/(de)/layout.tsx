@@ -10,6 +10,19 @@ export const metadata: Metadata = {
   metadataBase: new URL(canonicalOrigin),
   title: { default: "Ugur Özdamar", template: "%s | Ugur Özdamar" },
   description: "Softwareentwicklung · Digitale Produkte. Full-Stack-Entwicklung, skalierbare Anwendungen und durchdachte technische Lösungen von Ugur Özdamar.",
+  openGraph: {
+    title: "Ugur Özdamar – Softwareentwicklung · Digitale Produkte",
+    description: "Full-Stack-Entwicklung, skalierbare Anwendungen und durchdachte technische Lösungen von Ugur Özdamar.",
+    url: `${canonicalOrigin}/de`,
+    siteName: "Ugur Özdamar",
+    locale: "de_DE",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Ugur Özdamar – Softwareentwicklung · Digitale Produkte",
+    description: "Full-Stack-Entwicklung, skalierbare Anwendungen und durchdachte technische Lösungen von Ugur Özdamar.",
+  },
 };
 
 export default function GermanRootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

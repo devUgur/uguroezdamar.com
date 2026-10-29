@@ -43,6 +43,8 @@ export function ContactForm({ locale = "en" }: { locale?: Locale }) {
   return (
     <form
         ref={formRef}
+        method="POST"
+        action="/api/contact"
         className="grid gap-7"
         onSubmit={(e) => {
           e.preventDefault();
