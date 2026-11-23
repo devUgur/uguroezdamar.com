@@ -34,6 +34,8 @@ pnpm ugur setup     # einmalig: Infisical und Neon im Browser anmelden
 pnpm dev            # Site :3100 mit dev-Secrets
 pnpm dev:portal     # Portal :3101
 pnpm dev:all        # beide
+pnpm dev:clean      # blockierte Ports freigeben und dev starten
+pnpm kill:ports     # blockierte Ports (3100, 3101 etc.) beenden
 pnpm check          # Lint, Migrationscheck, Typecheck, Tests
 pnpm build          # Produktionsbuild beider Apps
 pnpm ugur smoke --site <url> --portal <url>   # Deployment über HTTP prüfen
