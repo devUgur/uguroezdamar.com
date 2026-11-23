@@ -1,6 +1,6 @@
 # R2-A.1 / A1 — Marke, Header, Hero, Footer
 
-Status: **zur visuellen Freigabe durch den Owner vorgelegt, nicht freigegeben.**
+Status: **A1 visuell vom Owner freigegeben.** Diese Freigabe umfasst Header, Hero und die lokal als Draft markierte ViralSync-Beispielkarte. Sie ist keine Freigabe, den ViralSync-Inhalt öffentlich zu schalten.
 
 - `old-*`: bisherige Live-Site (`uguroezdamar.com`, Stand `c8ff3a3`), aufgenommen am 12.10.2026.
 - `new-*`: lokaler Produktionsbuild (`next build` + `next start`) des A1-Stands. Die Vorschau lief ohne erreichbare Datenbank; die CMS-Sektionen unterhalb des Heros sind nicht Gegenstand dieses Checkpoints.

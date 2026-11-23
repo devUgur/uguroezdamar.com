@@ -59,7 +59,7 @@ describe("POST /api/contact contract", () => {
           email: "jane@example.com",
           message: "Hello",
         }),
-        headers: { "Content-Type": "application/json", "cf-connecting-ip": "198.51.100.10" },
+        headers: { "Content-Type": "application/json", "x-vercel-forwarded-for": "198.51.100.10" },
       })
     );
     expect(res.status).toBe(200);
@@ -124,7 +124,7 @@ describe("POST /api/contact contract", () => {
     const { POST } = await import("../apps/site/app/api/contact/route");
     const res = await POST(new Request("https://site.example/api/contact", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "cf-connecting-ip": "198.51.100.10" },
+      headers: { "Content-Type": "application/json", "x-vercel-forwarded-for": "198.51.100.10" },
       body: JSON.stringify({ name: "Jane", email: "jane@example.com", message: "Hello" }),
     }));
     expect(res.status).toBe(500);
@@ -136,7 +136,7 @@ describe("POST /api/contact contract", () => {
     const { POST } = await import("../apps/site/app/api/contact/route");
     const res = await POST(new Request("https://site.example/api/contact", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "cf-connecting-ip": "198.51.100.11" },
+      headers: { "Content-Type": "application/json", "x-vercel-forwarded-for": "198.51.100.11" },
       body: JSON.stringify({ name: "Jane", email: "jane@example.com", message: "Hello" }),
     }));
     expect(res.status).toBe(429);
@@ -160,7 +160,7 @@ describe("POST /api/contact contract", () => {
     const { POST } = await import("../apps/site/app/api/contact/route");
     const res = await POST(new Request("https://site.example/api/contact", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "cf-connecting-ip": "spoofed, 198.51.100.1" },
+      headers: { "Content-Type": "application/json", "x-vercel-forwarded-for": "spoofed, 198.51.100.1" },
       body: JSON.stringify({ name: "Jane", email: "jane@example.com", message: "Hello" }),
     }));
     expect(res.status).toBe(503);
@@ -172,10 +172,130 @@ describe("POST /api/contact contract", () => {
     const { POST } = await import("../apps/site/app/api/contact/route");
     const res = await POST(new Request("https://site.example/api/contact", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "cf-connecting-ip": "198.51.100.12" },
+      headers: { "Content-Type": "application/json", "x-vercel-forwarded-for": "198.51.100.12" },
       body: JSON.stringify({ name: "Jane", email: "jane@example.com", message: "Hello" }),
     }));
     expect(res.status).toBe(503);
     expect(mockCreateContactRequest).not.toHaveBeenCalled();
+  });
+
+  it("supports standard form submission without JS via application/x-www-form-urlencoded and redirects with 303", async () => {
+    const { POST } = await import("../apps/site/app/api/contact/route");
+    const formData = new URLSearchParams({
+      name: "Jane",
+      email: "jane@example.com",
+      message: "Hello via pure HTML form",
+    });
+    const res = await POST(
+      new Request("https://uguroezdamar.com/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "x-vercel-forwarded-for": "198.51.100.10",
+          Referer: "https://uguroezdamar.com/contact",
+        },
+        body: formData.toString(),
+      }),
+    );
+    expect(res.status).toBe(303);
+    expect(res.headers.get("Location")).toBe("https://uguroezdamar.com/contact?sent=true");
+    expect(mockCreateContactRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Jane",
+        email: "jane@example.com",
+        message: "Hello via pure HTML form",
+      }),
+    );
+  });
+
+  it("redirects with error parameter on invalid form data submission without JS", async () => {
+    const { POST } = await import("../apps/site/app/api/contact/route");
+    const formData = new URLSearchParams({
+      name: "",
+      email: "invalid-email",
+      message: "",
+    });
+    const res = await POST(
+      new Request("https://uguroezdamar.com/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Referer: "https://uguroezdamar.com/contact",
+        },
+        body: formData.toString(),
+      }),
+    );
+    expect(res.status).toBe(303);
+    expect(res.headers.get("Location")).toContain("error=invalid_input");
+    expect(mockCreateContactRequest).not.toHaveBeenCalled();
+  });
+
+  it("strictly enforces same-origin allowed paths and blocks open-redirect via attacker referer", async () => {
+    const { POST } = await import("../apps/site/app/api/contact/route");
+    const formData = new URLSearchParams({
+      name: "Jane",
+      email: "jane@example.com",
+      message: "Hello",
+    });
+    const res = await POST(
+      new Request("https://uguroezdamar.com/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "x-vercel-forwarded-for": "198.51.100.10",
+          Referer: "https://evil-attacker.example/phishing",
+        },
+        body: formData.toString(),
+      }),
+    );
+    expect(res.status).toBe(303);
+    // Must strictly fallback to site's own /contact, never evil-attacker.example
+    expect(res.headers.get("Location")).toBe("https://uguroezdamar.com/contact?sent=true");
+  });
+
+  it("redirects with rate_limited error when rate limit is exceeded on No-JS form", async () => {
+    mockConsumeContactRateLimit.mockResolvedValueOnce({ allowed: false, remaining: 0, retryAfterSeconds: 300 });
+    const { POST } = await import("../apps/site/app/api/contact/route");
+    const formData = new URLSearchParams({
+      name: "Jane",
+      email: "jane@example.com",
+      message: "Hello",
+    });
+    const res = await POST(
+      new Request("https://uguroezdamar.com/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "x-vercel-forwarded-for": "198.51.100.10",
+          Referer: "https://uguroezdamar.com/de/contact",
+        },
+        body: formData.toString(),
+      }),
+    );
+    expect(res.status).toBe(303);
+    expect(res.headers.get("Location")).toBe("https://uguroezdamar.com/de/contact?error=rate_limited");
+  });
+
+  it("redirects with server_error when storage fails on No-JS form", async () => {
+    mockCreateContactRequest.mockRejectedValueOnce(new Error("db down"));
+    const { POST } = await import("../apps/site/app/api/contact/route");
+    const formData = new URLSearchParams({
+      name: "Jane",
+      email: "jane@example.com",
+      message: "Hello",
+    });
+    const res = await POST(
+      new Request("https://uguroezdamar.com/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "x-vercel-forwarded-for": "198.51.100.10",
+          Referer: "https://uguroezdamar.com/contact",
+        },
+        body: formData.toString(),
+      }),
+    );
+    expect(res.status).toBe(303);
+    expect(res.headers.get("Location")).toBe("https://uguroezdamar.com/contact?error=server_error");
   });
 });

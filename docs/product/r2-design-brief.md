@@ -1,6 +1,6 @@
 # R2-A — Editorial Engineering
 
-> **Stand 12.10.2026:** Die visuelle R2-A-Gestaltung ist vom Owner **nicht freigegeben** (Issue #8). R2-A.1 entwickelt die ursprüngliche Website kontrolliert weiter (etwa 70 % alte Identität, 30 % neue Verbesserungen). Tranche A1 (Logo, Header, Hero, Footer) liegt zur visuellen Freigabe vor: [Nachweise](evidence/r2-a1/README.md). Aussagen dieses Dokuments zu Sektionen unterhalb des Heros beschreiben den R2-A-Stand und werden in A2/A3 überarbeitet.
+> **Stand 21.10.2026:** Der Owner hat A1 (originales Logo, Header, dreizeilige Serif-Hero, Footer und lokal draft-markierte ViralSync-Beispielkarte) visuell freigegeben. Die Nachweise liegen unter [R2-A1](evidence/r2-a1/README.md). A2.1 schlägt für Review ein konsistentes, rechteckiges Editorial-System auf Startseite, Projekten, Blog, Profil, Ausbildung und Recht vor; diese Implementierung ist noch nicht visuell freigegeben. Die Freigabe gilt nicht für eine Veröffentlichung von ViralSync oder für einen Produktions-Promote.
 
 ## Zweck und Zielgruppen
 
@@ -37,10 +37,12 @@ Der Auftritt ist in dieser Iteration englischsprachig. Eine Übersetzung wird ni
 ## Gestaltung und Tokens
 
 - Bestehende neutrale Farben bleiben erhalten: Hintergrund `#F4F1EB`, Oberfläche `#EAE6DF`, Ink `#121212`; im dunklen Theme Hintergrund `#121212`, Oberfläche `#1A1A1A`, Text `#F2F2F2`.
-- Playfair Display prägt Überschriften, Inter Fließtext und JetBrains Mono kleine Metadaten. Die vorhandenen selbst gehosteten Fonts bleiben bestehen.
+- Playfair Display prägt Überschriften, Inter Fließtext und JetBrains Mono kleine Metadaten. Die WOFF2-Dateien werden unter `apps/site/app/fonts/` gepflegt und über `next/font/local` ohne externe Font-Verbindung geladen; R3 dokumentiert die Auswahl der vorzuladenden Schnitte.
 - Fluid Typografie mit `clamp()`, ein responsives 12-Spalten-Raster ab Desktop, Seitenränder über `.site-container`, Abschnitte über `.site-section` und feine Token-Rahmen strukturieren den Inhalt.
-- Keine Verläufe, dekorativen Fotos oder synthetischen Produkt-/Architekturvisualisierungen. Ohne freigegebene Medien bleiben Projektteaser textbasiert.
+- Keine Stock-Fotos, dekorativen Verläufe oder erfundenen Produkt-Screens. Echte Produkt-Screenshots bzw. Outputs aus dokumentierten synthetischen Demo-Szenarien sind möglich, wenn Herkunft und Preview-/Veröffentlichungsfreigabe pro Asset dokumentiert sind. Ohne freigegebene Medien bleiben Projektteaser textbasiert.
+- Projekt-Cover deklarieren in ihrer validierten MDX-Metadatenstruktur `frame: browser | mobile | none`. Die Quelle des Assets entscheidet: `browser` zeigt eine schlichte Browser-Chrome mit neutralen Fensterpunkten und ohne erfundene URL, `mobile` eine responsive Hochformat-Gerätesilhouette, `none` das unveränderte Bild. Das gemeinsame `ProjectCover` rendert diese Auswahl in Projektkarten, Featured-Karten und englischen/deutschen Detailseiten; Alt-Text, Caption, Next-Image-Ladeverhalten und reduzierte Bewegung bleiben erhalten. ViralSyncs 16:9-Kalender ist `browser`; Video Labs synthetisches Storyboard bleibt `none`. `mobile` ist für künftig freigegebene Portrait-Screenshots vorgesehen und darf keine Desktop-Medien umetikettieren.
 - Bewegung ist dekorativ; `prefers-reduced-motion` reduziert Animationen und Übergänge.
+- Der R3-Mausring ist rein dekorativ, lässt den nativen Cursor sichtbar und nutzt `mix-blend-mode: difference`, damit seine Fläche die Farben darunter invertiert. Für Browser ohne diese Unterstützung bleibt die dezente Outline erhalten. Bei Touch sowie `prefers-reduced-motion` wird der Ring nicht angezeigt.
 
 ## Komponenten- und Inhaltsregeln
 
@@ -55,3 +57,18 @@ Der Auftritt ist in dieser Iteration englischsprachig. Eine Übersetzung wird ni
 ## R2-A-Abnahme
 
 Die responsive Prüfung umfasst 320, 375, 768, 1024, 1440 und 1920 px in hellem und dunklem Theme. Browser-Smoke, Screenshots, Axe und Tastaturprüfung sind vor Merge zu dokumentieren; ein Axe-Ergebnis allein ersetzt keine manuelle Prüfung. Die rechtliche und betriebliche Produktionsfreigabe bleibt von R2-A getrennt.
+
+## Einheitliche öffentliche Seiten (A2)
+
+Alle öffentlichen Routen verwenden dieselbe Seiten-Grammatik: konsistenter `.site-container`, ein sichtbarer H1-Titel, ein optionaler kurzer Vorspann, eine zurückhaltende Mono-Eyebrow, Token-Rahmen und eine gemeinsame vertikale Rhythmik. Die bestehende warme Neutralpalette sowie Playfair Display, Inter und JetBrains Mono bleiben unverändert. A2.1 nutzt fein gerahmte, rechteckige Flächen für Projekt-/Blogkarten und Legal-Hinweise; erfundene Medien und dekorative Verläufe bleiben ausgeschlossen.
+
+- Startseite und `/projects` verwenden `ProjectCard` als gemeinsame Projektpräsentation. Die Startseite stapelt die ausgewählten Projekte auf schmalen und mittleren Viewports und wechselt erst bei ausreichender Breite zur Zweispaltenansicht. Aktionen bleiben am Kartenende ausgerichtet; Kartentitel folgen der jeweiligen Überschriftenebene. Optionale Daten und freigegebene Medien erscheinen nur, wenn sie vorhanden sind.
+- Projekt- und Blogdetails nutzen die gemeinsame `ArticleShell`-Typografie. MDX-Prosa, Listen, Links, Blockzitate und Code orientieren sich an den Theme-Tokens und bleiben in Dark Mode lesbar.
+- About, Education, Contact, Blog und Legal teilen dieselbe Seiteneinleitung und Inhaltsbreite, behalten aber ihre notwendigen Routenspezifika und Interaktionen.
+- Leere Kataloge bleiben kompakt und ehrlich. Legal-Platzhalter werden sichtbar nicht als gültiger Rechtstext ausgegeben; vor Release sind die Tatsachen durch den Betreiber zu bestätigen.
+- Drafts sind lokal und in Deployment-Protected Vercel-Previews sichtbar, werden nicht indexiert und geben keine externen Links aus. A1-Visuelfreigabe ändert diese Inhaltsgrenze nicht.
+- Die lokalen und geschützten Vercel-Previews sollen für die Drafts ViralSync und Video Lab source-reviewed 16:9-Cover zeigen. In Produktion werden ihre Seiten und Karten weiterhin durch den Draft-Filter ausgeschlossen. Die Cover-Dateien liegen unter `public/` und sind deshalb selbst öffentlich abrufbare statische Assets; es dürfen dort ausschließlich die im Import-/Live-Plan dokumentierten, synthetischen und für Preview freigegebenen Bilder liegen. Sie sind keine Freigabe, das jeweilige Projekt oder dessen private Repository-URL zu veröffentlichen.
+
+Die app-spezifischen, featureübergreifend genutzten Präsentationsbausteine `PageIntro`, `ArticleShell` und `ProjectCard` liegen in `apps/site/src/components/public/`. Feature-Ordner bleiben voneinander unabhängig; Home und Projektkatalog konsumieren dieselbe öffentliche Projektkarte.
+
+Rollout: A1 visuell freigegeben; A2 Basis umgesetzt; A2.1 ist der aktuelle Design-PR-Stand. Vor Merge steht die Browserprüfung bei 375/768/1440 px in beiden Themes sowie Fokus, mobiles Menü und Reduced Motion aus. Die Rechtsseiten sind technische Entwürfe mit Betreiber-Gates und keine final freigegebenen Rechtstexte. Die Implementierung allein bestätigt weder Browser-QA noch Produktionsfreigabe.

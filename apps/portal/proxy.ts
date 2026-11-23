@@ -16,7 +16,8 @@ export async function proxy(request: NextRequest) {
   const isApi = pathname.startsWith("/api/");
   const isPublicApi = 
     pathname.startsWith("/api/auth/login") || 
-    pathname.startsWith("/api/auth/invites/accept");
+    pathname.startsWith("/api/auth/invites/accept") ||
+    pathname === "/api/health";
 
   // UI guard: Redirect to login if no cookie
   if (!isPublic && !isApi) {
@@ -28,9 +29,11 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // API guard: Return 401 if no cookie
+  // API guard: without a session cookie or an API key there is nothing to check, so answer 401
+  // here. Whether the cookie or the key is valid is decided by `requireAdmin` in the handler.
+  const hasApiKey = request.headers.get("authorization")?.startsWith("Bearer ") ?? false;
   if (isApi && !isPublicApi) {
-    if (!hasAdminCookie(request)) {
+    if (!hasAdminCookie(request) && !hasApiKey) {
       return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
     }
   }

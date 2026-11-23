@@ -12,8 +12,29 @@
     {
       "idx": 1,
       "version": "7",
-      "when": 1791875806074,
-      "tag": "0001_retire_content_cms",
+      "when": 1792437059677,
+      "tag": "0001_smiling_rockslide",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792615279366,
+      "tag": "0002_minor_vision",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792615844209,
+      "tag": "0003_bored_grey_gargoyle",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795447491694,
+      "tag": "0004_mean_silvermane",
       "breakpoints": true
     }
   ]

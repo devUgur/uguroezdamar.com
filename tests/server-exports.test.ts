@@ -12,7 +12,8 @@ describe("@ugur/server exports", () => {
     const names = Object.keys(server);
     expect(names.filter((name) => /project|career|profile|upload|deleteObject/i.test(name))).toEqual([]);
     expect(Object.keys(server.schema).sort()).toEqual([
-      "adminInvites", "adminLoginAttempts", "adminSessions", "admins", "contactRateLimits", "contactRequests",
+      "adminInvites", "adminLoginAttempts", "adminSessions", "admins", "contactRateLimits",
+      "contactRequests", "portfolioGithubRepositories",
     ]);
   });
 });

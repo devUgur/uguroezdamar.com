@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getAdminOverview } from "@/src/adapters/admin";
 import { getCurrentSession } from "@/src/adapters/auth";
+import { ContactRequestActions } from "@/src/features/inquiries";
 import { Button, Container, Section } from "@ugur/ui";
 
 /**
@@ -52,26 +53,35 @@ export default async function RootPage() {
 
       <div className="space-y-4">
         <h2 className="text-xl font-semibold tracking-tight">Recent Messages</h2>
-        <div className="border rounded-xl overflow-hidden bg-card">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-xl border bg-card">
+          <table className="w-full min-w-[56rem] text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
                 <th className="p-4 text-left font-medium">Name</th>
                 <th className="p-4 text-left font-medium">Email</th>
+                <th className="p-4 text-left font-medium">Message</th>
                 <th className="p-4 text-left font-medium">Date</th>
+                <th className="p-4 text-left font-medium">Retention</th>
               </tr>
             </thead>
             <tbody>
               {recentInquiries.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="p-8 text-center text-muted-foreground italic">No messages found.</td>
+                  <td colSpan={5} className="p-8 text-center text-muted-foreground italic">No messages found.</td>
                 </tr>
               ) : (
                 recentInquiries.map((inquiry) => (
                   <tr key={inquiry.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="p-4 font-medium">{inquiry.name}</td>
                     <td className="p-4 text-muted-foreground">{inquiry.email}</td>
+                    <td className="max-w-sm p-4 text-muted-foreground">
+                      <details>
+                        <summary className="cursor-pointer text-foreground underline decoration-border underline-offset-4">Read request</summary>
+                        <p className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap break-words text-sm leading-6">{inquiry.message}</p>
+                      </details>
+                    </td>
                     <td className="p-4 text-muted-foreground text-xs">{new Date(inquiry.createdAt).toLocaleDateString()}</td>
+                    <td className="p-4"><ContactRequestActions id={inquiry.id} expiresAt={inquiry.expiresAt} /></td>
                   </tr>
                 ))
               )}

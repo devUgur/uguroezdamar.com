@@ -24,7 +24,7 @@ Diese Datei ist die einzige Regelquelle für Menschen und Agenten. Editor-spezif
 | Daten | Neon PostgreSQL, Branches `dev` und `prod` |
 | Secret-Werte | Infisical (eu), nie Dateien |
 | Variablennamen | `tooling/cli/src/secrets-manifest.ts` |
-| Deployment | [`render.yaml`](render.yaml), abgeglichen mit dem Render-Dashboard |
+| Deployment | Vercel, zwei Projekte aus diesem Repository ([`docs/operations/preview.md`](docs/operations/preview.md), ADR 0020) |
 | Gestaltung | [`docs/product/r2-design-brief.md`](docs/product/r2-design-brief.md), Tokens in `apps/site/app/globals.css` |
 
 ## Befehle
@@ -34,8 +34,12 @@ pnpm ugur setup     # einmalig: Infisical und Neon im Browser anmelden
 pnpm dev            # Site :3100 mit dev-Secrets
 pnpm dev:portal     # Portal :3101
 pnpm dev:all        # beide
+pnpm dev:clean      # blockierte Ports freigeben und dev starten
+pnpm kill:ports     # blockierte Ports (3100, 3101 etc.) beenden
 pnpm check          # Lint, Migrationscheck, Typecheck, Tests
 pnpm build          # Produktionsbuild beider Apps
+pnpm ugur smoke --site <url> --portal <url>   # Deployment über HTTP prüfen
+pnpm ugur hosting status                      # Vercel-Projekte gegen das Repository prüfen
 pnpm ugur --help    # Secrets, Datenbank, Admin-Konten
 ```
 

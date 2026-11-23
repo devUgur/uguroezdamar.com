@@ -1,6 +1,6 @@
 # ADR 0018: Render als Hosting für Site und Portal
 
-- Status: accepted (vorläufig, bis das Hosting-Inventar abgeschlossen ist)
+- Status: superseded — ersetzt durch [ADR 0020](0020-vercel-hosting.md). Render liefert bis zur Umstellung noch den alten Stand aus.
 - Datum: 2026-10-13
 - Beteiligte: Projektverantwortliche
 - Ersetzt: die frühere Hosting-Angabe aus [ADR 0013](0013-cms-content-and-server-rendering.md) und den R1-Dokumenten, die Netlify als kanonisches Ziel nannte.
@@ -12,7 +12,7 @@ Die Dokumentation nannte Netlify als kanonisches Ziel und Render als Alternative
 ## Entscheidung
 
 1. Site und Portal bleiben bei Render, jeweils als Node-Web-Dienst.
-2. [`render.yaml`](../../../render.yaml) ist die Zielkonfiguration und wird nach dem Abgleich mit dem Dashboard zur verbindlichen Deployment-Quelle.
+2. `render.yaml` (mit ADR 0020 entfernt) ist die Zielkonfiguration und wird nach dem Abgleich mit dem Dashboard zur verbindlichen Deployment-Quelle.
 3. Auto-Deploy soll aus sein (`autoDeployTrigger: off`); ausgeliefert wird ein freigegebener Commit aus `main`. Die Datei beschreibt das Ziel. Ob der bestehende Dienst so eingestellt ist, zeigt nur das Dashboard.
 4. Laufzeitvariablen sollen per Secret Sync aus Infisical (`prod`) kommen, nicht durch Eintippen im Dashboard. Der Sync ist eine eigene Integration, die in Infisical eingerichtet wird. `sync: false` in `render.yaml` stellt ihn nicht her: Es heißt nur, dass der Wert nicht in der Datei steht. Render fragt ihn bei der ersten Blueprint-Einrichtung ab und ignoriert solche Einträge bei späteren Aktualisierungen und in Preview-Umgebungen.
 5. Die Netlify-Konfigurationsdateien wurden entfernt.
