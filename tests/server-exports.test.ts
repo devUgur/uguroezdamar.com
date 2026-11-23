@@ -11,10 +11,9 @@ describe("@ugur/server exports", () => {
   it("no longer carries the content CMS or its storage (ADR 0019)", () => {
     const names = Object.keys(server);
     expect(names.filter((name) => /project|career|profile|upload|deleteObject/i.test(name))).toEqual([]);
-    // The retired CMS tables stay separate from the new metadata-only GitHub source catalog.
     expect(Object.keys(server.schema).sort()).toEqual([
-      "adminInvites", "adminLoginAttempts", "adminSessions", "admins", "careerEntries",
-      "contactRateLimits", "contactRequests", "portfolioGithubRepositories", "profiles", "projects",
+      "adminInvites", "adminLoginAttempts", "adminSessions", "admins", "contactRateLimits",
+      "contactRequests", "portfolioGithubRepositories",
     ]);
   });
 });
