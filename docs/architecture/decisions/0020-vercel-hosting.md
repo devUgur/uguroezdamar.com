@@ -42,4 +42,6 @@ Stand 13.10.2026: `pnpm check` und der Produktionsbuild beider Apps sind grün; 
 
 An einer Vorschau beider Projekte geprüft (Commit `e821bec`, `pnpm ugur smoke`, 19 von 19 Prüfungen): Beide Apps melden den erwarteten Commit und erreichen Neon `dev`; die Funktionen laufen in `fra1`; das Portal lädt das native Modul `argon2`; die Site sieht die Client-Adresse, und selbst gesetzte Adress-Header werden nicht übernommen; ohne Bypass-Secret ist die Vorschau nicht erreichbar. Vercel baut mit Node.js 24 und pnpm aus dem Lockfile.
 
-Offen: Login, Einladung und eine echte Kontaktanfrage von Hand; die Produktions-Umgebung (noch ohne Variablen, liefert den alten Stand von `main` aus); die Umstellung der Domain; die Bedingungen des Hobby-Plans.
+Am 13.10.2026 außerdem: Produktions-Umgebung mit Variablen versorgt, `main` (`e8e9239`) als Produktions-Deployment gebaut und gegen die Datenbank `prod` mit demselben Lauf geprüft (19 von 19); nicht freigegeben.
+
+Offen: Login, Einladung und eine echte Kontaktanfrage von Hand; die Freigabe (*Promote*) und die Umstellung der Domain, beide erst mit Impressum, Datenschutzerklärung und veröffentlichten Inhalten; die Bedingungen des Hobby-Plans.

@@ -45,6 +45,11 @@ export const SECRETS: readonly SecretSpec[] = [
     ["CONTACT_RATE_LIMIT_SECRET"],
     { random: true, apps: ["site"] },
   ),
+  ...required("Bearer token for the daily contact-request retention job", ["CRON_SECRET"], {
+    stages: ["prod"],
+    random: true,
+    apps: ["site"],
+  }),
   ...required("Bearer token for automated admin API access", ["ADMIN_API_KEY"], { random: true, apps: ["portal"] }),
 
   ...optional("Admin session lifetime in seconds (default 86400)", ["ADMIN_SESSION_TTL_SECONDS"], { apps: ["portal"] }),

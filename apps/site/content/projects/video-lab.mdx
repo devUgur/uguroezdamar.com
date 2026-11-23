@@ -1,15 +1,18 @@
 ---
-# DRAFT — not part of a production build. Statements were checked against the repository on
-# 2026-10-13 (README, package manifest, source layout). Before publishing: confirm every statement,
-# add `role`, `contributions` and `period`, add a cover under public/projects/video-lab/,
-# then set `draft: false`.
+# Public case study approved by the project owner on 2026-10-21. The preview is an illustrative,
+# synthetic storyboard; Video Lab does not currently have a public hosted demo.
 title: Video Lab
-summary: A conversational AI video studio — an idea becomes a production plan with scenes, prompts, audio and cost, and only an approved plan is generated, composed and rendered.
+summary: A local-first AI video studio in development. It turns an idea into a reviewable production plan before paid generation; no public hosted demo is available yet.
 category: AI tooling
 status: active
+role: Product owner and engineer
+contributions:
+  - Designed an approval-gated production run that requires approval of the exact plan before paid generation.
+  - Built a scene-based composition and rendering workflow that produces MP4 output.
+  - Added provider connections, budget controls, a cost ledger, and a free mock-media mode.
 featured: true
 displayOrder: 20
-draft: true
+draft: false
 technologies:
   - TypeScript
   - Next.js
@@ -18,7 +21,12 @@ technologies:
   - FFmpeg
   - Modal
 repositoryVisibility: private
-updatedAt: 2026-10-13
+cover:
+  src: /projects/video-lab/golden-recipe-contact-sheet.webp
+  alt: Six-step storyboard contact sheet for a synthetic smoothie video, from presenter hook and ingredients through result and call to action.
+  caption: Synthetic golden-recipe scenario storyboard, showing six stages from presenter hook through call to action.
+  frame: none
+updatedAt: 2026-10-21
 ---
 
 ## Challenge
@@ -31,7 +39,18 @@ composition. A wrong prompt in the first step is only noticed after the last one
 Video Lab plans before it spends. A director agent turns an idea into a concrete plan — scenes,
 prompts, audio, estimated cost — and nothing is generated until that exact plan is approved.
 Changing the plan requires a new approval. Compositions can then be edited scene by scene and
-rendered to MP4.
+rendered to MP4. The application is local-first and is not offered as a hosted service; this page
+shows the project and its synthetic storyboard, not a public product demo.
+
+## Documented 5-Step Production Workflow
+
+Video Lab enforces a structured review process before executing billable model runs:
+
+1. **Idea & Requirements:** The creator outlines the concept, narrative structure, audio style, and visual parameters.
+2. **AI Scene Plan & Cost Ledger:** The director agent drafts a detailed scene-by-scene script, exact model prompts, and a transparent cost estimate across all required providers.
+3. **Human Approval Gate:** Nothing is sent to paid model APIs until the human operator verifies and explicitly approves the plan. Any prompt or scene alteration resets this gate.
+4. **Generation & Composition:** The worker pipeline issues parallel calls to provider models (OpenAI, fal.ai, ElevenLabs, or self-hosted models on Modal) and composites assets via local FFmpeg pipelines.
+5. **Review & MP4 Export:** The user inspects the stitched timeline, fine-tunes audio/visual synchronization, and exports high-definition MP4 output.
 
 ## Architecture
 
@@ -40,5 +59,3 @@ keys, which are stored encrypted with the master key in the operating system's k
 Self-hosted open models run on Modal behind a gateway. Every paid generation is recorded in a
 cost ledger, with a cost estimate per plan and budget limits. Without a provider the whole pipeline runs on free
 mock media, so the workflow can be developed and tested without cost.
-
-{/* Outcome: add only what can be shown — example videos, cost per video, or timings. */}

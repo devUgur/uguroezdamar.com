@@ -1,6 +1,6 @@
 # Projekt-Roadmap
 
-> **Status:** Umsetzung Release R1 · **Grundlage:** Code- und Architektur-Audit vom 12.10.2026 sowie Abgleich mit dem lokalen Repository · **Letzte Pflege:** 12.10.2026
+> **Status:** ViralSync und Video Lab Case Studies sind auf der Portfolio-Production live · **Grundlage:** Code- und Architektur-Audit vom 12.10.2026 sowie nachfolgende Architekturentscheidungen · **Letzte Pflege:** 21.10.2026
 
 Diese Roadmap übersetzt die Audit-Befunde in eine umsetzbare Reihenfolge. Sie ist ein Arbeitsplan, kein Nachweis, dass die beschriebenen Probleme bereits behoben oder die Qualitätsziele erreicht sind. Die Audit-Zusammenfassung und die dauerhaft geltenden Engineering-Regeln liegen unter [`docs/`](docs/README.md).
 
@@ -8,7 +8,7 @@ Diese Roadmap übersetzt die Audit-Befunde in eine umsetzbare Reihenfolge. Sie i
 
 Ein zuverlässiges, sicheres und glaubwürdiges Entwicklerportfolio, das echte Arbeit zeigt und dessen Inhalte sicher veröffentlicht werden können. Die bestehende pnpm-/Turborepo-Monorepo-Basis mit Next.js, TypeScript und PostgreSQL wird zunächst stabilisiert. Es gibt keine geplante Neuentwicklung und keine Microservices.
 
-Das Zielsystem besteht aus einer öffentlichen Portfolio-/Blog-Anwendung, einem geschützten Admin-Portal, klar begrenzten gemeinsamen Paketen und einer nachvollziehbaren Inhalts- und Release-Pipeline. Welche Laufzeit- und Inhaltsquelle langfristig gilt, wird anhand der dokumentierten Entscheidungskriterien beschlossen, bevor davon abhängige Umbauten starten.
+Das Zielsystem besteht aus einer öffentlichen Portfolio-/Blog-Anwendung, einem geschützten Admin-Portal, klar begrenzten gemeinsamen Paketen und einer nachvollziehbaren Inhalts- und Release-Pipeline. Gültige Architekturentscheidungen legen Git/MDX als Quelle für Portfolio-Inhalte fest (ADR 0019) und Vercel als Hosting für Site und Portal (ADR 0020).
 
 ## Priorität und Reihenfolge
 
@@ -21,6 +21,8 @@ Das Zielsystem besteht aus einer öffentlichen Portfolio-/Blog-Anwendung, einem 
 | 4 | Production Quality | messbare Qualitätsziele und verlässliche Betriebsabläufe | Kernfunktionen stabil |
 
 Phasen dürfen nur dann parallel laufen, wenn ihre Abhängigkeiten und Daten-/Routenverträge stabil sind. Jede Änderung wird als kleiner, überprüfbarer PR umgesetzt. Für jede Phase gibt es ein eigenes Backlog; dieser Plan ersetzt keine Aufgaben- und PR-Beschreibung.
+
+Der ausführbare Detailplan für Portfolio-Design, GitHub-Projektimport, Medien/Drafts sowie getrennte Site-/ViralSync-Releases steht in [Portfolio, GitHub-Import und Live-Release](docs/product/portfolio-live-and-import-plan.md). Dieser Detailplan hält auch die konkreten Preview-, Datenbank- und Produktionsgates fest.
 
 ## Phase 0 — Verifizieren & stabilisieren
 
@@ -64,21 +66,21 @@ Phasen dürfen nur dann parallel laufen, wenn ihre Abhängigkeiten und Daten-/Ro
 
 **Zweck:** Eine eindeutige Wahrheit darüber herstellen, welcher Inhalt veröffentlicht ist und wie er die öffentliche Website erreicht.
 
-**Entscheidung:** [ADR 0013](docs/architecture/decisions/0013-cms-content-and-server-rendering.md) legt das CMS für Portfolio-Daten und serverseitiges Next.js fest; die Datenbank ist seit [ADR 0016](docs/architecture/decisions/0016-postgres-neon-infisical-cli.md) PostgreSQL auf Neon. Produktion läuft bei Render ([ADR 0018](docs/architecture/decisions/0018-render-hosting.md)). Blogartikel bleiben Git-/MDX.
+**Entscheidung:** Portfolio-Projekte, Profil und Werdegang liegen als Git/MDX bzw. TypeScript vor (ADR 0019); Blogartikel bleiben MDX in Git. PostgreSQL auf Neon dient den verbleibenden dynamischen Funktionen (ADR 0016). Site und Portal laufen als getrennte Vercel-Projekte (ADR 0020). Die früheren CMS-/Render-Annahmen aus ADR 0013 und ADR 0018 sind ersetzt.
 
 **Arbeitspakete nach Entscheidung**
 
-- Projekt-, Karriere-/Profil- und Blog-Inhalte mit klaren Eigentümern und Schemata abbilden; veröffentlichte Inhalte, Entwürfe und Vorschauen eindeutig trennen.
-- Datenbank-/MDX-Fallbacks entfernen, sofern sie nicht bewusst als dokumentierter Import- oder Notfallpfad gebraucht werden. Fallbacks dürfen nie unveröffentlichte oder Demo-Inhalte stillschweigend öffentlich machen.
-- Publish-Ablauf mit Validierung, Vorschau, Veröffentlichung, Cache-Invalidierung/Rebuild, Fehlerbehandlung und Rollback definieren.
+- Projekt- und Profiländerungen über Schema-validierte Dateien und Pull Requests pflegen; unverifizierte Projekte als lokale Drafts halten.
+- Sicherstellen, dass fehlende Inhalte, leere Inhaltsverzeichnisse und Dateisystemfehler unterscheidbar bleiben; keine stillen Datenquellen-Fallbacks.
+- Vercel-Preview je Pull Request prüfen und den manuellen Produktions-Promote als getrennte Freigabe dokumentieren.
 - Slugs kanonisieren und alte URLs gezielt weiterleiten oder mit einer echten 404 beantworten.
 - Kontaktformular-Endpunkt kompatibel zur gewählten Hosting-Laufzeit betreiben; Zustellung speichern/übermitteln und Fehler sichtbar behandeln. Datenschutz, Spam-Schutz und Aufbewahrung festlegen.
 - Öffentliche Demo-Datensätze und Platzhalter-Inhalte löschen oder durch freigegebene Inhalte ersetzen.
 
 **Abnahme**
 
-- Eine veröffentlichte Änderung wird im festgelegten Zeitfenster zuverlässig öffentlich sichtbar; Entwürfe bleiben privat.
-- Build/Deploy, Vorschau und Rollback sind dokumentiert und reproduzierbar.
+- Eine Inhaltsänderung ist durch Schema und Pull Request reviewbar; Drafts sind weder in Produktionsbuilds noch in der Sitemap.
+- Build/Preview, manuelle Produktionsfreigabe und Rollback sind dokumentiert und reproduzierbar.
 - Alle verlinkten Projekt- und Kontaktpfade liefern erwartete Statuscodes und Inhalte.
 - Keine nicht freigegebenen Platzhalter, privaten Projektdetails oder vertraulichen Arbeitgeberinformationen erscheinen öffentlich.
 
@@ -113,6 +115,16 @@ Phasen dürfen nur dann parallel laufen, wenn ihre Abhängigkeiten und Daten-/Ro
 - Fehler-/Verfügbarkeitsüberwachung und minimale Betriebsalarme einrichten; PII und Geheimnisse aus Logs ausschließen.
 - Backup-/Restore-Probe, Abhängigkeitspflege, Secrets-Rotation, Incident- und Rollback-Ablauf dokumentieren.
 
+**Umsetzungsreihenfolge und Gates**
+
+1. **4.1 Visuelle Stabilität — erledigt:** R3.6 lädt den sichtbaren 21-KB-JetBrains-Mono-Font vorab; der CLI-Smoke verlangt ein same-origin WOFF2-Preload. Vorher 2/3 Production-Kaltläufe mit CLS 0,125, danach 3/3 mit CLS 0; der exakte Rollout steht in der Portfolio-R3-Dokumentation.
+2. **4.2 Mobile-Lab-Baseline — erledigt, Feldwerte offen:** nach bestandenem Smoke auf der exakten Revision je drei Lighthouse-Läufe auf Apex pro Route `/`, `/de`, `/projects`, `/de/projects`, Lighthouse 13.5. LCP-Mediane/Spannen, CLS und TBT dokumentiert. Das Labor misst kein INP. Keine CI-Schwellen aus diesen lokalen Messläufen ableiten; Core-Web-Vitals-Feldwerte getrennt aus CrUX/Search Console übernehmen, sofern echte Daten verfügbar sind.
+3. **4.3 Kritische Nutzerabläufe — Implementierung in Arbeit:** Kontaktfelder spiegeln die serverseitigen Grenzen und normalisieren Eingaben; ein täglicher, secret-geschützter Vercel-Cron löscht Kontaktanfragen nach der vom Owner gewählten 90-Tage-Frist, das Portal kann Bearbeitungsfrist verlängern und Anfragen löschen. Abgelaufene Anfragen werden sofort aus Portal-Liste und Zähler ausgeblendet, selbst wenn die physische Cron-Löschung noch aussteht. Migrationen `0002_minor_vision` und `0003_bored_grey_gargoyle` wurden auf Neon `dev` angewendet; PR #42 Site-/Portal-Preview besteht nach der Migration den Commit-gepinnten Smoke mit 95/95. Produktionsmigration, Cron-Authentifizierung/-Ausführung und angemeldete Portalaktionen müssen noch separat geprüft werden. Es gibt keinen automatischen E-Mail-Versand.
+4. **4.4 Datenschutz und Recht — Inhalt auf Basis bestätigter ViralSync-Angaben erweitert; Provider-/Rechtsfreigabe offen:** die zweisprachigen Datenschutz- und Impressumsseiten benennen nun die vom Betreiber am 22.10.2026 zur Wiederverwendung bestätigte Identität/Anschrift, Rollenadressen und bekannte E-Mail-Retention; die Portfolio-Datenflüsse bleiben von ViralSync-SaaS, Stripe, Resend und Social-Provider-Verarbeitung getrennt. Formular-Kurzhinweise nennen Zweck und 90-Tage-Löschung. Offen bleiben Geschäftstätigkeits-/DDG-Prüfung, Datenschutzbeauftragten-/Aufsichts-Zuständigkeit, Interessenabwägung und Rechtsgrundlagen-Freigabe, tatsächliche Provider-Verträge/Standorte/Transfergarantien, Mailprovider des allgemeinen Kontaktpostfachs, Log-/Backup-Retention sowie produktive Cookie-/Cron-Prüfung und qualifizierte Rechtsprüfung. AGB werden für das Portfolio wegen bestätigten fehlenden Vertrags-/Checkout-Angebots nicht ergänzt; dies gilt nicht automatisch für andere Projekte. Bis zur Prüfung bleiben Seiten sichtbar als Entwürfe; keine Konformitätsaussage.
+5. **4.5 Wiederherstellung:** Neon-Production-Snapshot in einen isolierten Restore-Branch wiederherstellen, Schema und Stichproben prüfen, Ergebnis und Dauer protokollieren. Keine Wiederherstellung über die produktive Datenbank; Bereinigung nur nach Aufbewahrung des Nachweises.
+6. **4.6 CI-Automatisierung:** erst nach stabiler Messbasis Browser-E2E/Axe und Lighthouse-Budgets einführen. Browserabhängige Checks bleiben auf repräsentative Kernrouten begrenzt und haben dokumentierte Retry-/Flake-Regeln.
+7. **4.7 Betrieb:** minimale Verfügbarkeits-/Fehleralarme, Rollback-Übung, Dependency- und Secret-Rotation mit Zuständigkeit und Alarmweg festhalten.
+
 **Abnahme**
 
 - Pflicht-E2E- und Accessibility-Checks laufen in CI; kritische Fehler verhindern einen Release.
@@ -136,15 +148,17 @@ Ein öffentlicher Relaunch erfolgt erst, wenn Phase 1 und 2 abgenommen sind, kri
 
 | Phase | Status | Nächster konkreter Schritt |
 | --- | --- | --- |
-| 0 — Verifizieren & stabilisieren | lokale Gates, Mobile-Smoke und Axe-Prüfung grün | Hosting-Preview, Kontaktzustellung und Live-Deploy bleiben zu verifizieren |
+| 0 — Verifizieren & stabilisieren | Site Main-SHA `3bc31aa` und Portal-SHA `f92be7d` bestehen den erweiterten Production-Smoke auf ihren öffentlichen Domains: Site 24/24, Portal 6/6. Apex, `www` und `portal` liefern Vercel aus. | Kontaktzustellung, Owner-Login/Invite und Datenbank-Restore-Probe manuell bestätigen; die CLI deckt diese geschützten Vorgänge bewusst nicht ab |
 | 1 — Security & CI-Fundament | umgesetzt; lokale und GitHub-CI-Nachweise grün | unabhängige Prüfung offen |
-| 2 — Content & Deployment | SSR/CMS lokal umgesetzt; CMS- und Rate-Limit-Integration ergänzt; Preview und Betreiberangaben offen | Render-Inventar für beide Dienste verifizieren (Typ, Deploy-Branch, Auto-Deploy), Secret Sync aus Infisical einrichten; Preview-Commit-SHAs, isolierte DB/Accounts, Slug-Datenmigration, Kontaktaufbewahrung/-benachrichtigung sowie bestätigte Impressums-/Datenschutzangaben bleiben Release-Blocker |
-| Plattform — Datenbank und Secrets | MongoDB-Cluster existiert nicht mehr. Datenschicht auf PostgreSQL/Drizzle umgestellt, Tests gegen PGlite, Secrets-Manifest und `pnpm ugur`-CLI nach viralsync-Vorbild vorhanden (ADR 0016). Infisical-Projekt verknüpft, Neon-Branches `dev` und `prod` provisioniert und migriert, Owner-Konto in `dev`; Site und Portal gegen `dev` geprüft. Konsolidiert im Draft-PR #9, CI grün. Regeln auf `AGENTS.md` reduziert, Hosting als Render festgehalten (ADR 0018), Doku-Drift per Test abgesichert | Render-Inventar und Abgleich mit `render.yaml`; Secret Sync aus Infisical; Preview-Dienst gegen `dev`; Owner-Konto in `prod`; Client-Adresse des Kontakt-Endpunkts hinter Render klären; Restore-Probe auf Neon; alte lokale `.env`-Dateien löschen; R2-Schlüssel rotieren; Inhalte neu erfassen |
-| Plattform — Entwicklungsworkflow | Pakete source-first ohne `tsup`/`dist`, `pnpm dev` startet nur die Site, Tests ohne Vorab-Build, pnpm-Catalog, Guard für Paketgrenzen (ADR 0017); lokale Gates und beide Produktionsbuilds grün | GitHub-CI für `f60a1a4` grün. `Ctrl+C`-Shutdown und Browser-Hot-Reload interaktiv bestätigen |
-| Plattform — Inhalte | Projekte, Profil und Werdegang als Dateien im Repository, Inhaltsseiten statisch (ADR 0019); Entwürfe für ViralSync und Video Lab angelegt, nur lokal sichtbar | Owner liefert Profil, Rolle, Beiträge, Zeiträume und Screenshots und gibt die Texte frei; danach `draft: false`. CMS-Rückbau: alte Tabellen erst nach Backup und Restore-Test in eigenem PR löschen, R2-Token widerrufen, `pnpm ugur secrets prune --apply` |
-| Plattform — Hosting | Vercel (ADR 0020): zwei Projekte angelegt und über `pnpm ugur hosting` eingerichtet; Vorschau je Pull Request gegen Stage `dev`; Smoke-Lauf gegen eine Vorschau bestanden (19 von 19) | Stack mergen; `pnpm ugur hosting env --stage prod --apply`; Produktions-Deployment prüfen und freigeben; Login und Kontakt von Hand prüfen; DNS umstellen, Render kündigen |
-| 3 — Portfolio-Erlebnis | R2-A technisch umgesetzt, visuell vom Owner **nicht freigegeben** (Issue #8). R1- und R2-Branch sind lokal in `main` zusammengeführt. R2-A.1/A1 (Original-Logo, Header, Hero, Footer) umgesetzt; lokale Gates grün; Nachweise unter `docs/product/evidence/r2-a1/` | Visuelle Freigabe A1 durch den Owner; danach A2 (echte Projekte, ViralSync-Case-Study, DB-Fehler von leerem Zustand trennen) und A3 (Profil, Skills, Education). Kein Produktions-Deploy vor R1-Gates und Rotation der offengelegten Zugangsdaten |
-| 4 — Production Quality | geplant | nach stabiler Kernfunktion Messwerte und E2E-Scope festlegen |
+| 2 — Content & Deployment | Portfolio-Inhalte sind Git/MDX (ADR 0019). PR #29 ist in `main` gemergt; Site-Deployment `dpl_2eqo7YyeoscLwwZxirzPgY5ZFxru` aus `3bc31aa` wurde nach CI und 24/24 Staged-Smoke auf Vercel promotet. Beide Case Studies sind öffentlich; Video Lab besitzt weiterhin keine öffentliche App-Demo. | Beobachten, dass Karten, Cover und externe Verweise aktuell bleiben. Änderungen weiterhin über geschützte Preview, exakten Commit-Smoke und manuelles Promotion-Gate ausliefern |
+| Plattform — Datenbank und Secrets | PostgreSQL/Drizzle auf Neon mit Infisical (ADR 0016); `doctor --stage prod` findet alle Pflicht-Secrets. Vercel erwartet für Site und Portal passende Variablennamen in Preview und Production. Audits melden nur ausgemusterte Namen und optionale Admin-Overrides. | Datenbank-Restore-Probe offen. Ausgemusterte Portfolio-Schlüssel nach Dry-Run und Bestätigung der Stilllegung je Stage entfernen; danach beide Audits wiederholen. Keine Produktions-Secrets übertragen oder ausgeben |
+| Plattform — Entwicklungsworkflow | Pakete source-first ohne `tsup`/`dist`, pnpm-Catalog und Guard für Paketgrenzen (ADR 0017). `pnpm dev` startete die Site erfolgreich mit injizierten Dev-Secrets; Infisical-Profil `uguroezdamar` ist an dieses Repository gebunden | Dev-Portal separat starten und Entwicklungsworkflow dokumentieren; keine Secrets in Dateien übernehmen |
+| Plattform — Inhalte | Projekte, Profil und Werdegang sind Dateien im Repository (ADR 0019); PR #23 ergänzte Neon-Importkatalog und Draft-Generator. ViralSync und Video Lab sind auf Owner-Anforderung veröffentlicht; private Repositories sind nicht verlinkt, synthetische Cover beschriftet und Video Lab als nicht gehostete Projektvorstellung gekennzeichnet. | Fakten, Screenshots, Rechte und öffentliche Links bei jeder neuen Case Study einzeln belegen und freigeben |
+| Plattform — Hosting | Vercel (ADR 0020): getrennte Site-/Portal-Projekte; manuelle Production-Promotion; Profil- und Kontogrenzen dokumentiert. Am 21.10. sind Apex, `www` und `portal` auf Vercel verifiziert; Zertifikate und Domain-Smoke sind grün. | Bei späteren Änderungen DNS-only beibehalten und Domain-Smoke nach Deployments ausführen. Kein Cloudflare-Proxy vor Vercel |
+| 3 — Portfolio-Erlebnis | A1 am 19.10.2026 visuell vom Owner freigegeben; A2 nutzt einheitliche Projektkarten und Detailseiten. ViralSync und Video Lab sind seit 21.10.2026 auf der Portfolio-Production live; Site-Smoke prüft Karten, Detailrouten, Canonicals, Cover, Sitemap und ViralSync-Ziel-Link. | Für eine spätere Video-Lab-App separate Hosting-/Runtime-/Secret-/Datenstrategie erstellen; bis dahin Portfolioseite als Case Study ohne Demo-Link belassen |
+| 3 — Portfolio R3 | R3.1–R3.7 sind umgesetzt. Main `3ece1af` / Deployment `dpl_HJp9k5Hu5AUHFhaNZ7GDP8HSMY9F`; Apex und `www` bestehen je 89/89, inklusive Font-Preload. Vier EN/DE Kernrouten wurden je dreimal mobil gemessen: CLS jeweils 0, LCP-Mediane 2,34–2,43 s, Lighthouse Performance 97–98. | Kein CI-Performance-Budget bis Runner-Streuung bekannt ist. Manuelle Screenreader-/Touch-Geräte-Abnahme, echte Kontaktzustellung, Owner-Login/Invite, Rechtstexte und Neon-Restore-Drill bleiben offen. Phase 4.3 (Kontakt/Navigation-E2E) zuerst ausbauen. |
+| Portfolio — GitHub-Katalog | PR #23 ist in `main` gemergt; Discovery, sichere Einzelprüfung, privater Neon-Metadatenkatalog und lokaler Draft-Generator sind implementiert. Main `f92be7d` hat grüne CI, beide Production-Smokes bestanden und ist promotet. | Neon-Dev-Migration angewendet; neun öffentliche Repositories zweimal synchronisiert. Upsert über eindeutige GitHub-ID; fehlende Datensätze werden nicht gelöscht. Fehler-/Rate-Limit-Pfade weiter prüfen. Öffentliche Case Studies bleiben an Fakten- und Owner-Freigabe gebunden. |
+| 4 — Production Quality | in Arbeit; R3.6/R3.7-Baseline erledigt; Kontakt-Retention und einheitliches A2.1-Design implementiert, aber noch nicht geprüft/ausgerollt | Migration plus Preview-Smoke für Site/Portal, Cron-Secret und erster Lauf; manuelle Screenreader-/Touch-Abnahme; Owner-/Rechtsfreigabe; Neon-Restore-Drill |
 
 ## Weiterführende Dokumentation
 
