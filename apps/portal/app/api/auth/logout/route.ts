@@ -12,6 +12,6 @@ export async function POST(request: NextRequest) {
   const res = NextResponse.redirect(new URL("/login", request.url));
   // Delete cookie
   // Clear the cookie by setting an empty value and immediate expiry
-  res.cookies.set("admin_session", "", { path: "/", maxAge: 0 });
+  const res = NextResponse.redirect(new URL("/login", request.url), { status: 303 });
   return res;
 }
