@@ -1,0 +1,1 @@
+ALTER TABLE "contact_requests" ADD COLUMN "expires_at" timestamp with time zone DEFAULT now() + interval '90 days' NOT NULL;

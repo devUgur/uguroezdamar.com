@@ -41,6 +41,31 @@ describe("project content", () => {
     }
   });
 
+  it("publishes the approved ViralSync and Video Lab case studies", async () => {
+    const published = await content.getProjects({ includeDrafts: false });
+    expect(published).toEqual(expect.arrayContaining([
+      expect.objectContaining({ slug: "viralsync", draft: false, role: expect.any(String), contributions: expect.arrayContaining([expect.any(String)]) }),
+      expect.objectContaining({ slug: "video-lab", draft: false, role: expect.any(String), contributions: expect.arrayContaining([expect.any(String)]) }),
+    ]));
+  });
+
+  it("allows drafts in protected Vercel previews but never in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("VERCEL_URL", "portfolio-preview.vercel.app");
+    try {
+      const preview = await content.getProjects();
+      const sourceDrafts = (await content.getProjects({ includeDrafts: true })).filter((project) => project.draft);
+      expect(preview).toEqual(expect.arrayContaining(sourceDrafts));
+
+      vi.stubEnv("VERCEL_ENV", "production");
+      const production = await content.getProjects({ includeDrafts: true });
+      expect(production.every((project) => !project.draft)).toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("keeps drafts out of the sitemap", async () => {
     const sitemap = (await import("../apps/site/app/sitemap")).default;
     const urls = (await sitemap()).map((entry) => entry.url);
@@ -61,6 +86,28 @@ describe("project content", () => {
     const { role: _role, contributions: _contributions, ...incomplete } = valid;
     expect(() => content.parseProject("example", incomplete, "Body")).toThrow(/role[\s\S]*contributions|required to publish/);
     expect(() => content.parseProject("example", { ...incomplete, draft: true }, "Body")).not.toThrow();
+  });
+
+  it("allows empty technologies on an unpublished import draft, but requires them for publication", () => {
+    const importedDraft = {
+      title: "Imported",
+      summary: "Review this metadata.",
+      category: "Software",
+      status: "active",
+      draft: true,
+      technologies: [],
+      repositoryVisibility: "public",
+      source: {
+        provider: "github",
+        repository: "devUgur/imported",
+        commit: "a".repeat(40),
+        readme: null,
+        importedAt: "2026-10-21T10:15:00.000Z",
+      },
+      updatedAt: "2026-10-21",
+    };
+    expect(content.parseProject("imported", importedDraft, "Review required.").technologies).toEqual([]);
+    expect(() => content.parseProject("imported", { ...importedDraft, draft: false }, "Body")).toThrow(/technologies|required to publish/);
   });
 
   it("refuses a link to a repository that is not public", () => {

@@ -1,0 +1,1 @@
+CREATE INDEX "contact_requests_expires_at_idx" ON "contact_requests" USING btree ("expires_at");

@@ -2,6 +2,7 @@ import { parseArgs } from "node:util";
 import { db } from "./commands/db.ts";
 import { dev, localRun } from "./commands/dev.ts";
 import { doctor } from "./commands/doctor.ts";
+import { killPorts } from "./commands/kill-ports.ts";
 import {
   secretsAudit,
   secretsCopy,
@@ -11,22 +12,32 @@ import {
   secretsRun,
   secretsSet,
 } from "./commands/secrets.ts";
+import { hostingEnv, hostingSetup, hostingStatus } from "./commands/hosting.ts";
 import { setup } from "./commands/setup.ts";
 import { smoke } from "./commands/smoke.ts";
 import { run } from "./lib/exec.ts";
 import { accessHint, withSecrets } from "./lib/infisical.ts";
 import { parseStage, STAGES, type Stage } from "./lib/stages.ts";
+import { discoverProjects, draftProject, inspectProject } from "./commands/projects.ts";
 
 const HELP = `uguroezdamar.com CLI — pnpm ugur <command>
 
-  setup [--relink]           One-time: sign in to Infisical and Neon in the browser, link the project
+  setup [--relink]           One-time: sign in to Infisical, Neon and read-only Cloudflare in browser
                              (--relink chooses a different Infisical project)
   doctor                     Check tools, logins and required secrets
   dev [--filter site|portal] Run the site with dev secrets injected and localhost addresses
       [--all]                (--filter portal for the portal, --all for both)
+  kill:ports [ports…] [--all] [-p <port>]  Stop processes listening on local app ports (3100, 3101, 3102, 3103, 4983 by default)
   run -- <cmd>               Run a command with secrets and localhost addresses (e.g. a local build)
   smoke --site <url>         Check a deployment over HTTP: commit, database, client address,
       [--portal <url>]       refusals. Stores nothing. --commit <sha> pins the expected commit
+  hosting status             Compare the two Vercel projects with what the repository expects
+  hosting setup [--apply]    Manual go-live for production, protection bypass for the smoke run
+  hosting env [--apply]      Copy an app's secrets from Infisical --stage to its Vercel environment
+  projects discover         List public repositories owned by gh auth (read-only / dry run)
+      [--apply]              Sync allowlisted repository metadata to Neon dev; never deletes
+  projects inspect <owner>/<repo>  Read selected public metadata and a bounded README excerpt; no persistence
+  projects draft <owner>/<repo> --slug <slug>  Prepare a local schema-valid draft; --apply writes, never publishes
   secrets audit              Compare Infisical with the secrets manifest (names only)
   secrets set <KEY>          Set a declared key from a hidden prompt (both stages unless --stage)
   secrets generate [--apply] Create missing random keys and tokens; --rotate replaces existing ones
@@ -55,6 +66,7 @@ const { values, positionals } = parseArgs({
   options: {
     stage: { type: "string" },
     filter: { type: "string", multiple: true },
+    port: { type: "string", multiple: true, short: "p" },
     from: { type: "string" },
     to: { type: "string" },
     overwrite: { type: "boolean", default: false },
@@ -63,6 +75,7 @@ const { values, positionals } = parseArgs({
     all: { type: "boolean", default: false },
     site: { type: "string" },
     portal: { type: "string" },
+    slug: { type: "string" },
     commit: { type: "string" },
     apply: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
@@ -76,6 +89,13 @@ async function main(): Promise<number> {
     console.log(HELP);
     return 0;
   }
+  if (command === "kill:ports" || command === "kill-ports" || (command === "kill" && sub === "ports")) {
+    const cliPorts = [
+      ...(values.port ?? []),
+      ...(command === "kill" && sub === "ports" ? positionals.slice(2) : positionals.slice(1)),
+    ];
+    return killPorts({ ports: cliPorts, all: values.all });
+  }
   const stage = parseStage(values.stage);
   switch (`${command} ${sub ?? ""}`.trim()) {
     case "setup":
@@ -88,6 +108,18 @@ async function main(): Promise<number> {
       return smoke({ site: values.site, portal: values.portal, commit: values.commit });
     case "run":
       return localRun(stage, passthrough);
+    case "hosting status":
+      return hostingStatus();
+    case "hosting setup":
+      return hostingSetup(values.apply);
+    case "hosting env":
+      return hostingEnv(stage, values.apply);
+    case "projects discover":
+      return discoverProjects(values.apply, stage);
+    case "projects inspect":
+      return inspectProject(positionals[2] ?? "");
+    case "projects draft":
+      return draftProject(positionals[2] ?? "", values.slug ?? "", values.apply);
     case "secrets audit":
       return secretsAudit(stage);
     case "secrets prune":

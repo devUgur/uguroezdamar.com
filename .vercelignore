@@ -1,0 +1,14 @@
+# Local build caches can be very large and are never deployment inputs.
+.turbo
+.claude
+.pnpm-store
+**/node_modules
+**/.next
+
+# Secrets and account-local configuration are provided by Vercel/Infisical.
+.env
+.env.*
+**/.env
+**/.env.*
+.infisical.*
+**/.infisical.*

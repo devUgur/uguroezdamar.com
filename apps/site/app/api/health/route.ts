@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     {
       ok: true,
       app: "site",
-      commit: process.env.RENDER_GIT_COMMIT ?? null,
+      commit: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
       database: (await pingDatabase()) ? "ok" : "unavailable",
       client: clientAddress(request.headers),
     },

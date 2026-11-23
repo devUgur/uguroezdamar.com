@@ -13,7 +13,7 @@ export async function GET() {
     {
       ok: true,
       app: "portal",
-      commit: process.env.RENDER_GIT_COMMIT ?? null,
+      commit: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
       database: (await pingDatabase()) ? "ok" : "unavailable",
     },
     { headers: { "cache-control": "no-store" } },
