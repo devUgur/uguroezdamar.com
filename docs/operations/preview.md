@@ -1,8 +1,35 @@
 # Hosting, Preview und Release
 
-**Zweck:** Wie Site und Portal bei Vercel eingerichtet werden, wie ein Stand vor dem Merge als Vorschau geprüft wird und wie er in die Produktion kommt. Entscheidung: [ADR 0020](../architecture/decisions/0020-vercel-hosting.md).
+**Zweck:** Wie Site und Portal bei Vercel eingerichtet werden, wie ein Stand vor dem Merge als Vorschau geprüft wird und wie er in die Produktion kommt. Entscheidung: [ADR 0020](../architecture/decisions/0020-vercel-hosting.md). Cloudflare-Kontotrennung und DNS-Verfahren stehen unter [Cloudflare](cloudflare.md) und [ADR 0023](../architecture/decisions/0023-cloudflare-dns-and-account-boundaries.md).
 
-**Stand 13.10.2026:** Beide Projekte sind angelegt und eingerichtet, die Umgebung Preview hat ihre Variablen. `pnpm ugur smoke` gegen die Vorschau des Commits `e821bec` hat alle 19 Prüfungen bestanden, einschließlich Client-Adresse und Commit. Die Umgebung Production ist noch leer und liefert auf den `vercel.app`-Adressen den alten Stand von `main` aus; die Domain zeigt weiter auf Render.
+**Stand 21.10.2026:** PR #29 veröffentlichte die ViralSync- und Video-Lab-Case-Studies. PR #31 ergänzt lokale Font-Assets und den optionalen Cursor-Ring; PR #32 sichert den CLI-Uploadpfad. Main-SHA `9997735b98fe841eda9e346595843b9603be96b9` ist als Vercel-Deployment `dpl_B5qqvyhTbQ3TvSvTHSLHtdng7J3a` manuell promotet. Der Staged-Smoke und die öffentlichen Smokes auf `https://uguroezdamar.com` sowie `https://www.uguroezdamar.com` bestehen jeweils 24/24 mit Commit-Prüfung. Das unveränderte Portal läuft weiter auf `f92be7d` und besteht mit Commit-Prüfung 6/6 auf `https://portal.uguroezdamar.com`. `pnpm ugur hosting status` bestätigt manuelles Promote, `all_except_custom_domains`, passende Smoke-Bypasses und erwartete Variablennamen.
+
+**R3.2/3.3-Release 21.10.2026:** PR #34 wurde nach grüner GitHub-CI und bestandenem Vercel Preview in `main` gemergt. Der Production-Build `dpl_272QXSwFyoY7QduiEkzNmUaEhTSV` für Main-SHA `d17416967842497c5e0eb5ca1a816705f08ae658` bestand den Staged-Smoke mit 84/84 Checks und wurde anschließend manuell promotet. `https://uguroezdamar.com` und `https://www.uguroezdamar.com` bestehen jeweils 84/84 einschließlich Commit-Prüfung. `/de` und die deutschen Inhalts-/Projektseiten sind live; englische URLs bleiben erhalten. Das unveränderte Portal besteht weiterhin 6/6 auf `https://portal.uguroezdamar.com` mit Commit-Prüfung `f92be7d`. Damit ist das R3.2/3.3-Release-Gate für Routing, Metadaten, Projekte und Domain-Bereitstellung erfüllt.
+
+**R3.3-Korrektur 21.10.2026:** Die Live-Prüfung der deutschen Projektübersicht fand einen Titel-Link, der zur englischen Case Study führte. PR #36 korrigiert die sprachabhängige Zielroute und erweitert den Smoke um beide Sprachen sowie einen Negativfall. Production-Deployment `dpl_hPBZ8coY9LBBhZ1x3TJHA7d4hSQE` auf Main-SHA `5d53b5fb404ad92894b48e1ad178c4e27d0b516b` ist manuell promotet; Apex und `www` bestehen jeweils 88/88 inklusive Commit-Prüfung.
+
+**R3.4-Fix und Promotion 21.10.2026:** PR #38 lokalisiert den Theme-Schalter für Deutsch und Englisch. Nach grüner CI, `pnpm check` (88 Tests), `pnpm build` und 88/88 Staged-Smoke wurde Main-SHA `d9430a8f83e5a1a61124cff2be497c1843ae996d` in Production promotet. Deployment `dpl_DN1BHE9L81mdAri1Yjbz6E6zMmGj` (`https://uguroezdamar-1ezetniqu-devugur1s-projects.vercel.app`); Apex und `www` bestehen jeweils 88/88 mit exakt diesem SHA. Der Accessibility Tree der Live-Route `/de` zeigt „Darstellung wechseln“. Responsive-/Axe-/Reduced-Motion-Ergebnisse und Performance-Messgrenzen stehen im [R3-Erlebnisplan](../product/portfolio-r3-experience-plan.md).
+
+**R3.6/3.7 Performance-Release 21.10.2026:** Lighthouse fand vor dem Fix auf der Startseite bei 2/3 kalten Mobile-Läufen CLS 0,125; beide Verschiebungen kamen vom später geladenen lokalen JetBrains-Mono-Font. PR #40 lädt den 21-KB-Font vorab und erweitert `pnpm ugur smoke` um einen same-origin WOFF2-Preload-Gate. Main-SHA `3ece1af345be15f76bdf7ccd4b998849f1bf33fb` wurde nach 89/89 Preview-Smoke promotet als `dpl_HJp9k5Hu5AUHFhaNZ7GDP8HSMY9F`. Apex und `www` bestehen je 89/89. Drei kalte Mobile-Lighthouse-Läufe auf `/` ergaben CLS 0/0/0, Performance 97/97/97 und LCP 2,35–2,44 s. Je drei mobile Production-Läufe auf `/`, `/de`, `/projects` und `/de/projects` liegen dokumentiert im [R3-Erlebnisplan](../product/portfolio-r3-experience-plan.md). Keine CI-Budgets wurden aus Lab-Werten abgeleitet.
+
+**DNS- und TLS-Abnahme 21.10.2026:** Die autoritativen Cloudflare-Nameserver liefern den Apex auf Vercel, `www` als CNAME `8e330e50605e5449.vercel-dns-017.com` und `portal` als CNAME `b6010c3103a2d7b8.vercel-dns-017.com`. `www` und `portal` lösen direkt als CNAME auf und sind damit DNS-only. Vercel-Zertifikate für `uguroezdamar.com`, `www.uguroezdamar.com` und `portal.uguroezdamar.com` sind ausgestellt; `https://uguroezdamar.com`, `https://www.uguroezdamar.com` und das Portal bestehen HTTPS. Die frühere `_acme-challenge.www`-Anleitung ist erledigt und nicht mehr auszuführen.
+
+**Privacy- und Retention-Release 22.10.2026:** PR #43 wurde in `main` gemergt (Merge-Commit `032013eabcfe133ed5d4d966e58e7da1c9f1d5ba`). Das Site-Production-Deployment `dpl_AhSNDf9BQT7QNJ9LBpNVxK5dLd79` wurde manuell promotet. Der Staged-Smoke bestand 95/95. Apex und `www` bestehen nach Promote jeweils 89/89 mit exakt diesem Commit; der kombinierte öffentliche Site-/Portal-Smoke besteht 95/95. Die Seiten `/privacy`, `/de/privacy`, `/imprint` und `/de/imprint` liefern HTTP 200 ohne Entwurfsbanner; die Themespeicherung wird als `localStorage` ohne Theme-Cookie beschrieben. Der Cron-Endpunkt weist unauthentifizierte Aufrufe mit HTTP 401 ab. Der erste reguläre, autorisierte Cron-Lauf wird erst nach der nächsten geplanten Production-Ausführung bewertet; der geschützte Löschjob wurde nicht manuell mit Produktionszugangsdaten aufgerufen.
+
+Das Portfolio-Infisical-Projekt hat für `dev` und `prod` alle Pflichtschlüssel; `pnpm ugur hosting status` meldet die erforderlichen Vercel-Variablennamen in beiden Projekten und Stages als „in step“. Die Audits melden optionale Admin-Overrides und zurückgezogene Variablennamen. Vor diesem Release fehlten `/projects/viralsync` und `/projects/video-lab` in der Production-Sitemap und antworteten mit 404, weil beide MDX-Einträge Drafts waren. PR #29 veröffentlicht die freigegebenen Case Studies und erweitert den CLI-Smoke um Karten, Sitemap-Routen, Canonicals, Detailseiten, Cover und ViralSync-Ziel-Link. Der Production-Smoke besteht nun 24/24 für die Site. ViralSync hat einen öffentlichen Marketing-Root; einige seiner eigenen Unterrouten sind noch nicht veröffentlicht. Video Lab hat im zugänglichen Vercel-Team kein Projekt und keine öffentliche Live-URL; seine Portfolioseite ist als Projektvorstellung mit synthetischem Storyboard gekennzeichnet.
+
+Der R3-Lokalisierungs-Smoke erweitert diese historischen 24 Prüfungen um beide Sprachvarianten der öffentlichen Informationsseiten und Projektfallstudien. Er prüft HTTP-Status, HTML-`lang`, Canonical und wechselseitige `hreflang`-Ziele. Erwarteter Umfang nach dieser Erweiterung: 81 lokale bzw. 84 gehostete Site-Prüfungen (inklusive Hosting-Adressprüfungen und ViralSync-Ziel-Link); der Portal-Smoke bleibt separat.
+
+### Verbleibende Release-Gates
+
+1. Für echte Kontaktzustellung und Portal-Login manuell Betreiberpostfach, Formulareingang, Einladungsablauf und Berechtigungen bestätigen. Der Smoke prüft Health, Datenbankzugriff, anonyme Ablehnungen und veröffentlichte Projektseiten, aber keinen echten Mailversand oder Owner-Login.
+2. Die Secrets-Audits identifizieren zurückgezogene Portfolio-Schlüssel. Vor dem Entfernen über `pnpm ugur secrets prune --stage <stage>` den Dry-Run prüfen; danach je Stage nur die bestätigten Namen mit `--apply` bereinigen und beide Audits erneut ausführen.
+3. Video Lab nicht mit ViralSync-Secrets oder Portfolio-Datenbank deployen. Vor einer Live-Preview eigenes Hosting, Laufzeit-/Persistent-Storage, getrennte Verbindungen und Secrets, sichere Mock-/Spend-Gates und eine geschützte Preview einrichten. Danach eine tatsächliche Live-URL in der Draft-Case-Study ergänzen und erst nach Fakten-/Owner-Review veröffentlichen.
+4. Die beiden angeforderten Case Studies sind auf Site-SHA `3bc31aa` veröffentlicht. Site-Smoke 24/24 und Portal-Smoke 6/6 sind grün. Video Lab besitzt weiterhin keine öffentliche App-Demo.
+
+Der historische Smoke gegen den früheren Production-SHA `f60a1a4` schlug bei 7 von 15 Prüfungen fehl (Site-Health 404, Site-Home/Katalog 500, Portal-Health 401 durch Deployment Protection); diese Fehler wurden auf dem neuen Main-Stand behoben. Der frühere Lauf bleibt als Historie dokumentiert, nicht als aktueller Production-Status.
+
+Der frühere Preview-Smoke für Commit `8ad2053` schlug fehl: 14 von 15 Prüfungen erhielten eine 302-Weiterleitung der Deployment Protection bzw. einen 401. Das Infisical-Profil wurde seitdem korrekt zugeordnet und die Bypass-Secrets stimmen mit Vercel überein. Preview-Smoke am `141276d` bestand 19/19; Production-Smoke am `f92be7d` bestand ebenfalls 19/19. Logs wurden nur auf Status und Fehlerklasse ausgewertet; Request-Inhalte wurden nicht ausgegeben.
 
 ## Aufbau
 
@@ -24,11 +51,23 @@
 4. **Freigeben.** Vercel baut `main` als Produktions-Deployment, weist ihm die Domain aber nicht zu. Es steht als *Staged* in der Liste, bis du es im Dashboard über *Promote* live schaltest. Das braucht keinen neuen Build.
 5. **Zurück:** *Instant Rollback* im Dashboard setzt die Domain auf das vorherige Deployment.
 
+### CLI-Deploy aus dem Monorepo
+
+Wenn Vercel nach einem Merge keinen gestagten Main-Build erzeugt, den Produktionsstand nicht aus einer Preview befördern. Zuerst `main` auf den vorgesehenen Release-SHA bringen und dann aus dem Repository-Root den passenden Vercel-Projektnamen explizit wählen:
+
+```powershell
+vercel deploy --project uguroezdamar-com --prod --skip-domain --yes
+```
+
+Der Befehl erzeugt nur einen gestagten Production-Build und weist ihm keine Custom Domains zu. Das Repository-`.vercelignore` schließt lokale Secrets, Vercel-/Infisical-Konfiguration und große lokale Caches aus dem CLI-Upload aus. Vor dem Promote den Deploymentstatus über `vercel inspect <deployment-url>` prüfen und den ausgelieferten SHA mit `pnpm ugur smoke --site <staging-url> --commit <sha>` festpinnen; der Smoke muss die erwartete Revision melden. Erst danach `vercel promote <deployment-url>` verwenden. Der Portal-Deploy erfolgt getrennt aus seinem eigenen Projekt und nur bei Portal-Codeänderungen.
+
+Vercel-CLI-Linkdaten unter `.vercel/` bleiben lokal und werden nicht committet. `vercel link --repo` kann die beiden Repository-Projekte verbinden; die tatsächlich aufgelöste Projekt-ID und das Verzeichnis vor einem Deploy mit `.vercel/repo.json` und `vercel deploy --dry --json` prüfen. Der Dry-Run muss vor dem Upload bestätigen, dass `.turbo`, `.claude`, `.env*` und `.infisical.*` ausgeschlossen sind.
+
 Veröffentlichen, Mergen und Ausliefern bleiben drei getrennte Entscheidungen.
 
 ## Einrichtung
 
-Die zwei Projekte bestehen seit dem 13.10.2026: `uguroezdamar-com` (Root Directory `apps/site`) und `uguroezdamar-portal` (`apps/portal`), beide mit diesem Repository verbunden, Produktions-Branch `main`, Node.js 24.x. Die Namen stehen in `tooling/cli/src/lib/vercel.ts`.
+Die zwei Projekte sind `uguroezdamar-com` (Root Directory `apps/site`) und `uguroezdamar-portal` (`apps/portal`), beide mit diesem Repository verbunden, Produktions-Branch `main`, Node.js 24.x. Die Namen stehen in `tooling/cli/src/lib/vercel.ts`.
 
 Alles Weitere läuft über die CLI. Sie nutzt die angemeldete Vercel-CLI (`vercel login`) und zeigt nur Namen, nie Werte.
 
@@ -41,9 +80,11 @@ Alles Weitere läuft über die CLI. Sie nutzt die angemeldete Vercel-CLI (`verce
 
 Ohne `--apply` sind `setup` und `env` Probeläufe. Welche App welchen Schlüssel liest, steht im Feld `apps` in `tooling/cli/src/secrets-manifest.ts`; nur diese Schlüssel werden kopiert. `DATABASE_URL_DIRECT` (Migrationen) erreicht den Hoster nie.
 
+Die Site definiert einen täglichen Vercel-Cron für die Kontaktaufbewahrung (`/api/cron/purge-contact-requests`). Vercel aktiviert diesen Zeitplan nur für Production-Deployments, nicht für geschützte Previews. Er erfordert das in Infisical `prod` erzeugte `CRON_SECRET`, das durch `pnpm ugur hosting env --stage prod --apply` an Vercel Production synchronisiert wird. Vor dem Promote müssen Secret, Neon-Migration und Cron-Logs geprüft werden; Vercel wiederholt fehlgeschlagene Aufrufe nicht automatisch.
+
 Infisical bleibt die Quelle. Nach einer Rotation `hosting env` erneut ausführen und neu ausliefern: Ein laufendes Deployment behält seine alten Werte.
 
-**Domain umstellen, erst wenn die Produktion bei Vercel geprüft ist.** In Vercel `uguroezdamar.com` und `www` dem Site-Projekt, `portal.uguroezdamar.com` dem Portal-Projekt zuweisen. Bei Cloudflare die DNS-Einträge auf die von Vercel genannten Ziele ändern und den Proxy ausschalten (graue Wolke, *DNS only*). Danach den Smoke-Lauf gegen die echten Adressen wiederholen. Erst dann die Dienste bei Render löschen.
+**Domains sind auf Vercel live.** `uguroezdamar.com` und `www` sind dem Site-Projekt, `portal.uguroezdamar.com` dem Portal-Projekt zugewiesen. Cloudflare bleibt authoritative DNS; A-/CNAME-Einträge zeigen auf Vercel und sind DNS-only. Die Domain-Aliases bestehen HTTPS und den Portfolio-Smoke. Änderungen an diesen Records werden über die Cloudflare-CLI-/Owner-Identität geprüft und anschließend mit `pnpm ugur smoke` gegen alle drei Hostnamen verifiziert.
 
 ## Was der Smoke-Lauf belegt
 
@@ -60,7 +101,7 @@ Der Lauf speichert nichts. Von Hand zu prüfen: Login, Einladung annehmen, Rolle
 
 - **Proxy vor Vercel:** Liegt Cloudflare als Proxy vor Vercel, sieht die App für jeden Besucher dieselbe Adresse, und das Rate-Limit trifft alle gemeinsam. Deshalb *DNS only*.
 - **Daten der Vorschau:** Vorschauen schreiben in den Neon-Branch `dev`. Dort liegen nur Testdaten.
-- **Entwürfe:** Eine Vorschau ist ein Produktionsbuild; Projekte mit `draft: true` erscheinen dort nicht, nur auf dem lokalen Dev-Server.
+- **Entwürfe:** Lokale Entwicklung und geschützte Vercel-Preview-Deployments zeigen Projekte mit `draft: true`. Der Build erkennt Preview über `VERCEL_ENV=preview` plus `VERCEL_URL`; Production filtert Drafts auch bei explizitem `includeDrafts: true`. `pnpm ugur hosting status` bestätigt derzeit `all_except_custom_domains`; Preview-URLs sind durch Deployment Protection geschützt. Sitemap und `robots` schließen Draft-Seiten unabhängig davon aus. Fällt der Schutz weg, darf kein Draft-Preview ausgerollt werden. Details: [ADR 0022](../architecture/decisions/0022-protected-draft-previews.md).
 - **Plan:** Der kostenlose Hobby-Plan ist auf nicht-kommerzielle Nutzung beschränkt. Vor der Umstellung die aktuellen Bedingungen prüfen.
 
 ## Lokal dasselbe prüfen

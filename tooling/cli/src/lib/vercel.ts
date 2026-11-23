@@ -68,3 +68,8 @@ export function envNames(project: VercelProject, target: string): string[] {
     .map((entry) => entry.key)
     .sort();
 }
+
+/** Compare an in-memory bypass secret without ever returning or printing the value. */
+export function hasMatchingProtectionBypass(project: VercelProject, secret: string | undefined): boolean {
+  return Boolean(secret && Object.hasOwn(project.protectionBypass ?? {}, secret));
+}

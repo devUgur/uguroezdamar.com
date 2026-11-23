@@ -12,7 +12,7 @@
 
 ## Release-R1-Upgrade
 
-Inkompatible Minor-/Patch-Updates innerhalb der bestehenden Major-Version wurden auf einen gemeinsamen Stand aktualisiert. Maßgebliche Direktstände: Next.js 16.4.0, React/React DOM 19.3.0, TypeScript 5.9.3, Tailwind CSS 4.3.3, Turbo 2.11.7, Vitest 5.0.4 und Vite 8.3.4. Der Blog-Frontmatter-Parser verwendet `yaml`; `gray-matter` ist entfernt.
+Inkompatible Minor-/Patch-Updates innerhalb der bestehenden Major-Version wurden auf einen gemeinsamen Stand aktualisiert. Maßgebliche Direktstände: Next.js 16.4.3, React/React DOM 19.3.0, TypeScript 5.9.3, Tailwind CSS 4.3.3, Turbo 2.11.7, Vitest 5.0.4 und Vite 8.3.4. Der Blog-Frontmatter-Parser verwendet `yaml`; `gray-matter` ist entfernt.
 
 Versionen, die mehr als ein Workspace nutzt, stehen einmal im pnpm-Catalog in `pnpm-workspace.yaml` und werden als `"catalog:"` referenziert. Jedes Workspace deklariert, was es importiert; das Root-`package.json` enthält nur Werkzeuge und die Abhängigkeiten der Tests. `tsup` ist entfernt ([ADR 0017](../architecture/decisions/0017-source-first-workspace-packages.md)).
 

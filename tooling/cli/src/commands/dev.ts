@@ -1,6 +1,6 @@
 import { createConnection, createServer } from "node:net";
 import { REPO_ROOT, run } from "../lib/exec.ts";
-import { accessHint, withSecrets } from "../lib/infisical.ts";
+import { accessHint, listSecretNames, withSecrets } from "../lib/infisical.ts";
 import { runManagedProcess } from "../lib/managed-process.ts";
 import { LOCAL_ORIGINS, type Stage } from "../lib/stages.ts";
 
@@ -82,11 +82,16 @@ export async function dev(filters: string[], options: DevOptions = {}): Promise<
     return 1;
   }
 
+  if (!listSecretNames("dev")) {
+    console.error(accessHint());
+    return 1;
+  }
+
   const free = await Promise.all(apps.map((app) => portIsFree(port(app))));
   const occupied = apps.filter((_, index) => !free[index]);
   if (occupied.length > 0) {
     const list = occupied.map((app) => `${port(app)} (${app})`).join(", ");
-    console.error(`Cannot start dev: port ${list} is already in use. Stop the running app, then retry.`);
+    console.error(`Cannot start dev: port ${list} is already in use. Run \`pnpm kill:ports\` or stop the running app, then retry.`);
     return 1;
   }
 
