@@ -9,9 +9,14 @@ export async function POST(request: NextRequest) {
     await deleteAdminSession(sessionId);
   }
 
-  const res = NextResponse.redirect(new URL("/login", request.url));
-  // Delete cookie
-  // Clear the cookie by setting an empty value and immediate expiry
-  res.cookies.set("admin_session", "", { path: "/", maxAge: 0 });
+  const res = NextResponse.redirect(new URL("/login", request.url), { status: 303 });
+  const secure = process.env.NODE_ENV === "production";
+  res.cookies.set("admin_session", "", {
+    httpOnly: true,
+    path: "/",
+    maxAge: 0,
+    sameSite: "strict",
+    secure,
+  });
   return res;
 }

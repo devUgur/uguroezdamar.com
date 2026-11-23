@@ -12,56 +12,104 @@ const TECH_TAGS = [
   "Cloud & DevOps",
 ] as const;
 
+const ENGINEERING_LAYERS = [
+  {
+    number: "01",
+    label: "Interfaces",
+    germanLabel: "Oberflächen",
+    detail: "React, Next.js, Vue and Nuxt",
+    germanDetail: "React, Next.js, Vue und Nuxt",
+  },
+  {
+    number: "02",
+    label: "Systems",
+    germanLabel: "Systeme",
+    detail: "APIs, services and data models",
+    germanDetail: "APIs, Services und Datenmodelle",
+  },
+  {
+    number: "03",
+    label: "Delivery",
+    germanLabel: "Bereitstellung",
+    detail: "CI/CD, Linux and cloud infrastructure",
+    germanDetail: "CI/CD, Linux und Cloud-Infrastruktur",
+  },
+] as const;
+
 export function Hero({ locale = "en" }: { locale?: Locale }) {
   const german = locale === "de";
   const headline = german ? HEADLINE_DE : HEADLINE_EN;
 
   return (
     <section className="hero-surface site-container flex min-h-[calc(100svh-5rem)] flex-col">
-      <div className="flex flex-1 flex-col justify-center py-12 md:py-16">
-        <p className="mb-4 font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground sm:text-sm">
-          {german ? "Full-Stack Software Engineer · Dortmund" : "Full-Stack Software Engineer · Dortmund"}
-        </p>
+      <div className="grid flex-1 items-center gap-12 py-14 md:py-16 xl:grid-cols-[minmax(0,1.85fr)_minmax(14rem,0.65fr)] xl:gap-14">
+        <div className="min-w-0">
+          <p className="mb-4 font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground sm:text-sm">
+            Full-Stack Software Engineer · Dortmund
+          </p>
 
-        <h1 className="max-w-[15ch] text-[clamp(2.25rem,6.8vw,4.25rem)] leading-[1.12] tracking-tighter md:text-[4rem] lg:text-[clamp(4rem,min(6vw,9.5vh),5.25rem)]">
-          {headline.map((line) => (
-            <span key={line} className="hero-title-line block cursor-default">
-              {line}
-            </span>
-          ))}
-        </h1>
+          <h1 className="text-[clamp(2.5rem,12.8vw,3.5rem)] leading-[1.1] tracking-tighter md:text-[5rem] xl:text-[clamp(4.5rem,6.8vw,5.75rem)]">
+            {headline.map((line) => (
+              <span key={line} className="hero-title-line block cursor-default">
+                {line}
+              </span>
+            ))}
+          </h1>
 
-        <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
-          {german
-            ? "Ich konzipiere und entwickle Webanwendungen mit TypeScript, React, Next.js und PostgreSQL. Mein Schwerpunkt liegt auf durchdachten Architekturen, sicheren APIs, automatisierten Tests und skalierbaren SaaS-Systemen."
-            : "I design and build web applications with TypeScript, React, Next.js, and PostgreSQL. Focused on thoughtful architectures, secure APIs, automated testing, and scalable SaaS systems."}
-        </p>
+          <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
+            {german
+              ? "Ich konzipiere und entwickle Webanwendungen mit TypeScript, React, Next.js und PostgreSQL. Mein Schwerpunkt liegt auf durchdachten Architekturen, sicheren APIs, automatisierten Tests und skalierbaren SaaS-Systemen."
+              : "I design and build web applications with TypeScript, React, Next.js, and PostgreSQL. Focused on thoughtful architectures, secure APIs, automated testing, and scalable SaaS systems."}
+          </p>
 
-        <div className="mt-7 flex flex-wrap items-center gap-2 font-mono text-xs">
-          {TECH_TAGS.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center rounded-xs border border-border/80 bg-background/50 px-2.5 py-1 text-foreground/85 transition-colors"
+          <div className="mt-7 flex flex-wrap items-center gap-2 font-mono text-xs">
+            {TECH_TAGS.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center rounded-xs border border-border/80 bg-background/50 px-2.5 py-1 text-foreground/85 transition-colors"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3 font-mono text-[13px] uppercase tracking-[0.08em]">
+            <Link
+              href={german ? "/de/projects" : "/projects"}
+              className="inline-flex min-h-11 items-center gap-3 rounded-sm border border-foreground/80 px-5 text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
             >
-              {tag}
-            </span>
-          ))}
+              {german ? "Projekte ansehen" : "View projects"}
+            </Link>
+            <Link
+              href={german ? "/de/contact" : "/contact"}
+              className="inline-flex min-h-11 items-center gap-2 text-foreground/75 underline-offset-8 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+            >
+              {german ? "Kontakt aufnehmen" : "Get in touch"} <span aria-hidden="true">→</span>
+            </Link>
+          </div>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3 font-mono text-[13px] uppercase tracking-[0.08em]">
-          <Link
-            href={locale === "de" ? "/de/projects" : "/projects"}
-            className="inline-flex min-h-11 items-center gap-3 border border-foreground/80 px-5 text-foreground transition-colors hover:bg-foreground hover:text-background focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
-          >
-            {german ? "Projekte ansehen" : "View projects"}
-          </Link>
-          <Link
-            href={locale === "de" ? "/de/contact" : "/contact"}
-            className="inline-flex min-h-11 items-center gap-2 text-foreground/75 underline-offset-8 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
-          >
-            {german ? "Kontakt aufnehmen" : "Get in touch"} <span aria-hidden="true">→</span>
-          </Link>
-        </div>
+        <aside
+          className="hidden border-l border-border pl-8 xl:block"
+          aria-label={german ? "Bereiche der Softwareentwicklung" : "Areas of software engineering"}
+        >
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+            {german ? "Engineering / In der Praxis" : "Engineering / In practice"}
+          </p>
+          <ol className="mt-5 border-t border-border">
+            {ENGINEERING_LAYERS.map((layer) => (
+              <li key={layer.number} className="border-b border-border py-5">
+                <p className="font-mono text-[11px] text-muted-foreground">{layer.number}</p>
+                <h2 className="mt-2 font-serif text-2xl leading-snug">
+                  {german ? layer.germanLabel : layer.label}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {german ? layer.germanDetail : layer.detail}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </aside>
       </div>
 
       <div
