@@ -22,6 +22,7 @@
       <header class="topbar">
         <strong>Plattform</strong>
         <span class="muted">uguroezdamar.com</span>
+        <span id="status" class="muted"></span>
         <span id="live" class="live" title="Live-Verbindung">offline</span>
       </header>
 
@@ -30,6 +31,7 @@
         <form id="composer" class="composer">
           <textarea id="input" rows="2" placeholder="Auftrag an den Chef-Agenten … (Enter senden, Shift+Enter neue Zeile)"></textarea>
           <button id="send" type="submit">Senden</button>
+          <button id="stop" type="button" class="secondary" hidden title="Laufende Aufgabe anhalten">Stopp</button>
         </form>
       </main>
 

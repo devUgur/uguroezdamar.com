@@ -48,7 +48,7 @@ Details: [`docs/operations/secrets.md`](docs/operations/secrets.md).
 ## Struktur
 
 - `apps/site` – öffentliche Website. `apps/portal` – Admin-Portal. Beide Next.js App Router.
-- `apps/platform` – Agenten-Plattform, Cloudflare Worker mit eigener D1-Datenbank und eigenen Secrets (ADR 0024). Sie importiert keine anderen Workspace-Pakete; Agenten ändern dieses Repository nur über Branches `agent/…` und Pull Requests.
+- `apps/platform` – Agenten-Plattform, Cloudflare Worker mit eigener D1-Datenbank und eigenen Secrets (ADR 0024). Sie importiert keine anderen Workspace-Pakete; Agenten ändern dieses Repository nur nach Freigabe des Owners, per Commit auf `dev` oder `agent/…` und per Pull Request, nie auf `main`.
 - `packages/server` – Datenzugriff, Validierung, Auth-Logik. `packages/ui` – app-neutrale Bausteine. `packages/core` – reine Hilfsfunktionen.
 - Die Pakete werden als TypeScript-Quellcode eingebunden: kein Build, kein `dist`, Exporte nur aus `src` (ADR 0017). `@/…` ist in jeder App der Alias auf die eigene Wurzel.
 - `tooling/cli` – die `pnpm ugur`-CLI. `tests/` – Vitest, Repository-Tests gegen In-Memory-Postgres.

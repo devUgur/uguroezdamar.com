@@ -1,7 +1,8 @@
 // Platform UI: chat with the Chef-Agent, live office, approvals. No build step on purpose.
+// Work runs asynchronously in the agent; everything the browser shows arrives as events.
 const AGENT = "chef";
 const $ = (id) => document.getElementById(id);
-const state = { token: readToken(), agents: [], lastEventId: 0 };
+const state = { token: readToken(), agents: [], lastEventId: 0, stream: null, running: false, connectedOnce: false };
 
 function readToken() {
   try { return localStorage.getItem("platform-token") || ""; } catch { return ""; }
@@ -29,8 +30,8 @@ function el(tag, className, text) {
 }
 
 function linkify(node, text) {
-  const parts = String(text).split(/(https?:\/\/[^\s)]+)/g);
-  for (const part of parts) {
+  node.replaceChildren();
+  for (const part of String(text).split(/(https?:\/\/[^\s)]+)/g)) {
     if (/^https?:\/\//.test(part)) {
       const a = el("a", "", part);
       a.href = part; a.target = "_blank"; a.rel = "noopener";
@@ -47,41 +48,99 @@ function addMessage(role, text, extra = "") {
   return node;
 }
 
-function addApprovalCard(approvalId, tool, summary) {
-  if (document.querySelector(`[data-approval="${approvalId}"]`)) return;
-  const card = el("div", "card");
-  card.dataset.approval = approvalId;
-  card.append(el("strong", "", `Freigabe nötig: ${tool}`), el("div", "", summary || ""));
+// ---- running state ---------------------------------------------------------------------------
+
+function setRunning(running, text = "") {
+  state.running = running;
+  $("stop").hidden = !running;
+  $("status").textContent = running ? text || "arbeitet …" : "";
+}
+
+function endStream(finalText) {
+  if (state.stream) {
+    if (finalText !== undefined) linkify(state.stream.node, finalText);
+    state.stream.node.classList.remove("streaming");
+    state.stream = null;
+    return true;
+  }
+  return false;
+}
+
+function onDelta(delta) {
+  if (delta.agentId !== AGENT) return;
+  if (!state.stream || state.stream.step !== delta.step) {
+    endStream();
+    state.stream = { step: delta.step, text: "", node: addMessage("assistant", "", "streaming") };
+  }
+  state.stream.text += delta.text;
+  linkify(state.stream.node, state.stream.text);
+  state.stream.node.scrollIntoView({ block: "end" });
+}
+
+// ---- approvals -------------------------------------------------------------------------------
+
+function approvalBody(approval) {
+  const parts = [el("div", "", approval.summary || approval.action)];
+  for (const warning of approval.warnings || []) parts.push(el("div", "warning", `⚠ ${warning}`));
+  if (approval.expires_at) {
+    parts.push(el("div", "meta", `läuft ab: ${new Date(approval.expires_at * 1000).toLocaleString("de-DE")}`));
+  }
+  return parts;
+}
+
+function decisionButtons(approvalId) {
   const actions = el("div", "actions");
   const yes = el("button", "", "Freigeben");
   const no = el("button", "secondary", "Ablehnen");
-  yes.onclick = () => decide(approvalId, "approve", card);
-  no.onclick = () => decide(approvalId, "reject", card);
+  yes.onclick = () => decide(approvalId, "approve");
+  no.onclick = () => decide(approvalId, "reject");
   actions.append(yes, no);
-  card.append(actions);
+  return actions;
+}
+
+function addApprovalCard(approval) {
+  if (document.querySelector(`.card[data-approval="${approval.id}"]`)) return;
+  const card = el("div", `card ${approval.risk === "security" ? "security" : ""}`);
+  card.dataset.approval = approval.id;
+  card.append(el("strong", "", `Freigabe nötig: ${approval.action}`), ...approvalBody(approval), decisionButtons(approval.id));
   $("messages").append(card);
   card.scrollIntoView({ block: "end" });
 }
 
-async function decide(approvalId, decision, card) {
-  card.querySelectorAll("button").forEach((button) => (button.disabled = true));
-  const pending = addMessage("assistant", decision === "approve" ? "Führe aus …" : "Abgelehnt, ich melde mich …", "pending");
+function markDecided(approvalId, text) {
+  document.querySelectorAll(`[data-approval="${approvalId}"] .actions`).forEach((node) => node.replaceWith(el("div", "meta", text)));
+}
+
+async function decide(approvalId, decision) {
+  document.querySelectorAll(`[data-approval="${approvalId}"] button`).forEach((button) => (button.disabled = true));
+  markDecided(approvalId, decision === "approve" ? "Wird ausgeführt …" : "Abgelehnt.");
   try {
     const result = await api(`/api/approvals/${approvalId}`, { method: "POST", body: JSON.stringify({ decision }) });
-    pending.remove();
-    card.querySelector(".actions").replaceWith(el("div", "muted", decision === "approve" ? (result.ok ? "Ausgeführt." : "Fehlgeschlagen.") : "Abgelehnt."));
-    if (result.reply) addMessage("assistant", result.reply);
+    markDecided(approvalId, decision === "approve" ? (result.ok ? "Ausgeführt." : `Fehlgeschlagen: ${result.outcome}`) : "Abgelehnt.");
+    setRunning(true, "verarbeitet die Freigabe …");
   } catch (error) {
-    pending.textContent = `Fehler: ${error.message}`;
+    markDecided(approvalId, `Fehler: ${error.message}`);
   }
   loadApprovals();
 }
 
-const STATUS = { thinking: "working", tool_call: "working", tool_result: "working", model_result: "working", user_message: "working", approval_requested: "waiting", error: "error", budget_blocked: "error" };
+async function loadApprovals({ restoreCards = false } = {}) {
+  const approvals = await api("/api/approvals?status=pending");
+  if (restoreCards) approvals.slice().reverse().forEach(addApprovalCard);
+  $("approvals").replaceChildren(...(approvals.length ? approvals.map((approval) => {
+    const item = el("li");
+    item.dataset.approval = approval.id;
+    item.append(el("strong", "", `${approval.action} · ${approval.agent_id}`), ...approvalBody(approval), decisionButtons(approval.id));
+    return item;
+  }) : [el("li", "muted", "Nichts offen.")]));
+}
+
+// ---- agents and activity ---------------------------------------------------------------------
+
+const STATUS = { thinking: "working", tool_call: "working", tool_result: "working", model_result: "working", user_message: "working", stage_paused: "working", approval_requested: "waiting", error: "error", budget_blocked: "error" };
 
 function renderAgents() {
-  const list = $("agents");
-  list.replaceChildren(...state.agents.map((agent) => {
+  $("agents").replaceChildren(...state.agents.map((agent) => {
     const item = el("li", "agent");
     item.append(el("span", `dot ${STATUS[agent.last_event] || ""}`), el("span", "", agent.name), el("span", "muted", agent.model_alias));
     return item;
@@ -99,13 +158,16 @@ function describe(event) {
     case "approval_requested": return ["Freigabe angefragt", d.summary];
     case "approval_decided": return ["Freigabe", `${d.approved ? "erteilt" : "abgelehnt"} · ${d.tool}`];
     case "message": return ["Antwort", d.text];
+    case "stage_paused": return ["Etappe", `${d.stage} beendet nach Schritt ${d.steps}, geht gleich weiter`];
+    case "stopped": return ["Gestoppt", `nach Schritt ${d.steps}`];
     case "budget_blocked": return ["Budget", `aufgebraucht (${d.spent} / ${d.budget} $)`];
     case "error": return ["Fehler", d.message];
     default: return [event.type, JSON.stringify(d)];
   }
 }
 
-function addEvent(event) {
+/** live: the event happened now (or was missed while offline), so it also updates the chat. */
+function addEvent(event, live) {
   if (event.id <= state.lastEventId) return;
   state.lastEventId = event.id;
   const [title, text] = describe(event);
@@ -116,36 +178,49 @@ function addEvent(event) {
 
   const agent = state.agents.find((a) => a.id === event.agentId);
   if (agent) { agent.last_event = event.type; renderAgents(); }
-  if (event.type === "approval_requested") { addApprovalCard(event.data.approvalId, event.data.tool, event.data.summary); loadApprovals(); }
+  if (!live || event.agentId !== AGENT) return;
+
+  const d = event.data || {};
+  switch (event.type) {
+    case "thinking": setRunning(true, `arbeitet · Schritt ${d.step}`); break;
+    case "tool_call": endStream(); setRunning(true, `nutzt ${d.tool}`); break;
+    case "stage_paused": setRunning(true, `Etappe ${d.stage} fertig, geht weiter …`); break;
+    case "approval_requested":
+      addApprovalCard({ id: d.approvalId, action: d.tool, summary: d.summary, warnings: d.warnings, risk: d.risk });
+      loadApprovals();
+      break;
+    case "message":
+      if (!endStream(d.text)) addMessage("assistant", d.text);
+      setRunning(false);
+      break;
+    case "error": endStream(); addMessage("assistant", `Fehler: ${d.message}`, "pending"); setRunning(false); break;
+    case "stopped": case "budget_blocked": endStream(); setRunning(false); break;
+  }
 }
 
-async function loadApprovals() {
-  const approvals = await api("/api/approvals?status=pending");
-  $("approvals").replaceChildren(...(approvals.length ? approvals.map((approval) => {
-    const item = el("li");
-    item.append(el("span", "", `${approval.action} · ${approval.agent_id}`));
-    const actions = el("div", "actions");
-    const yes = el("button", "", "Freigeben");
-    const no = el("button", "secondary", "Ablehnen");
-    const card = document.querySelector(`[data-approval="${approval.id}"]`) || item;
-    yes.onclick = () => decide(approval.id, "approve", card);
-    no.onclick = () => decide(approval.id, "reject", card);
-    actions.append(yes, no);
-    item.append(actions);
-    return item;
-  }) : [el("li", "muted", "Nichts offen.")]));
-}
+// ---- live connection -------------------------------------------------------------------------
 
 let heartbeat;
-function connectLive() {
+async function connectLive() {
+  let ticket;
+  try {
+    ({ ticket } = await api("/api/live-ticket", { method: "POST" }));
+  } catch (error) {
+    if (error.status === 401) return showLogin();
+    return setTimeout(connectLive, 5000);
+  }
+  // Catch up on what happened while the socket was down.
+  if (state.connectedOnce) (await api(`/api/events?since=${state.lastEventId}`).catch(() => [])).forEach((event) => addEvent(event, true));
+  state.connectedOnce = true;
+
   const scheme = location.protocol === "https:" ? "wss" : "ws";
-  const socket = new WebSocket(`${scheme}://${location.host}/api/live?token=${encodeURIComponent(state.token)}`);
+  const socket = new WebSocket(`${scheme}://${location.host}/api/live?ticket=${encodeURIComponent(ticket)}`);
   socket.onopen = () => { $("live").textContent = "live"; $("live").classList.add("on"); };
   socket.onmessage = (message) => {
-    try {
-      const data = JSON.parse(message.data);
-      if (data.type === "event") addEvent(data.event);
-    } catch { /* pong */ }
+    let data;
+    try { data = JSON.parse(message.data); } catch { return; /* pong */ }
+    if (data.type === "event") addEvent(data.event, true);
+    if (data.type === "delta") onDelta(data);
   };
   socket.onclose = () => {
     $("live").textContent = "offline"; $("live").classList.remove("on");
@@ -155,31 +230,41 @@ function connectLive() {
   heartbeat = setInterval(() => socket.readyState === 1 && socket.send("ping"), 25000);
 }
 
+// ---- actions ---------------------------------------------------------------------------------
+
 async function send(event) {
   event.preventDefault();
   const text = $("input").value.trim();
   if (!text) return;
   $("input").value = "";
-  $("send").disabled = true;
   addMessage("user", text);
-  const pending = addMessage("assistant", "arbeitet …", "pending");
   try {
     const result = await api(`/api/agents/${AGENT}/chat`, { method: "POST", body: JSON.stringify({ text }) });
-    pending.remove();
-    addMessage("assistant", result.reply);
+    if (result.message) addMessage("assistant", result.message, "pending");
+    setRunning(true);
   } catch (error) {
-    pending.textContent = `Fehler: ${error.message}`;
-  } finally {
-    $("send").disabled = false;
-    $("input").focus();
+    addMessage("assistant", `Fehler: ${error.message}`, "pending");
   }
+  $("input").focus();
+}
+
+async function stop() {
+  $("stop").disabled = true;
+  try { await api(`/api/agents/${AGENT}/stop`, { method: "POST" }); } finally { $("stop").disabled = false; }
+  endStream();
+  setRunning(false);
+}
+
+function showLogin() {
+  $("login").hidden = false;
+  $("app").hidden = true;
 }
 
 async function start() {
   try {
     state.agents = await api("/api/agents");
   } catch (error) {
-    if (error.status === 401) { $("login").hidden = false; $("app").hidden = true; return; }
+    if (error.status === 401) return showLogin();
     throw error;
   }
   $("login").hidden = true;
@@ -191,8 +276,10 @@ async function start() {
     if (message.role === "user" && !String(message.content).startsWith("[Plattform]")) addMessage("user", message.content);
     if (message.role === "assistant" && message.content && !message.toolCalls) addMessage("assistant", message.content);
   }
-  (await api("/api/events?limit=120")).forEach(addEvent);
-  await loadApprovals();
+  (await api("/api/events?limit=120")).forEach((event) => addEvent(event, false));
+  await loadApprovals({ restoreCards: true });
+  const status = await api(`/api/agents/${AGENT}/status`);
+  setRunning(status.running, status.running ? `arbeitet · Schritt ${status.step}` : "");
   connectLive();
 }
 
@@ -202,10 +289,10 @@ $("login-form").addEventListener("submit", async (event) => {
   saveToken(state.token);
   $("login-error").hidden = true;
   await start().catch(() => ($("login-error").hidden = false));
-  if (!$("app").hidden) return;
-  $("login-error").hidden = false;
+  if ($("app").hidden) $("login-error").hidden = false;
 });
 $("composer").addEventListener("submit", send);
+$("stop").addEventListener("click", stop);
 $("input").addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); $("composer").requestSubmit(); }
 });

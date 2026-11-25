@@ -5,8 +5,10 @@ Agenten-Plattform unter `platform.uguroezdamar.com`: Chat mit dem Chef-Agenten, 
 | Pfad | Zweck |
 | --- | --- |
 | `src/index.ts` | API (`/api/*`), Auth, Freigabe-Entscheidungen |
-| `src/agent.ts` | `AgentRuntime`: ein Durable Object pro Agent, Denk-/Werkzeug-Schleife |
-| `src/hub.ts` | `LiveHub`: verteilt Events per WebSocket |
+| `src/agent.ts` | `AgentRuntime`: ein Durable Object pro Agent, führt Aufträge in Alarm-Etappen aus |
+| `src/runtime/` | `AgentRuntimePort`, die Schleife ohne Cloudflare-APIs (`loop.ts`), Subrequest-Budget pro Etappe |
+| `src/approvals.ts` | Text, Risiko und Ablauf der Freigaben; geschützte Pfade |
+| `src/hub.ts` | `LiveHub`: verteilt Events und gestreamten Text per WebSocket, Einmal-Tickets |
 | `src/events.ts` | Event-Log in D1, Tagesbudget |
 | `src/models/` | `ModelPort`, Router mit Fallback, Adapter (OpenAI-kompatibel, Workers AI), Alias-Konfiguration |
 | `src/tools/` | `ToolPort`, GitHub-Werkzeuge, Plattform-Werkzeuge |
@@ -21,6 +23,16 @@ printf 'PLATFORM_ADMIN_TOKEN=local\nGEMINI_API_KEY=...\n' > .dev.vars   # nicht 
 pnpm exec wrangler d1 migrations apply uguroezdamar --local
 pnpm dev
 ```
+
+## Ablauf eines Auftrags
+
+1. `POST /api/agents/chef/chat` legt den Auftrag in den Eingang des Agenten und kehrt sofort zurück.
+2. Ein Alarm startet die erste Etappe. Jede Etappe darf 40 externe Aufrufe machen (Modell, GitHub) und plant vor dem Limit die nächste (`stage_paused`).
+3. Text kommt live als `delta` über `/api/live`, jeder Schritt als Event. Die fertige Antwort ist das Event `message`.
+4. Aktionen mit Außenwirkung werden zur Freigabe (`approval_requested`). Nach der Entscheidung (`POST /api/approvals/:id`) führt die API sie aus und gibt das Ergebnis über `resume` an den Agenten.
+5. `POST /api/agents/chef/stop` bricht ab, `GET …/status` zeigt den Lauf.
+
+Lokal ohne echtes Modell testen: das Alias `chef-smart` per KV-Schlüssel `models` (lokal, `--env dev --local`) auf einen OpenAI-kompatiblen Mock zeigen lassen. Die `ai`-Bindung braucht immer eine Remote-Verbindung zu Cloudflare; dazu `wrangler login` mit dem Konto der Plattform.
 
 ## Erweitern
 
