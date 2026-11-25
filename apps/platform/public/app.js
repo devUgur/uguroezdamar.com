@@ -136,6 +136,7 @@ async function loadApprovals() {
   }) : [el("li", "muted", "Nichts offen.")]));
 }
 
+let heartbeat;
 function connectLive() {
   const scheme = location.protocol === "https:" ? "wss" : "ws";
   const socket = new WebSocket(`${scheme}://${location.host}/api/live?token=${encodeURIComponent(state.token)}`);
@@ -150,7 +151,8 @@ function connectLive() {
     $("live").textContent = "offline"; $("live").classList.remove("on");
     setTimeout(connectLive, 3000);
   };
-  setInterval(() => socket.readyState === 1 && socket.send("ping"), 25000);
+  clearInterval(heartbeat);
+  heartbeat = setInterval(() => socket.readyState === 1 && socket.send("ping"), 25000);
 }
 
 async function send(event) {

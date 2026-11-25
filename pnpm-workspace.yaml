@@ -7,6 +7,7 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
   - unrs-resolver
+  - workerd
 
 # Single place for versions used by more than one workspace (`"dep": "catalog:"`).
 catalog:
