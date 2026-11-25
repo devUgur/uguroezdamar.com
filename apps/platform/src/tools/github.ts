@@ -19,6 +19,7 @@ function assertWritableBranch(branch: string): void {
 async function gh<T>(context: ToolContext, path: string, init: RequestInit = {}): Promise<T> {
   const token = context.env.AGENT_GITHUB_TOKEN;
   if (!token) throw new Error("AGENT_GITHUB_TOKEN ist nicht gesetzt.");
+  context.budget.take();
   const response = await fetch(`${API}${path}`, {
     ...init,
     headers: {

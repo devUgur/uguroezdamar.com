@@ -11,7 +11,9 @@ export type EventType =
   | "approval_decided"
   | "message"
   | "error"
-  | "budget_blocked";
+  | "budget_blocked"
+  | "stage_paused"
+  | "stopped";
 
 export interface PlatformEvent {
   agentId?: string;

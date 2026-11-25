@@ -10,6 +10,7 @@ interface WorkersAiOutput {
 /** Adapter for models hosted on Cloudflare Workers AI (free daily allocation, no API key). */
 export class WorkersAiModel implements ModelPort {
   readonly provider = "workers-ai";
+  readonly external = false;
 
   constructor(private readonly ai: Ai) {}
 

@@ -6,6 +6,13 @@ import { OpenAICompatibleModel } from "./openai-compatible.ts";
 import type { ChatRequest, ChatResult, ModelPort } from "./port.ts";
 import { ModelError } from "./port.ts";
 import { WorkersAiModel } from "./workers-ai.ts";
+import type { SubrequestBudget } from "../runtime/budget.ts";
+
+export interface RouteOptions {
+  /** Each external attempt takes one subrequest; without a budget nothing is counted. */
+  budget?: SubrequestBudget;
+  onDelta?: (text: string) => void;
+}
 
 export interface RoutedResult extends ChatResult {
   target: ModelTarget;
@@ -29,7 +36,7 @@ export class ModelRouter {
     return new ModelRouter(env, config);
   }
 
-  async chat(alias: string, request: Omit<ChatRequest, "model">): Promise<RoutedResult> {
+  async chat(alias: string, request: Omit<ChatRequest, "model">, options: RouteOptions = {}): Promise<RoutedResult> {
     const targets = this.config.aliases[alias];
     if (!targets?.length) throw new ModelError(`Unknown model alias "${alias}"`, "router", 400);
 
@@ -41,8 +48,9 @@ export class ModelRouter {
         attempts.push(`${target.provider}/${target.model}: skipped (no credentials)`);
         continue;
       }
+      if (port.external) options.budget?.take();
       try {
-        const result = await port.chat({ ...request, model: target.model });
+        const result = await port.chat({ ...request, model: target.model }, options.onDelta);
         attempts.push(`${target.provider}/${target.model}: ok`);
         const costUsd =
           (result.usage.inputTokens * target.inputUsdPerM + result.usage.outputTokens * target.outputUsdPerM) / 1_000_000;

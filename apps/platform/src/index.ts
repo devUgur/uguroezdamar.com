@@ -3,6 +3,7 @@ import { authorize } from "./auth.ts";
 import type { Env } from "./env.ts";
 import { emit, recentEvents } from "./events.ts";
 import { DEFAULT_MODEL_CONFIG } from "./models/config.ts";
+import { SubrequestBudget } from "./runtime/budget.ts";
 import { toolByName } from "./tools/registry.ts";
 
 export { AgentRuntime } from "./agent.ts";
@@ -35,6 +36,7 @@ interface ApprovalRow {
   action: string;
   details: string;
   status: string;
+  expires_at: number | null;
   created_at: number;
 }
 
@@ -42,6 +44,10 @@ async function decideApproval(env: Env, id: string, approve: boolean): Promise<R
   const row = await env.DB.prepare("SELECT * FROM approvals WHERE id = ?").bind(id).first<ApprovalRow>();
   if (!row) return json({ error: "Freigabe nicht gefunden" }, 404);
   if (row.status !== "pending") return json({ error: `Bereits entschieden: ${row.status}` }, 409);
+  if (row.expires_at && row.expires_at * 1000 < Date.now()) {
+    await env.DB.prepare("UPDATE approvals SET status = 'expired' WHERE id = ? AND status = 'pending'").bind(id).run();
+    return json({ error: "Freigabe abgelaufen; der Agent muss sie neu vorschlagen." }, 410);
+  }
 
   // Claim it first so a double click cannot run the action twice.
   const claimed = await env.DB.prepare("UPDATE approvals SET status = ?, decided_at = unixepoch() WHERE id = ? AND status = 'pending'")
@@ -56,7 +62,8 @@ async function decideApproval(env: Env, id: string, approve: boolean): Promise<R
     const tool = toolByName(row.action);
     try {
       if (!tool) throw new Error(`Werkzeug ${row.action} existiert nicht mehr.`);
-      const result = await tool.run(details.args, { env, agentId: row.agent_id, projectId: details.projectId, repo: details.repo });
+      const budget = new SubrequestBudget();
+      const result = await tool.run(details.args, { env, agentId: row.agent_id, projectId: details.projectId, repo: details.repo, budget });
       outcome = JSON.stringify(result);
       ok = true;
     } catch (error) {
@@ -72,7 +79,7 @@ async function decideApproval(env: Env, id: string, approve: boolean): Promise<R
     data: { approvalId: id, tool: row.action, approved: approve, ok, outcome: outcome.slice(0, 600) },
   });
 
-  const resumed = await agentStub(env, row.agent_id).resume({
+  await agentStub(env, row.agent_id).resume({
     agentId: row.agent_id,
     projectId: details.projectId,
     approvalId: id,
@@ -80,7 +87,7 @@ async function decideApproval(env: Env, id: string, approve: boolean): Promise<R
     approved: approve,
     outcome: outcome.slice(0, 4000),
   });
-  return json({ approved: approve, ok, outcome, reply: resumed.reply });
+  return json({ approved: approve, ok, outcome });
 }
 
 async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
@@ -88,10 +95,12 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   const method = request.method;
 
   if (path === "/api/health") return json({ ok: true, env: env.PLATFORM_ENV || "production" });
+  // The hub checks the one-time ticket itself; browsers cannot send headers on a WebSocket.
+  if (path === "/api/live") return env.HUB.get(env.HUB.idFromName("main")).fetch(request);
   if (!(await authorize(request, env))) return json({ error: "Nicht angemeldet" }, 401);
 
-  if (path === "/api/live") {
-    return env.HUB.get(env.HUB.idFromName("main")).fetch(request);
+  if (path === "/api/live-ticket" && method === "POST") {
+    return json({ ticket: await env.HUB.get(env.HUB.idFromName("main")).issueTicket() });
   }
 
   if (path === "/api/agents" && method === "GET") {
@@ -103,13 +112,18 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     return json(results.map((row) => ({ ...row, configured: Boolean(AGENTS[String(row.id)]) })));
   }
 
-  const agentMatch = path.match(/^\/api\/agents\/([a-z0-9-]+)\/(chat|history|reset)$/);
+  const agentMatch = path.match(/^\/api\/agents\/([a-z0-9-]+)\/(chat|history|reset|stop|status)$/);
   if (agentMatch) {
     const agentId = agentMatch[1] ?? "";
     const action = agentMatch[2];
     if (!AGENTS[agentId]) return json({ error: "Unbekannter Agent" }, 404);
     const stub = agentStub(env, agentId);
     if (action === "history" && method === "GET") return json(await stub.history());
+    if (action === "status" && method === "GET") return json(await stub.status());
+    if (action === "stop" && method === "POST") {
+      await stub.stop();
+      return json({ ok: true });
+    }
     if (action === "reset" && method === "POST") {
       await stub.reset();
       return json({ ok: true });
@@ -135,11 +149,13 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   if (path === "/api/approvals" && method === "GET") {
     const status = url.searchParams.get("status") ?? "pending";
     const { results } = await env.DB.prepare(
-      "SELECT id, agent_id, action, status, created_at FROM approvals WHERE status = ? ORDER BY created_at DESC LIMIT 50",
+      `SELECT id, agent_id, action, status, summary, risk, warnings, expires_at, created_at FROM approvals
+        WHERE status = ? AND (? <> 'pending' OR expires_at IS NULL OR expires_at > unixepoch())
+        ORDER BY created_at DESC LIMIT 50`,
     )
-      .bind(status)
-      .all();
-    return json(results);
+      .bind(status, status)
+      .all<Record<string, unknown>>();
+    return json(results.map((row) => ({ ...row, warnings: row.warnings ? (JSON.parse(String(row.warnings)) as string[]) : [] })));
   }
 
   const approvalMatch = path.match(/^\/api\/approvals\/([0-9a-f-]{36})$/);

@@ -1,7 +1,8 @@
-import type { ChatMessage, ChatRequest, ChatResult, ModelPort, ToolCall } from "./port.ts";
+import type { ChatMessage, ChatRequest, ChatResult, ModelPort, ToolCall, Usage } from "./port.ts";
 import { ModelError } from "./port.ts";
 
 interface WireToolCall {
+  index?: number;
   id?: string;
   type?: string;
   function?: { name?: string; arguments?: string | Record<string, unknown> };
@@ -13,10 +14,19 @@ interface WireMessage {
   tool_calls?: WireToolCall[];
 }
 
+interface WireUsage {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+}
+
 interface WireResponse {
   choices?: { message?: WireMessage }[];
-  usage?: { prompt_tokens?: number; completion_tokens?: number };
-  error?: { message?: string } | string;
+  usage?: WireUsage;
+}
+
+interface WireChunk {
+  choices?: { delta?: WireMessage }[];
+  usage?: WireUsage;
 }
 
 /**
@@ -24,6 +34,8 @@ interface WireResponse {
  * Studio), OpenRouter, DeepSeek, OpenAI, and the Cloudflare AI Gateway in front of any of them.
  */
 export class OpenAICompatibleModel implements ModelPort {
+  readonly external = true;
+
   constructor(
     readonly provider: string,
     private readonly baseUrl: string,
@@ -35,15 +47,26 @@ export class OpenAICompatibleModel implements ModelPort {
     return Boolean(this.apiKey);
   }
 
-  async chat(request: ChatRequest): Promise<ChatResult> {
+  async chat(request: ChatRequest, onDelta?: (text: string) => void): Promise<ChatResult> {
+    if (onDelta) {
+      try {
+        return await this.send(request, onDelta);
+      } catch (error) {
+        // A provider that rejects streaming gets one plain retry; other errors go to the router.
+        if (!(error instanceof ModelError) || error.status !== 400) throw error;
+      }
+    }
+    return this.send(request);
+  }
+
+  private async send(request: ChatRequest, onDelta?: (text: string) => void): Promise<ChatResult> {
     const body = {
       model: request.model,
       messages: request.messages.map(toWire),
-      tools: request.tools?.length
-        ? request.tools.map((tool) => ({ type: "function", function: tool }))
-        : undefined,
+      tools: request.tools?.length ? request.tools.map((tool) => ({ type: "function", function: tool })) : undefined,
       temperature: request.temperature,
       max_tokens: request.maxTokens,
+      stream: onDelta ? true : undefined,
     };
 
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -56,23 +79,79 @@ export class OpenAICompatibleModel implements ModelPort {
       body: JSON.stringify(body),
     });
 
-    const text = await response.text();
     if (!response.ok) {
-      throw new ModelError(`${this.provider} ${response.status}: ${text.slice(0, 500)}`, this.provider, response.status);
+      throw new ModelError(`${this.provider} ${response.status}: ${(await response.text()).slice(0, 500)}`, this.provider, response.status);
+    }
+    if (onDelta && response.body && (response.headers.get("content-type") ?? "").includes("text/event-stream")) {
+      return readStream(response.body, onDelta, this.provider);
     }
 
-    const data = JSON.parse(text) as WireResponse;
+    const data = JSON.parse(await response.text()) as WireResponse;
     const message = data.choices?.[0]?.message;
     if (!message) throw new ModelError(`${this.provider}: response without a message`, this.provider);
-
-    return {
-      message: fromWire(message),
-      usage: {
-        inputTokens: data.usage?.prompt_tokens ?? 0,
-        outputTokens: data.usage?.completion_tokens ?? 0,
-      },
-    };
+    return { message: fromWire(message), usage: usageOf(data.usage) };
   }
+}
+
+function usageOf(usage: WireUsage | undefined): Usage {
+  return { inputTokens: usage?.prompt_tokens ?? 0, outputTokens: usage?.completion_tokens ?? 0 };
+}
+
+/** Reads a server-sent-events stream and assembles text and tool calls from the deltas. */
+async function readStream(body: ReadableStream<Uint8Array>, onDelta: (text: string) => void, provider: string): Promise<ChatResult> {
+  const reader = body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  let content = "";
+  let usage: Usage = { inputTokens: 0, outputTokens: 0 };
+  const calls = new Map<number, { id?: string; name: string; arguments: string }>();
+
+  const handle = (line: string) => {
+    if (!line.startsWith("data:")) return;
+    const payload = line.slice(5).trim();
+    if (!payload || payload === "[DONE]") return;
+    let chunk: WireChunk;
+    try {
+      chunk = JSON.parse(payload) as WireChunk;
+    } catch {
+      return;
+    }
+    if (chunk.usage) usage = usageOf(chunk.usage);
+    const delta = chunk.choices?.[0]?.delta;
+    if (!delta) return;
+    if (delta.content) {
+      content += delta.content;
+      onDelta(delta.content);
+    }
+    for (const [position, call] of (delta.tool_calls ?? []).entries()) {
+      const index = call.index ?? position;
+      const current = calls.get(index) ?? { name: "", arguments: "" };
+      if (call.id) current.id = call.id;
+      if (call.function?.name) current.name += call.function.name;
+      const args = call.function?.arguments;
+      if (args !== undefined) current.arguments += typeof args === "string" ? args : JSON.stringify(args);
+      calls.set(index, current);
+    }
+  };
+
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += value;
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop() ?? "";
+    lines.forEach(handle);
+  }
+  if (buffer) handle(buffer);
+
+  const toolCalls: ToolCall[] = [...calls.entries()]
+    .sort(([a], [b]) => a - b)
+    .filter(([, call]) => call.name)
+    .map(([index, call]) => ({ id: call.id ?? `call_${Date.now()}_${index}`, name: call.name, arguments: call.arguments || "{}" }));
+  if (!content && !toolCalls.length) throw new ModelError(`${provider}: empty stream`, provider);
+  return {
+    message: { role: "assistant", content: content || null, toolCalls: toolCalls.length ? toolCalls : undefined },
+    usage,
+  };
 }
 
 function toWire(message: ChatMessage): Record<string, unknown> {
@@ -97,9 +176,7 @@ export function fromWire(message: WireMessage): ChatMessage {
       id: call.id ?? `call_${Date.now()}_${index}`,
       name: call.function?.name ?? "",
       arguments:
-        typeof call.function?.arguments === "string"
-          ? call.function.arguments
-          : JSON.stringify(call.function?.arguments ?? {}),
+        typeof call.function?.arguments === "string" ? call.function.arguments : JSON.stringify(call.function?.arguments ?? {}),
     }));
   return {
     role: "assistant",

@@ -12,8 +12,10 @@ export async function authorize(request: Request, env: Env): Promise<boolean> {
 
   const expected = env.PLATFORM_ADMIN_TOKEN;
   if (!expected) return false;
+  // Only the Authorization header: a token in the URL would end up in logs. The live socket
+  // uses one-time tickets instead (hub.ts).
   const header = request.headers.get("authorization");
-  const given = header?.startsWith("Bearer ") ? header.slice(7) : new URL(request.url).searchParams.get("token");
+  const given = header?.startsWith("Bearer ") ? header.slice(7) : null;
   return given ? constantTimeEqual(given, expected) : false;
 }
 

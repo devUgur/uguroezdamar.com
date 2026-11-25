@@ -1,37 +1,26 @@
 import { DurableObject } from "cloudflare:workers";
 import { AGENTS } from "./agents/registry.ts";
+import { APPROVAL_TTL_SECONDS, describeApproval } from "./approvals.ts";
 import type { Env } from "./env.ts";
 import { emit, spentToday } from "./events.ts";
 import type { ChatMessage, ToolCall } from "./models/port.ts";
 import { ModelRouter } from "./models/router.ts";
+import { SubrequestBudget } from "./runtime/budget.ts";
+import { runAgentLoop, type LoopEvent } from "./runtime/loop.ts";
+import type { Accepted, AgentRuntimePort, AgentStatus, ChatInput, ResumeInput } from "./runtime/port.ts";
 import { projectMemories } from "./tools/platform.ts";
 import type { ToolContext } from "./tools/port.ts";
-import { toolByName, toolsByName } from "./tools/registry.ts";
+import { toolsByName } from "./tools/registry.ts";
 
-const MAX_STEPS = 12;
+export type { ChatInput, ResumeInput } from "./runtime/port.ts";
+
+/** Steps per task across all stages; the loop stops there and asks Ugur. */
+const MAX_STEPS = 24;
 const HISTORY_LIMIT = 60;
-const TOOL_RESULT_CHARS = 20_000;
-const PREVIEW_CHARS = 600;
-
-export interface ChatInput {
-  agentId: string;
-  projectId: string;
-  text: string;
-}
-
-export interface ResumeInput {
-  agentId: string;
-  projectId: string;
-  approvalId: string;
-  tool: string;
-  approved: boolean;
-  outcome: string;
-}
-
-export interface ChatOutput {
-  reply: string;
-  busy?: boolean;
-}
+/** A run without progress for this long is treated as dead (e.g. after a deploy). */
+const STALE_RUN_MS = 15 * 60_000;
+/** Live answer text is sent to browsers in batches, not per token. */
+const DELTA_FLUSH_MS = 250;
 
 interface MessageRow {
   [key: string]: SqlStorageValue;
@@ -47,18 +36,25 @@ interface ProjectRow {
   repo: string | null;
 }
 
-function preview(value: unknown): string {
-  const text = typeof value === "string" ? value : JSON.stringify(value);
-  return text.length > PREVIEW_CHARS ? `${text.slice(0, PREVIEW_CHARS)}…` : text;
+interface RunState {
+  agentId: string;
+  projectId: string;
+  steps: number;
+  stages: number;
+  startedAt: number;
+  touchedAt: number;
 }
 
-/**
- * One Durable Object per agent (idFromName(agentId)). It keeps the agent's conversation in its
- * own SQLite and runs the think → tool → answer loop. Everything it does is emitted as an event.
- */
-export class AgentRuntime extends DurableObject<Env> {
-  private busy = false;
+const RUN = "run";
+const INBOX = "inbox";
 
+/**
+ * One Durable Object per agent (idFromName(agentId)), implementing AgentRuntimePort. It keeps
+ * the conversation in its own SQLite and runs the loop in stages: every stage is an alarm with
+ * a fresh subrequest budget (Workers Free: 50 external calls per invocation). chat() and
+ * resume() only queue work; results reach the browser as events through the live hub.
+ */
+export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS messages (
@@ -71,153 +67,178 @@ export class AgentRuntime extends DurableObject<Env> {
     )`);
   }
 
-  async chat(input: ChatInput): Promise<ChatOutput> {
-    if (this.busy) return { reply: "Ich arbeite noch an der vorherigen Aufgabe. Einen Moment bitte.", busy: true };
-    this.busy = true;
-    try {
-      this.append({ role: "user", content: input.text });
-      await emit(this.env, { agentId: input.agentId, projectId: input.projectId, type: "user_message", data: { text: input.text } });
-      return await this.run(input.agentId, input.projectId);
-    } finally {
-      this.busy = false;
-    }
+  async chat(input: ChatInput): Promise<Accepted> {
+    await emit(this.env, { agentId: input.agentId, projectId: input.projectId, type: "user_message", data: { text: input.text } });
+    return this.enqueue(input.agentId, input.projectId, input.text);
   }
 
   /** Called after Ugur decided on an approval: the agent learns the outcome and carries on. */
-  async resume(input: ResumeInput): Promise<ChatOutput> {
-    if (this.busy) return { reply: "Ich arbeite noch; die Freigabe wird danach berücksichtigt.", busy: true };
-    this.busy = true;
-    try {
-      this.append({
-        role: "user",
-        content: `[Plattform] Freigabe ${input.approvalId} für ${input.tool} wurde ${input.approved ? "erteilt und ausgeführt" : "abgelehnt"}. Ergebnis: ${input.outcome}`,
-      });
-      return await this.run(input.agentId, input.projectId);
-    } finally {
-      this.busy = false;
-    }
+  async resume(input: ResumeInput): Promise<Accepted> {
+    const note = `[Plattform] Freigabe ${input.approvalId} für ${input.tool} wurde ${
+      input.approved ? "erteilt und ausgeführt" : "abgelehnt"
+    }. Ergebnis: ${input.outcome}`;
+    return this.enqueue(input.agentId, input.projectId, note);
   }
 
-  history(): ChatMessage[] {
+  async stop(): Promise<void> {
+    const run = await this.ctx.storage.get<RunState>(RUN);
+    await this.ctx.storage.delete([RUN, INBOX]);
+    await this.ctx.storage.deleteAlarm();
+    if (run) await emit(this.env, { agentId: run.agentId, projectId: run.projectId, type: "stopped", data: { steps: run.steps } });
+  }
+
+  async status(): Promise<AgentStatus> {
+    const run = await this.activeRun();
+    return run ? { running: true, step: run.steps, startedAt: run.startedAt } : { running: false, step: 0 };
+  }
+
+  async history(): Promise<ChatMessage[]> {
     return this.recent(200);
   }
 
-  reset(): void {
+  async reset(): Promise<void> {
+    await this.stop();
     this.ctx.storage.sql.exec("DELETE FROM messages");
   }
 
-  private async run(agentId: string, projectId: string): Promise<ChatOutput> {
+  /** Messages wait in the inbox until a stage boundary, so tool-call sequences stay intact. */
+  private async enqueue(agentId: string, projectId: string, text: string): Promise<Accepted> {
+    const inbox = (await this.ctx.storage.get<string[]>(INBOX)) ?? [];
+    inbox.push(text);
+    await this.ctx.storage.put(INBOX, inbox);
+    if (await this.activeRun()) {
+      return { accepted: true, busy: true, message: "Ich arbeite gerade; dein Hinweis fließt in den nächsten Schritt ein." };
+    }
+    const now = Date.now();
+    await this.ctx.storage.put<RunState>(RUN, { agentId, projectId, steps: 0, stages: 0, startedAt: now, touchedAt: now });
+    await this.ctx.storage.setAlarm(now);
+    return { accepted: true };
+  }
+
+  private async activeRun(): Promise<RunState | undefined> {
+    const run = await this.ctx.storage.get<RunState>(RUN);
+    if (run && Date.now() - run.touchedAt > STALE_RUN_MS) {
+      await this.ctx.storage.delete(RUN);
+      return undefined;
+    }
+    return run;
+  }
+
+  override async alarm(): Promise<void> {
+    const run = await this.ctx.storage.get<RunState>(RUN);
+    if (!run) return;
+    const base = { agentId: run.agentId, projectId: run.projectId };
+    try {
+      const inbox = (await this.ctx.storage.get<string[]>(INBOX)) ?? [];
+      if (inbox.length) {
+        for (const text of inbox) this.append({ role: "user", content: text });
+        await this.ctx.storage.delete(INBOX);
+      }
+
+      const outcome = await this.stage(run);
+      if (outcome === "paused") {
+        await this.ctx.storage.put<RunState>(RUN, { ...run, stages: run.stages + 1, touchedAt: Date.now() });
+        await emit(this.env, { ...base, type: "stage_paused", data: { steps: run.steps, stage: run.stages + 1 } });
+        await this.ctx.storage.setAlarm(Date.now() + 200);
+        return;
+      }
+      await this.ctx.storage.delete(RUN);
+      // Something arrived while the run was finishing: start the next one right away.
+      if (((await this.ctx.storage.get<string[]>(INBOX)) ?? []).length) {
+        const now = Date.now();
+        await this.ctx.storage.put<RunState>(RUN, { ...base, steps: 0, stages: 0, startedAt: now, touchedAt: now });
+        await this.ctx.storage.setAlarm(now);
+      }
+    } catch (error) {
+      // No rethrow: a retried alarm would repeat side effects. Report and end the run.
+      await this.ctx.storage.delete(RUN);
+      const message = error instanceof Error ? error.message : String(error);
+      await emit(this.env, { ...base, type: "error", data: { message } }).catch(() => undefined);
+    }
+  }
+
+  /** One stage of the loop; updates run.steps in place. */
+  private async stage(run: RunState): Promise<"paused" | "ended"> {
+    const { agentId, projectId } = run;
+    const base = { agentId, projectId };
     const definition = AGENTS[agentId];
     if (!definition) throw new Error(`Unbekannter Agent "${agentId}"`);
 
-    const project = await this.env.DB.prepare("SELECT id, name, repo FROM projects WHERE id = ?").bind(projectId).first<ProjectRow>();
+    const [project, budgetRow, spent] = await Promise.all([
+      this.env.DB.prepare("SELECT id, name, repo FROM projects WHERE id = ?").bind(projectId).first<ProjectRow>(),
+      this.env.DB.prepare("SELECT daily_budget_usd FROM agents WHERE id = ?").bind(agentId).first<{ daily_budget_usd: number }>(),
+      spentToday(this.env, agentId),
+    ]);
+    const dailyBudget = budgetRow?.daily_budget_usd ?? 0.5;
+    if (spent >= dailyBudget) {
+      const reply = `Mein Tagesbudget von ${dailyBudget.toFixed(2)} $ ist aufgebraucht (${spent.toFixed(2)} $). Ich mache morgen weiter oder du erhöhst das Budget.`;
+      await emit(this.env, { ...base, type: "budget_blocked", data: { budget: dailyBudget, spent } });
+      await emit(this.env, { ...base, type: "message", data: { text: reply } });
+      return "ended";
+    }
+
     const repo = project?.repo ?? this.env.DEFAULT_REPO;
-    const context: ToolContext = { env: this.env, agentId, projectId, repo };
-    const base = { agentId, projectId };
-
-    const budgetRow = await this.env.DB.prepare("SELECT daily_budget_usd FROM agents WHERE id = ?").bind(agentId).first<{ daily_budget_usd: number }>();
-    const budget = budgetRow?.daily_budget_usd ?? 0.5;
-    const spent = await spentToday(this.env, agentId);
-    if (spent >= budget) {
-      const reply = `Mein Tagesbudget von ${budget.toFixed(2)} $ ist aufgebraucht (${spent.toFixed(2)} $). Ich mache morgen weiter oder du erhöhst das Budget.`;
-      await emit(this.env, { ...base, type: "budget_blocked", data: { budget, spent } });
-      return { reply };
-    }
-
+    const budget = new SubrequestBudget();
+    const context: ToolContext = { env: this.env, agentId, projectId, repo, budget };
     const router = await ModelRouter.load(this.env);
-    const tools = toolsByName(definition.tools);
-    const system: ChatMessage = {
-      role: "system",
-      content: definition.systemPrompt({
-        repo,
-        projectName: project?.name ?? projectId,
-        memories: await projectMemories(this.env.DB, projectId),
-      }),
-    };
+    const deltas = new DeltaBuffer(this.env, agentId);
 
-    for (let step = 1; step <= MAX_STEPS; step += 1) {
-      await emit(this.env, { ...base, type: "thinking", data: { step } });
-
-      let result;
-      try {
-        result = await router.chat(definition.modelAlias, {
-          messages: [system, ...this.recent(HISTORY_LIMIT)],
-          tools: tools.map((tool) => tool.spec),
-          temperature: 0.3,
-          maxTokens: 8192,
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        await emit(this.env, { ...base, type: "error", data: { step, message } });
-        return { reply: `Das Modell hat nicht geantwortet: ${message}` };
-      }
-
-      await emit(this.env, {
-        ...base,
-        type: "model_result",
-        data: { step, model: `${result.target.provider}/${result.target.model}`, attempts: result.attempts },
-        tokensIn: result.usage.inputTokens,
-        tokensOut: result.usage.outputTokens,
-        costUsd: result.costUsd,
-      });
-
-      this.append(result.message);
-      const calls = result.message.toolCalls ?? [];
-      if (!calls.length) {
-        const reply = result.message.content?.trim() || "(keine Antwort)";
-        await emit(this.env, { ...base, type: "message", data: { text: reply } });
-        return { reply };
-      }
-
-      for (const call of calls) {
-        const output = await this.runTool(call, definition.tools, context);
-        this.append({ role: "tool", toolCallId: call.id, content: output.slice(0, TOOL_RESULT_CHARS) });
-      }
-    }
-
-    const reply = `Ich habe nach ${MAX_STEPS} Schritten angehalten, damit nichts aus dem Ruder läuft. Sag mir, ob ich weitermachen soll.`;
-    await emit(this.env, { ...base, type: "message", data: { text: reply } });
-    return { reply };
-  }
-
-  private async runTool(call: ToolCall, allowed: readonly string[], context: ToolContext): Promise<string> {
-    const base = { agentId: context.agentId, projectId: context.projectId };
-    const tool = allowed.includes(call.name) ? toolByName(call.name) : undefined;
-    let args: Record<string, unknown> = {};
-    try {
-      args = JSON.parse(call.arguments || "{}") as Record<string, unknown>;
-    } catch {
-      return JSON.stringify({ error: "Argumente sind kein gültiges JSON." });
-    }
-    await emit(this.env, { ...base, type: "tool_call", data: { tool: call.name, args: preview(args) } });
-    if (!tool) return JSON.stringify({ error: `Werkzeug "${call.name}" steht dir nicht zur Verfügung.` });
-
-    if (tool.requiresApproval) {
-      const approvalId = crypto.randomUUID();
-      await this.env.DB.prepare("INSERT INTO approvals (id, agent_id, action, details) VALUES (?, ?, ?, ?)")
-        .bind(approvalId, context.agentId, call.name, JSON.stringify({ args, projectId: context.projectId, repo: context.repo }))
-        .run();
-      await emit(this.env, {
-        ...base,
-        type: "approval_requested",
-        data: { approvalId, tool: call.name, summary: summarize(call.name, args) },
-      });
-      return JSON.stringify({
-        status: "pending_approval",
-        approvalId,
-        note: "Ugur entscheidet über diese Aktion. Führe sie nicht erneut aus; sag ihm kurz, was du vorschlägst, und warte.",
-      });
-    }
-
-    try {
-      const result = await tool.run(args, context);
-      await emit(this.env, { ...base, type: "tool_result", data: { tool: call.name, ok: true, preview: preview(result) } });
-      return JSON.stringify(result);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      await emit(this.env, { ...base, type: "tool_result", data: { tool: call.name, ok: false, preview: message } });
-      return JSON.stringify({ error: message });
-    }
+    const outcome = await runAgentLoop({
+      system: {
+        role: "system",
+        content: definition.systemPrompt({
+          repo,
+          projectName: project?.name ?? projectId,
+          memories: await projectMemories(this.env.DB, projectId),
+        }),
+      },
+      history: { recent: () => this.recent(HISTORY_LIMIT), append: (message) => this.append(message) },
+      model: async (request, onDelta) => {
+        const result = await router.chat(
+          definition.modelAlias,
+          { ...request, temperature: 0.3, maxTokens: 8192 },
+          { budget, onDelta },
+        );
+        await deltas.flush();
+        return {
+          message: result.message,
+          usage: result.usage,
+          costUsd: result.costUsd,
+          model: `${result.target.provider}/${result.target.model}`,
+          attempts: result.attempts,
+        };
+      },
+      tools: toolsByName(definition.tools),
+      context,
+      budget,
+      requestApproval: async (tool, args) => {
+        const approvalId = crypto.randomUUID();
+        const description = describeApproval(tool, args);
+        await this.env.DB.prepare(
+          `INSERT INTO approvals (id, agent_id, action, details, summary, risk, warnings, expires_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch() + ?)`,
+        )
+          .bind(
+            approvalId,
+            agentId,
+            tool,
+            JSON.stringify({ args, projectId, repo }),
+            description.summary,
+            description.risk,
+            JSON.stringify(description.warnings),
+            APPROVAL_TTL_SECONDS,
+          )
+          .run();
+        return { approvalId, description };
+      },
+      emit: (event: LoopEvent) => emit(this.env, { ...base, ...event }).then(() => undefined),
+      delta: (step, text) => deltas.push(step, text),
+      stepsDone: run.steps,
+      maxSteps: MAX_STEPS,
+    });
+    await deltas.flush();
+    run.steps = outcome.steps;
+    return outcome.kind === "paused" ? "paused" : "ended";
   }
 
   private append(message: ChatMessage): void {
@@ -248,13 +269,35 @@ export class AgentRuntime extends DurableObject<Env> {
   }
 }
 
-function summarize(tool: string, args: Record<string, unknown>): string {
-  if (tool === "repo_commit_files") {
-    const files = Array.isArray(args.files) ? (args.files as { path?: string; delete?: boolean }[]) : [];
-    return `Commit auf ${String(args.branch)}: „${String(args.message)}“ – ${files
-      .map((file) => `${file.delete ? "löschen" : "schreiben"} ${file.path ?? "?"}`)
-      .join(", ")}`;
+/** Collects streamed answer text and sends it to the live hub every DELTA_FLUSH_MS. */
+class DeltaBuffer {
+  private text = "";
+  private step = 0;
+  private timer: ReturnType<typeof setTimeout> | undefined;
+  private sending: Promise<unknown> = Promise.resolve();
+
+  constructor(
+    private readonly env: Env,
+    private readonly agentId: string,
+  ) {}
+
+  push(step: number, text: string): void {
+    if (step !== this.step && this.text) void this.flush();
+    this.step = step;
+    this.text += text;
+    this.timer ??= setTimeout(() => void this.flush(), DELTA_FLUSH_MS);
   }
-  if (tool === "repo_open_pull_request") return `Pull Request von ${String(args.branch)}: „${String(args.title)}“`;
-  return preview(args);
+
+  async flush(): Promise<void> {
+    if (this.timer !== undefined) clearTimeout(this.timer);
+    this.timer = undefined;
+    if (this.text) {
+      const message = JSON.stringify({ type: "delta", agentId: this.agentId, step: this.step, text: this.text });
+      this.text = "";
+      this.sending = this.sending
+        .then(() => this.env.HUB.get(this.env.HUB.idFromName("main")).broadcast(message))
+        .catch((error) => console.error("delta broadcast failed", error));
+    }
+    await this.sending;
+  }
 }

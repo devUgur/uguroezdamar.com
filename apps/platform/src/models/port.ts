@@ -47,7 +47,10 @@ export interface ModelPort {
   readonly provider: string;
   /** False when the provider's credentials are missing; the router then skips it. */
   available(): boolean;
-  chat(request: ChatRequest): Promise<ChatResult>;
+  /** External providers count against the per-invocation subrequest budget; Cloudflare bindings do not. */
+  readonly external: boolean;
+  /** With onDelta the adapter streams and reports the answer text as it arrives, if it can. */
+  chat(request: ChatRequest, onDelta?: (text: string) => void): Promise<ChatResult>;
 }
 
 export class ModelError extends Error {

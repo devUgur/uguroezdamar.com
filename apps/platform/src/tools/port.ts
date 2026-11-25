@@ -1,5 +1,6 @@
 import type { Env } from "../env.ts";
 import type { ToolSpec } from "../models/port.ts";
+import type { SubrequestBudget } from "../runtime/budget.ts";
 
 export interface ToolContext {
   env: Env;
@@ -7,6 +8,8 @@ export interface ToolContext {
   projectId: string;
   /** owner/name of the repository the project lives in. */
   repo: string;
+  /** External calls left in this invocation; take() before every fetch. */
+  budget: SubrequestBudget;
 }
 
 /**
