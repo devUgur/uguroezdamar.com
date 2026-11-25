@@ -3,8 +3,18 @@ import { str, ToolInputError } from "./port.ts";
 
 const API = "https://api.github.com";
 const MAX_FILE_CHARS = 60_000;
-/** Agents only ever write to their own branches; main changes only through a merged pull request. */
+/**
+ * Everyone works on dev (it deploys to platform-dev); main changes only through a pull request
+ * from dev. Agents may commit to dev or to their own agent/... branches, always after approval.
+ */
+const WORK_BRANCH = "dev";
 const BRANCH_PREFIX = "agent/";
+
+function assertWritableBranch(branch: string): void {
+  if (branch !== WORK_BRANCH && !branch.startsWith(BRANCH_PREFIX)) {
+    throw new ToolInputError(`Schreiben nur auf "${WORK_BRANCH}" oder "${BRANCH_PREFIX}…", nie auf main.`);
+  }
+}
 
 async function gh<T>(context: ToolContext, path: string, init: RequestInit = {}): Promise<T> {
   const token = context.env.AGENT_GITHUB_TOKEN;
@@ -30,11 +40,6 @@ function decodeBase64(content: string): string {
   return new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0)));
 }
 
-async function defaultBranch(context: ToolContext): Promise<string> {
-  const repo = await gh<{ default_branch: string }>(context, `/repos/${context.repo}`);
-  return repo.default_branch;
-}
-
 const listFiles: Tool = {
   spec: {
     name: "repo_list_files",
@@ -44,14 +49,14 @@ const listFiles: Tool = {
       type: "object",
       properties: {
         path: { type: "string", description: "Ordner relativ zur Wurzel, z. B. apps/site" },
-        ref: { type: "string", description: "Branch oder Commit, Standard ist der Hauptbranch" },
+        ref: { type: "string", description: "Branch oder Commit, Standard ist dev" },
         recursive: { type: "boolean" },
       },
     },
   },
   async run(args, context) {
     const path = str(args, "path", "").replace(/^\/+|\/+$/g, "");
-    const ref = str(args, "ref", await defaultBranch(context));
+    const ref = str(args, "ref", WORK_BRANCH);
     if (args.recursive === true) {
       const tree = await gh<{ tree: { path: string; type: string }[]; truncated: boolean }>(
         context,
@@ -79,14 +84,14 @@ const readFile: Tool = {
       type: "object",
       properties: {
         path: { type: "string" },
-        ref: { type: "string", description: "Branch oder Commit, Standard ist der Hauptbranch" },
+        ref: { type: "string", description: "Branch oder Commit, Standard ist dev" },
       },
       required: ["path"],
     },
   },
   async run(args, context) {
     const path = str(args, "path").replace(/^\/+/, "");
-    const ref = str(args, "ref", await defaultBranch(context));
+    const ref = str(args, "ref", WORK_BRANCH);
     const file = await gh<{ content?: string; encoding?: string; size: number; sha: string; type: string }>(
       context,
       `/repos/${context.repo}/contents/${path}?ref=${encodeURIComponent(ref)}`,
@@ -108,7 +113,7 @@ const readFile: Tool = {
 const searchCode: Tool = {
   spec: {
     name: "repo_search_code",
-    description: "Sucht Text im Code des Hauptbranches und liefert die Dateipfade der Treffer.",
+    description: "Sucht Text im Code (Index des Default-Branches auf GitHub) und liefert die Dateipfade der Treffer.",
     parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
   },
   async run(args, context) {
@@ -132,11 +137,11 @@ const commitFiles: Tool = {
   spec: {
     name: "repo_commit_files",
     description:
-      "Schreibt einen Commit mit einer oder mehreren Dateien auf einen Agenten-Branch (agent/...). Der Branch wird bei Bedarf vom Hauptbranch angelegt. Jede Datei bekommt ihren VOLLSTÄNDIGEN neuen Inhalt. Braucht Ugurs Freigabe.",
+      "Schreibt einen Commit mit einer oder mehreren Dateien auf dev (Standard, wird danach automatisch nach platform-dev deployt) oder auf einen Branch agent/... (wird bei Bedarf von dev angelegt). Nie main. Jede Datei bekommt ihren VOLLSTÄNDIGEN neuen Inhalt. Braucht Ugurs Freigabe.",
     parameters: {
       type: "object",
       properties: {
-        branch: { type: "string", description: "z. B. agent/fix-footer-link" },
+        branch: { type: "string", description: "dev oder agent/..., z. B. agent/fix-footer-link" },
         message: { type: "string", description: "Commit-Nachricht, Deutsch, im Imperativ" },
         files: {
           type: "array",
@@ -155,13 +160,13 @@ const commitFiles: Tool = {
     },
   },
   async run(args, context) {
-    const branch = str(args, "branch");
-    if (!branch.startsWith(BRANCH_PREFIX)) throw new ToolInputError(`Branch muss mit "${BRANCH_PREFIX}" beginnen.`);
+    const branch = str(args, "branch", WORK_BRANCH);
+    assertWritableBranch(branch);
     const message = str(args, "message");
     const files = (Array.isArray(args.files) ? args.files : []) as FileChange[];
     if (!files.length) throw new ToolInputError("Keine Dateien angegeben.");
 
-    const base = await defaultBranch(context);
+    const base = WORK_BRANCH;
     let headSha: string;
     try {
       headSha = (await gh<{ object: { sha: string } }>(context, `/repos/${context.repo}/git/ref/heads/${branch}`)).object.sha;
@@ -202,7 +207,7 @@ const openPullRequest: Tool = {
   spec: {
     name: "repo_open_pull_request",
     description:
-      "Öffnet einen Pull Request von einem Agenten-Branch in den Hauptbranch. Kein Merge, kein Deploy. Braucht Ugurs Freigabe.",
+      "Öffnet einen Pull Request: von agent/... nach dev, oder von dev nach main (Release in Produktion). Kein Merge, kein Deploy. Braucht Ugurs Freigabe.",
     parameters: {
       type: "object",
       properties: {
@@ -215,12 +220,12 @@ const openPullRequest: Tool = {
   },
   async run(args, context) {
     const branch = str(args, "branch");
-    if (!branch.startsWith(BRANCH_PREFIX)) throw new ToolInputError(`Branch muss mit "${BRANCH_PREFIX}" beginnen.`);
+    assertWritableBranch(branch);
     const pull = await gh<{ number: number; html_url: string }>(context, `/repos/${context.repo}/pulls`, {
       method: "POST",
       body: JSON.stringify({
         head: branch,
-        base: await defaultBranch(context),
+        base: branch === WORK_BRANCH ? "main" : WORK_BRANCH,
         title: str(args, "title"),
         body: `${str(args, "body")}\n\n---\nErstellt vom ${context.agentId}-Agenten der Plattform.`,
       }),
