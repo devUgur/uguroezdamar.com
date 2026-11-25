@@ -35,6 +35,15 @@ pnpm dev
 | `dev` | `uguroezdamar-platform-dev` (`--env dev`) | `platform-dev.uguroezdamar.com` | `uguroezdamar-dev` / `uguroezdamar-config-dev` |
 | `main` | `uguroezdamar-platform` | `platform.uguroezdamar.com` | `uguroezdamar` / `uguroezdamar-config` |
 
-Jeder Push auf `dev`, der `apps/platform/**` ändert, deployt nach Dev; der Merge `dev` → `main` deployt Produktion. Beides übernimmt `.github/workflows/platform-deploy.yml`. Die Oberfläche zeigt in Dev ein `DEV`-Abzeichen. Agenten lesen und schreiben standardmäßig auf `dev`. Benötigte Repository-Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `PLATFORM_ADMIN_TOKEN`, `GEMINI_API_KEY`, `AGENT_GITHUB_TOKEN`.
+Jeder Push auf `dev`, der `apps/platform/**` ändert, deployt nach Dev; der Merge `dev` → `main` deployt Produktion. Beides übernimmt `.github/workflows/platform-deploy.yml`. Die Oberfläche zeigt in Dev ein `DEV`-Abzeichen. Agenten lesen und schreiben standardmäßig auf `dev`. Repository-Secrets (GitHub → Repository → Settings → Secrets and variables → Actions):
+
+| Name | Pflicht | Wofür |
+| --- | --- | --- |
+| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | ja | Deploy und Migrationen |
+| `PLATFORM_ADMIN_TOKEN` | für die Anmeldung | Login, bis Cloudflare Access davor steht |
+| `GEMINI_API_KEY` | nein | Gemini; ohne Schlüssel antwortet Workers AI |
+| `AGENT_GITHUB_TOKEN` | nein | Repo-Werkzeuge des Agenten |
+
+`pnpm ugur platform secrets` zeigt, was gesetzt ist. Mit `--apply` erzeugt der Befehl das Admin-Token (es landet in der Zwischenablage), fragt die optionalen Schlüssel verdeckt ab, beschreibt, woher sie kommen, und startet den Dev-Deploy.
 
 Der Workflow lädt Code und Worker-Secrets mit `wrangler deploy --secrets-file` als eine Version hoch; so klappt auch der allererste Deploy, bevor der Worker existiert. Der `CLOUDFLARE_API_TOKEN` braucht dafür: Account – Workers Scripts: Edit, D1: Edit, Workers KV Storage: Edit, Workers R2 Storage: Edit; Zone `uguroezdamar.com` – Workers Routes: Edit, DNS: Edit (für beide Custom Domains), Zone: Read.

@@ -50,11 +50,17 @@ jobs:
         run: |
           secrets_file="$RUNNER_TEMP/platform-secrets.json"
           trap 'rm -f "$secrets_file"' EXIT
+          # Only the Cloudflare secrets are required. The others are uploaded when set; a missing
+          # one keeps its previous Worker value (secrets files are additive):
+          #   PLATFORM_ADMIN_TOKEN  login until Cloudflare Access is in front; without it nobody gets in
+          #   GEMINI_API_KEY        optional; without it the router falls back to Workers AI
+          #   AGENT_GITHUB_TOKEN    optional; without it the repo tools report a missing token
           node -e '
             const names = ["PLATFORM_ADMIN_TOKEN", "GEMINI_API_KEY", "AGENT_GITHUB_TOKEN"];
+            const set = names.filter((name) => process.env[name]);
             const missing = names.filter((name) => !process.env[name]);
-            if (missing.length) { console.error("Missing repository secrets: " + missing.join(", ")); process.exit(1); }
-            require("fs").writeFileSync(process.argv[1], JSON.stringify(Object.fromEntries(names.map((n) => [n, process.env[n]]))), { mode: 0o600 });
+            if (missing.length) console.log("::warning::Not set, skipped: " + missing.join(", "));
+            require("fs").writeFileSync(process.argv[1], JSON.stringify(Object.fromEntries(set.map((n) => [n, process.env[n]]))), { mode: 0o600 });
           ' "$secrets_file"
           pnpm exec wrangler deploy --secrets-file "$secrets_file" $WRANGLER_ENV_FLAG
         env:

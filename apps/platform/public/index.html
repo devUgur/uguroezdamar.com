@@ -11,7 +11,7 @@
     <div id="login" class="login" hidden>
       <form id="login-form" class="login-card">
         <h1>Plattform</h1>
-        <p>Admin-Token eingeben. Es bleibt nur in diesem Browser.</p>
+        <p>Admin-Token eingeben (erzeugt mit <code>pnpm ugur platform secrets --apply</code>, liegt in deinem Passwortmanager). Es bleibt nur in diesem Browser.</p>
         <input id="token" type="password" autocomplete="current-password" placeholder="PLATFORM_ADMIN_TOKEN" required />
         <button type="submit">Anmelden</button>
         <p id="login-error" class="error" hidden>Token ungültig.</p>
