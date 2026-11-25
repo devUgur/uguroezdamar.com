@@ -87,7 +87,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   const path = url.pathname.replace(/\/+$/, "");
   const method = request.method;
 
-  if (path === "/api/health") return json({ ok: true });
+  if (path === "/api/health") return json({ ok: true, env: env.PLATFORM_ENV || "production" });
   if (!(await authorize(request, env))) return json({ error: "Nicht angemeldet" }, 401);
 
   if (path === "/api/live") {

@@ -1,4 +1,5 @@
-// Agent platform for uguroezdamar.com (ADR 0024). Deployed by .github/workflows/platform-deploy.yml.
+// Agent platform for uguroezdamar.com (ADR 0024). Deployed by .github/workflows/platform-deploy.yml:
+// top level = production (branch main), env.dev = dev environment (branch dev, own D1 and KV).
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "uguroezdamar-platform",
@@ -20,7 +21,8 @@
     // "true" routes Gemini and OpenRouter through the AI Gateway (logs, caching). Off until the gateway exists.
     "MODEL_VIA_GATEWAY": "false",
     "ACCESS_TEAM_DOMAIN": "",
-    "ACCESS_AUD": ""
+    "ACCESS_AUD": "",
+    "PLATFORM_ENV": "production"
   },
   "d1_databases": [
     {
@@ -39,5 +41,38 @@
       { "name": "HUB", "class_name": "LiveHub" }
     ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AgentRuntime", "LiveHub"] }]
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AgentRuntime", "LiveHub"] }],
+  "env": {
+    "dev": {
+      "name": "uguroezdamar-platform-dev",
+      "routes": [{ "pattern": "platform-dev.uguroezdamar.com", "custom_domain": true }],
+      "vars": {
+        "DEFAULT_REPO": "devUgur/uguroezdamar.com",
+        "CF_ACCOUNT_ID": "4a35dadb67f662616fe6911bfbeecc0b",
+        "AI_GATEWAY_ID": "uguroezdamar",
+        "MODEL_VIA_GATEWAY": "false",
+        "ACCESS_TEAM_DOMAIN": "",
+        "ACCESS_AUD": "",
+        "PLATFORM_ENV": "dev"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "uguroezdamar-dev",
+          "database_id": "e8935627-816e-4703-b5cc-f408999005f9",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "kv_namespaces": [{ "binding": "CONFIG", "id": "2baae316bfb7430dae22f403a518528a" }],
+      // Shared bucket; dev files go under platform-dev/ once something writes files.
+      "r2_buckets": [{ "binding": "FILES", "bucket_name": "uguroezdamar" }],
+      "ai": { "binding": "AI" },
+      "durable_objects": {
+        "bindings": [
+          { "name": "AGENTS", "class_name": "AgentRuntime" },
+          { "name": "HUB", "class_name": "LiveHub" }
+        ]
+      }
+    }
+  }
 }

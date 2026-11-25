@@ -30,6 +30,11 @@ pnpm dev
 
 ## Deploy
 
-Nach Merge auf `main` durch `.github/workflows/platform-deploy.yml`. Benötigte Repository-Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `PLATFORM_ADMIN_TOKEN`, `GEMINI_API_KEY`, `AGENT_GITHUB_TOKEN`.
+| Branch | Worker | Adresse | D1 / KV |
+| --- | --- | --- | --- |
+| `dev` | `uguroezdamar-platform-dev` (`--env dev`) | `platform-dev.uguroezdamar.com` | `uguroezdamar-dev` / `uguroezdamar-config-dev` |
+| `main` | `uguroezdamar-platform` | `platform.uguroezdamar.com` | `uguroezdamar` / `uguroezdamar-config` |
 
-Der Workflow lädt Code und Worker-Secrets mit `wrangler deploy --secrets-file` als eine Version hoch; so klappt auch der allererste Deploy, bevor der Worker existiert. Der `CLOUDFLARE_API_TOKEN` braucht dafür: Account – Workers Scripts: Edit, D1: Edit, Workers KV Storage: Edit, Workers R2 Storage: Edit; Zone `uguroezdamar.com` – Workers Routes: Edit, DNS: Edit (für die Custom Domain), Zone: Read.
+Jeder Push auf `dev`, der `apps/platform/**` ändert, deployt nach Dev; der Merge `dev` → `main` deployt Produktion. Beides übernimmt `.github/workflows/platform-deploy.yml`. Die Oberfläche zeigt in Dev ein `DEV`-Abzeichen. Agenten lesen und schreiben standardmäßig auf `dev`. Benötigte Repository-Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `PLATFORM_ADMIN_TOKEN`, `GEMINI_API_KEY`, `AGENT_GITHUB_TOKEN`.
+
+Der Workflow lädt Code und Worker-Secrets mit `wrangler deploy --secrets-file` als eine Version hoch; so klappt auch der allererste Deploy, bevor der Worker existiert. Der `CLOUDFLARE_API_TOKEN` braucht dafür: Account – Workers Scripts: Edit, D1: Edit, Workers KV Storage: Edit, Workers R2 Storage: Edit; Zone `uguroezdamar.com` – Workers Routes: Edit, DNS: Edit (für beide Custom Domains), Zone: Read.

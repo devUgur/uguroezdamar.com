@@ -210,4 +210,11 @@ $("input").addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); $("composer").requestSubmit(); }
 });
 
+// Marks the dev environment so it is never mistaken for production.
+fetch("/api/health").then((response) => response.json()).then(({ env }) => {
+  if (env !== "dev") return;
+  document.body.classList.add("env-dev");
+  document.title = `DEV · ${document.title}`;
+}).catch(() => {});
+
 start().catch((error) => addMessage("assistant", `Fehler beim Laden: ${error.message}`));

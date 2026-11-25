@@ -17,6 +17,8 @@ export interface Env {
   MODEL_VIA_GATEWAY: string;
   ACCESS_TEAM_DOMAIN: string;
   ACCESS_AUD: string;
+  /** "production" (branch main) or "dev" (branch dev). */
+  PLATFORM_ENV: string;
 
   /** Long random value; the browser sends it as a bearer token until Cloudflare Access is in front. */
   PLATFORM_ADMIN_TOKEN?: string;

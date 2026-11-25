@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
   # Every pull request, also one stacked on another branch.
   pull_request:
 

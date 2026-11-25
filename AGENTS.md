@@ -17,7 +17,7 @@ Diese Datei ist die einzige Regelquelle für Menschen und Agenten. Editor-spezif
 
 | Verantwortung | Verbindliche Quelle |
 | --- | --- |
-| Code und Versionen | GitHub: Commits und Pull Requests, kein direkter Push auf `main` |
+| Code und Versionen | GitHub: Arbeit auf `dev`, Releases per Pull Request `dev` → `main`, kein direkter Push auf `main` |
 | Architekturentscheidungen | [`docs/architecture/`](docs/architecture/README.md) und gültige ADRs |
 | Fortschritt | [`PLAN.md`](PLAN.md) und die verlinkten GitHub-Issues |
 | Datenbankschema | `packages/server/src/db/schema.ts` und die Migrationen in `packages/server/drizzle/` |
@@ -83,7 +83,7 @@ Details: [`docs/operations/secrets.md`](docs/operations/secrets.md).
 - Metadata-API, `next/image`, selbst gehostete Fonts, Sitemap.
 
 **Arbeitsweise**
-- Kleine, nachvollziehbare Commits auf einem Branch; Merge nach `main` nur per Pull Request mit grüner CI.
+- Gearbeitet wird direkt auf `dev`, ohne Feature-Branches: kleine, nachvollziehbare Commits. `dev` hat eine eigene Umgebung (Plattform: `platform-dev.uguroezdamar.com`, Site und Portal: Vercel-Preview). `main` ist Produktion und ändert sich nur per Pull Request von `dev` mit grüner CI.
 - Veröffentlichen, Mergen und Ausliefern sind drei Entscheidungen. Vor einem Push nennen, wie viele Commits er enthält und ob er ein Deployment auslösen kann.
 - Kein Produktions-Deploy ohne Freigabe des Owners. Grüne Checks sind keine visuelle Freigabe.
 - Änderungen an Deployment, Datenmodell, Auth, Publishing oder Paketgrenzen aktualisieren die betroffene Doku im selben Pull Request. Überholte ADRs bleiben erhalten und werden als ersetzt markiert.
