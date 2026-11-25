@@ -44,17 +44,21 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
     },
     "workers-ai": { kind: "workers-ai" },
   },
+  // Free tier as of 2026-11 (aistudio.google.com/docs/pricing). gemini-flash-latest is Google's
+  // rolling alias; gemini-2.5-flash is deprecated and must not be used.
   aliases: {
     "chef-smart": [
       { provider: "gemini", model: "gemini-flash-latest", inputUsdPerM: 0, outputUsdPerM: 0 },
+      { provider: "gemini", model: "gemini-3.5-flash-lite", inputUsdPerM: 0, outputUsdPerM: 0 },
       { provider: "workers-ai", model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", inputUsdPerM: 0, outputUsdPerM: 0 },
     ],
     coder: [
       { provider: "gemini", model: "gemini-flash-latest", inputUsdPerM: 0, outputUsdPerM: 0 },
+      { provider: "gemini", model: "gemini-3.5-flash-lite", inputUsdPerM: 0, outputUsdPerM: 0 },
       { provider: "workers-ai", model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", inputUsdPerM: 0, outputUsdPerM: 0 },
     ],
     "worker-cheap": [
-      { provider: "gemini", model: "gemini-flash-lite-latest", inputUsdPerM: 0, outputUsdPerM: 0 },
+      { provider: "gemini", model: "gemini-3.5-flash-lite", inputUsdPerM: 0, outputUsdPerM: 0 },
       { provider: "workers-ai", model: "@cf/meta/llama-3.1-8b-instruct-fast", inputUsdPerM: 0, outputUsdPerM: 0 },
     ],
   },

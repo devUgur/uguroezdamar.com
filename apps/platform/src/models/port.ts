@@ -61,6 +61,7 @@ export class ModelError extends Error {
 
   /** Rate limits, outages and timeouts are worth a fallback; a malformed request is not. */
   get retryable(): boolean {
-    return this.status === undefined || this.status === 408 || this.status === 429 || this.status >= 500;
+    // 404: this provider does not know the model (renamed or retired); the next target may.
+    return this.status === undefined || this.status === 404 || this.status === 408 || this.status === 429 || this.status >= 500;
   }
 }
