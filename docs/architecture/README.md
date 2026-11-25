@@ -2,7 +2,7 @@
 
 ## Architekturabsicht
 
-Das Repository ist ein pnpm-/Turborepo-Monorepo. Die gemeinsamen Pakete werden als TypeScript-Quellcode konsumiert und von den Apps kompiliert; sie haben keinen eigenen Build ([ADR 0017](decisions/0017-source-first-workspace-packages.md)). Der derzeitige lokale Quellbaum enthält zwei Next.js-Anwendungen (`apps/site`, `apps/portal`), drei gemeinsam genutzte Pakete (`packages/core`, `packages/server`, `packages/ui`), Tests, Tooling und GitHub Actions. Die bevorzugte Weiterentwicklung ist ein modularer Monolith mit wenigen klaren Grenzen. Es gibt keinen Grund, allein wegen des Audits neue Services oder Pakete einzuführen.
+Das Repository ist ein pnpm-/Turborepo-Monorepo. Die gemeinsamen Pakete werden als TypeScript-Quellcode konsumiert und von den Apps kompiliert; sie haben keinen eigenen Build ([ADR 0017](decisions/0017-source-first-workspace-packages.md)). Der derzeitige lokale Quellbaum enthält zwei Next.js-Anwendungen (`apps/site`, `apps/portal`), die Agenten-Plattform `apps/platform` als Cloudflare Worker ([ADR 0024](decisions/0024-agent-platform-on-cloudflare.md)), drei gemeinsam genutzte Pakete (`packages/core`, `packages/server`, `packages/ui`), Tests, Tooling und GitHub Actions. Die bevorzugte Weiterentwicklung ist ein modularer Monolith mit wenigen klaren Grenzen. Es gibt keinen Grund, allein wegen des Audits neue Services oder Pakete einzuführen.
 
 ```text
 Besucher ──> apps/site ───────────────> @ugur/server ──> PostgreSQL (Neon)

@@ -22,7 +22,7 @@ Diese Datei ist die einzige Regelquelle für Menschen und Agenten. Editor-spezif
 | Fortschritt | [`PLAN.md`](PLAN.md) und die verlinkten GitHub-Issues |
 | Datenbankschema | `packages/server/src/db/schema.ts` und die Migrationen in `packages/server/drizzle/` |
 | Daten | Neon PostgreSQL, Branches `dev` und `prod` |
-| Secret-Werte | Infisical (eu), nie Dateien |
+| Secret-Werte | Infisical (eu), nie Dateien; Ausnahme `apps/platform`: GitHub-Actions-Secrets, beim Deploy als Worker-Secrets gesetzt (ADR 0024) |
 | Variablennamen | `tooling/cli/src/secrets-manifest.ts` |
 | Deployment | Vercel, zwei Projekte aus diesem Repository ([`docs/operations/preview.md`](docs/operations/preview.md), ADR 0020); `apps/platform` als Cloudflare Worker ([ADR 0024](docs/architecture/decisions/0024-agent-platform-on-cloudflare.md)) |
 | Gestaltung | [`docs/product/r2-design-brief.md`](docs/product/r2-design-brief.md), Tokens in `apps/site/app/globals.css` |
