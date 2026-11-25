@@ -1,0 +1,59 @@
+name: Platform deploy
+
+# Deploys apps/platform to Cloudflare Workers (ADR 0024). Runs only after a merge to main,
+# i.e. after the owner approved the pull request, or when started by hand.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/platform/**"
+      - ".github/workflows/platform-deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: platform-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Add a required reviewer to this environment in the repository settings to gate every deploy.
+    environment: platform-production
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24.21.0
+          package-manager-cache: false
+      - name: Enable corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter @ugur/platform...
+      - name: Typecheck
+        run: pnpm --filter @ugur/platform typecheck
+      - name: Apply D1 migrations, upload secrets, deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/platform
+          packageManager: pnpm
+          preCommands: pnpm exec wrangler d1 migrations apply uguroezdamar --remote
+          secrets: |
+            PLATFORM_ADMIN_TOKEN
+            GEMINI_API_KEY
+            AGENT_GITHUB_TOKEN
+          command: deploy
+        env:
+          PLATFORM_ADMIN_TOKEN: ${{ secrets.PLATFORM_ADMIN_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AGENT_GITHUB_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN }}
+      - name: Smoke
+        run: |
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS https://platform.uguroezdamar.com/api/health; then exit 0; fi
+            sleep 10
+          done
+          echo "platform.uguroezdamar.com/api/health is not answering" >&2
+          exit 1
