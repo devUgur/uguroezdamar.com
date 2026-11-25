@@ -10,6 +10,7 @@ Portfolio und Admin-Portal als pnpm-/Turborepo-Monorepo.
 | --- | --- |
 | `apps/site` | öffentliches Portfolio, Projekte, Blog und Kontakt |
 | `apps/portal` | geschütztes CMS/Admin-Portal |
+| `apps/platform` | Agenten-Plattform auf Cloudflare Workers ([ADR 0024](docs/architecture/decisions/0024-agent-platform-on-cloudflare.md)) |
 | `packages/server` | serverseitige Use Cases, Validierung und Datenzugriff |
 | `packages/ui` | gemeinsame UI-Komponenten |
 | `tooling/cli` | `pnpm ugur`: Dev-Start, Secrets, Datenbank, Admin-Konten |

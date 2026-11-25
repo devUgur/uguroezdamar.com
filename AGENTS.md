@@ -24,7 +24,7 @@ Diese Datei ist die einzige Regelquelle für Menschen und Agenten. Editor-spezif
 | Daten | Neon PostgreSQL, Branches `dev` und `prod` |
 | Secret-Werte | Infisical (eu), nie Dateien |
 | Variablennamen | `tooling/cli/src/secrets-manifest.ts` |
-| Deployment | Vercel, zwei Projekte aus diesem Repository ([`docs/operations/preview.md`](docs/operations/preview.md), ADR 0020) |
+| Deployment | Vercel, zwei Projekte aus diesem Repository ([`docs/operations/preview.md`](docs/operations/preview.md), ADR 0020); `apps/platform` als Cloudflare Worker ([ADR 0024](docs/architecture/decisions/0024-agent-platform-on-cloudflare.md)) |
 | Gestaltung | [`docs/product/r2-design-brief.md`](docs/product/r2-design-brief.md), Tokens in `apps/site/app/globals.css` |
 
 ## Befehle
@@ -48,6 +48,7 @@ Details: [`docs/operations/secrets.md`](docs/operations/secrets.md).
 ## Struktur
 
 - `apps/site` – öffentliche Website. `apps/portal` – Admin-Portal. Beide Next.js App Router.
+- `apps/platform` – Agenten-Plattform, Cloudflare Worker mit eigener D1-Datenbank und eigenen Secrets (ADR 0024). Sie importiert keine anderen Workspace-Pakete; Agenten ändern dieses Repository nur über Branches `agent/…` und Pull Requests.
 - `packages/server` – Datenzugriff, Validierung, Auth-Logik. `packages/ui` – app-neutrale Bausteine. `packages/core` – reine Hilfsfunktionen.
 - Die Pakete werden als TypeScript-Quellcode eingebunden: kein Build, kein `dist`, Exporte nur aus `src` (ADR 0017). `@/…` ist in jeder App der Alias auf die eigene Wurzel.
 - `tooling/cli` – die `pnpm ugur`-CLI. `tests/` – Vitest, Repository-Tests gegen In-Memory-Postgres.
