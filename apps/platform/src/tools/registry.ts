@@ -1,0 +1,14 @@
+import { githubTools } from "./github.ts";
+import { platformTools } from "./platform.ts";
+import type { Tool } from "./port.ts";
+
+const ALL: Tool[] = [...githubTools, ...platformTools];
+const BY_NAME = new Map(ALL.map((tool) => [tool.spec.name, tool]));
+
+export function toolsByName(names: readonly string[]): Tool[] {
+  return names.map((name) => BY_NAME.get(name)).filter((tool): tool is Tool => Boolean(tool));
+}
+
+export function toolByName(name: string): Tool | undefined {
+  return BY_NAME.get(name);
+}

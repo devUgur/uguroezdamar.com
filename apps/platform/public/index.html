@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Plattform · uguroezdamar</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="login" class="login" hidden>
+      <form id="login-form" class="login-card">
+        <h1>Plattform</h1>
+        <p>Admin-Token eingeben. Es bleibt nur in diesem Browser.</p>
+        <input id="token" type="password" autocomplete="current-password" placeholder="PLATFORM_ADMIN_TOKEN" required />
+        <button type="submit">Anmelden</button>
+        <p id="login-error" class="error" hidden>Token ungültig.</p>
+      </form>
+    </div>
+
+    <div id="app" class="app" hidden>
+      <header class="topbar">
+        <strong>Plattform</strong>
+        <span class="muted">uguroezdamar.com</span>
+        <span id="live" class="live" title="Live-Verbindung">offline</span>
+      </header>
+
+      <main class="chat">
+        <div id="messages" class="messages" aria-live="polite"></div>
+        <form id="composer" class="composer">
+          <textarea id="input" rows="2" placeholder="Auftrag an den Chef-Agenten … (Enter senden, Shift+Enter neue Zeile)"></textarea>
+          <button id="send" type="submit">Senden</button>
+        </form>
+      </main>
+
+      <aside class="side">
+        <section>
+          <h2>Büro</h2>
+          <ul id="agents" class="agents"></ul>
+        </section>
+        <section>
+          <h2>Freigaben</h2>
+          <ul id="approvals" class="approvals"></ul>
+        </section>
+        <section class="grow">
+          <h2>Aktivität</h2>
+          <ol id="events" class="events"></ol>
+        </section>
+      </aside>
+    </div>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
