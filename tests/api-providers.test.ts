@@ -97,7 +97,7 @@ describe("provider keys", () => {
     const catalog = (await call("/api/models")).body as { providers: { id: string; available: boolean; keySource: string; models: { id: string }[] }[] };
     const deepseek = catalog.providers.find((provider) => provider.id === "deepseek");
     expect(deepseek).toMatchObject({ available: true, keySource: "tenant" });
-    expect(deepseek?.models.map((model) => model.id)).toEqual(["deepseek-chat", "deepseek-reasoner", "deepseek-v4"]);
+    expect(deepseek?.models.map((model) => model.id)).toEqual(["deepseek-flash", "deepseek-v4-pro", "deepseek-chat", "deepseek-reasoner", "deepseek-v4"]);
   });
 
   it("puts the tenant's chosen model first for a role and checks the choice exists", async () => {
@@ -133,7 +133,8 @@ describe("provider keys", () => {
   });
 
   it("counts unknown prices of paid models with the high default, free ones with zero", () => {
-    expect(priceOf(DEFAULT_MODEL_CONFIG.providers.deepseek, { id: "x", label: "x" })).toEqual(DEFAULT_PAID_PRICE);
+    expect(priceOf(DEFAULT_MODEL_CONFIG.providers.moonshot, { id: "x", label: "x" })).toEqual(DEFAULT_PAID_PRICE);
+    expect(priceOf(DEFAULT_MODEL_CONFIG.providers.deepseek, { id: "x", label: "x" })).toEqual({ inputUsdPerM: 1.32, outputUsdPerM: 3.96 });
     expect(priceOf(DEFAULT_MODEL_CONFIG.providers["workers-ai"], { id: "x", label: "x" })).toEqual({ inputUsdPerM: 0, outputUsdPerM: 0 });
   });
 });

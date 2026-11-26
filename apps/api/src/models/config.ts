@@ -60,6 +60,8 @@ export interface ProviderConfig {
   shortToolCallIds?: boolean;
   /** One line for the portal: what the provider is good for. */
   description?: string;
+  /** Price for a model of this provider without its own price; without it a paid provider counts DEFAULT_PAID_PRICE. */
+  unknownModelPrice?: { inputUsdPerM: number; outputUsdPerM: number };
 }
 
 /** Assumed price of a paid model without a known price: deliberately high, so an unknown model cannot run up a bill. */
@@ -117,9 +119,14 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
       baseUrl: "https://api.deepseek.com/v1",
       gatewayPath: "deepseek",
       apiKeySecret: "DEEPSEEK_API_KEY",
+      unknownModelPrice: { inputUsdPerM: 1.32, outputUsdPerM: 3.96 },
       models: [
-        { id: "deepseek-chat", label: "DeepSeek Chat" },
-        { id: "deepseek-reasoner", label: "DeepSeek Reasoner" },
+        // Peak prices as reported by third parties in 11/2026 (off-peak is half): an upper bound for the budget.
+        { id: "deepseek-flash", label: "DeepSeek Flash", note: "günstig, schnell", inputUsdPerM: 0.3, outputUsdPerM: 1.2 },
+        { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro", note: "stärker", inputUsdPerM: 1.32, outputUsdPerM: 3.96 },
+        // Older names some keys still accept; priced like the model they point to.
+        { id: "deepseek-chat", label: "DeepSeek Chat (alter Name)", inputUsdPerM: 0.3, outputUsdPerM: 1.2 },
+        { id: "deepseek-reasoner", label: "DeepSeek Reasoner (alter Name)", inputUsdPerM: 1.32, outputUsdPerM: 3.96 },
       ],
     },
     moonshot: {

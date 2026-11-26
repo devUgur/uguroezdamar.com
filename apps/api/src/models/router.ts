@@ -254,6 +254,7 @@ function sameTarget(target: ModelTarget, other: PinnedModel | undefined): boolea
 /** Known price, or for a paid provider the deliberately high default, so the daily budget also limits unknown models. */
 export function priceOf(provider: ProviderConfig | undefined, model: CatalogModel | undefined): { inputUsdPerM: number; outputUsdPerM: number } {
   if (model?.inputUsdPerM !== undefined && model.outputUsdPerM !== undefined) return { inputUsdPerM: model.inputUsdPerM, outputUsdPerM: model.outputUsdPerM };
+  if (provider?.unknownModelPrice) return { ...provider.unknownModelPrice };
   return provider?.paid ? { ...DEFAULT_PAID_PRICE } : { inputUsdPerM: 0, outputUsdPerM: 0 };
 }
 
