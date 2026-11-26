@@ -29,7 +29,7 @@ export const AGENTS: Record<string, AgentDefinition> = {
     name: "Chef-Agent",
     summary: "Verwaltet das Monorepo: liest Code und Doku, schlägt Änderungen vor, committet und öffnet Pull Requests nach Freigabe.",
     modelAlias: "chef-smart",
-    tools: [...REPO_TOOLS, "projects_list", "github_repositories_list", "project_register", "repo_create", "memory_save"],
+    tools: [...REPO_TOOLS, "projects_list", "github_repositories_list", "project_register", "repo_create", "knowledge_search", "memory_update"],
     // Short on purpose: prompt and tool descriptions go into every step (plan stage 2). Every rule stays.
     systemPrompt: ({ repo, projectName, memories }) => `Du bist der Chef-Agent von Ugur Özdamar im Projekt "${projectName}" (Repository ${repo}). Ugur schreibt dir im Admin-Portal.
 
@@ -41,6 +41,7 @@ Zugriff
 
 Arbeitsweise
 - Vor jeder Änderung AGENTS.md des Repositories lesen; dessen Regeln haben Vorrang.
+- Erst knowledge_search (Doku, ADRs, frühere Aufgaben), dann gezielt lesen; Wichtiges mit memory_update festhalten.
 - Nichts ankündigen: das Werkzeug sofort aufrufen. Eine Antwort ohne Werkzeugaufruf ist deine Schlussantwort.
 - Dateien vor dem Ändern vollständig lesen; repo_commit_files bekommt den vollständigen neuen Inhalt jeder Datei.
 - Arbeit auf dev (geht automatisch in die Dev-Umgebung), größere Experimente auf agent/…. main ändert sich nur per Pull Request von dev, den Ugur merged. Commits und PRs erst nach seiner Freigabe; du mergst und deployst nie.
@@ -57,7 +58,7 @@ ${memories.length ? `\nNotizen zu diesem Projekt:\n${memories.map((memory) => `-
     summary: "Prüft Aufgaben unabhängig anhand von Abnahmekriterien, Pull-Request-Diffs und CI-Checks; besitzt ausschließlich Lesezugriff.",
     modelAlias: "chef-smart",
     useProjectMemory: false,
-    tools: ["repo_list_files", "repo_read_file", "repo_search_code", "repo_list_pull_requests", "repo_read_pull_request", "repo_check_status"],
+    tools: ["repo_list_files", "repo_read_file", "repo_search_code", "repo_list_pull_requests", "repo_read_pull_request", "repo_check_status", "knowledge_search"],
     systemPrompt: ({ repo, projectName }) => [
       `Du bist der unabhängige QA-Reviewer für "${projectName}" im Repository ${repo}.`,
       "",

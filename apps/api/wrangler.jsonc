@@ -40,12 +40,17 @@
     "bindings": [
       { "name": "AGENTS", "class_name": "AgentRuntime" },
       { "name": "HUB", "class_name": "LiveHub" },
-      { "name": "OFFICE", "class_name": "OfficePresence" }
+      { "name": "OFFICE", "class_name": "OfficePresence" },
+      { "name": "INDEXER", "class_name": "KnowledgeIndexer" }
     ]
   },
+  // Knowledge index (plan stage 3), created with: wrangler vectorize create <name> --dimensions=1024 --metric=cosine,
+  // plus metadata indexes "tenant" and "project" (string) for filtered queries.
+  "vectorize": [{ "binding": "KNOWLEDGE", "index_name": "uguroezdamar-knowledge" }],
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["AgentRuntime", "LiveHub"] },
-    { "tag": "v2", "new_sqlite_classes": ["OfficePresence"] }
+    { "tag": "v2", "new_sqlite_classes": ["OfficePresence"] },
+    { "tag": "v3", "new_sqlite_classes": ["KnowledgeIndexer"] }
   ],
   "env": {
     "dev": {
@@ -77,9 +82,11 @@
         "bindings": [
           { "name": "AGENTS", "class_name": "AgentRuntime" },
           { "name": "HUB", "class_name": "LiveHub" },
-          { "name": "OFFICE", "class_name": "OfficePresence" }
+          { "name": "OFFICE", "class_name": "OfficePresence" },
+          { "name": "INDEXER", "class_name": "KnowledgeIndexer" }
         ]
-      }
+      },
+      "vectorize": [{ "binding": "KNOWLEDGE", "index_name": "uguroezdamar-knowledge-dev" }]
     }
   }
 }

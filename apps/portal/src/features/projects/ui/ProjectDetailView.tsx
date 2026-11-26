@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Button } from "@ugur/ui";
 import { startProjectChat } from "../actions";
-import type { Project, ProjectTask, Sprint } from "../types";
+import type { Project, ProjectKnowledge, ProjectTask, Sprint } from "../types";
+import { KnowledgeSection } from "./KnowledgeSection";
 import { ModelPolicyForm } from "./ModelPolicyForm";
 import { PlanningForms } from "./PlanningForms";
 import { SprintSection } from "./SprintSection";
@@ -11,12 +12,13 @@ interface ProjectDetailViewProps {
   project: Project;
   sprints: Sprint[];
   tasks: ProjectTask[];
+  knowledge: ProjectKnowledge;
   notice?: string;
   error?: string;
 }
 
 /** /projects/[id]: one project (= one repository) with its sprints, backlog and planning. */
-export function ProjectDetailView({ project, sprints, tasks, notice, error }: ProjectDetailViewProps) {
+export function ProjectDetailView({ project, sprints, tasks, knowledge, notice, error }: ProjectDetailViewProps) {
   const openSprints = sprints.filter((sprint) => sprint.status !== "done");
   const done = sprints.filter((sprint) => sprint.status === "done");
   const backlog = tasks.filter((task) => !task.sprintId && task.status !== "done");
@@ -91,6 +93,13 @@ export function ProjectDetailView({ project, sprints, tasks, notice, error }: Pr
         ) : (
           <p className="text-sm text-muted-foreground">Keine offenen Aufgaben ohne Sprint.</p>
         )}
+      </section>
+
+      <section className="flex flex-col gap-4" aria-labelledby="knowledge-title">
+        <h2 id="knowledge-title" className="font-serif text-xl">
+          Wissen &amp; Gedächtnis
+        </h2>
+        <KnowledgeSection projectId={project.id} knowledge={knowledge} />
       </section>
 
       <section className="flex flex-col gap-4" aria-labelledby="policy-title">

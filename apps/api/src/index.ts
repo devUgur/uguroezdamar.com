@@ -19,12 +19,14 @@ import { handleOrganizationManagement } from "./organization/manage.ts";
 import { SubrequestBudget } from "./runtime/budget.ts";
 import { officeObjectName, threadObjectName } from "./tenancy.ts";
 import { toolByName } from "./tools/registry.ts";
+import { handleKnowledge } from "./knowledge/routes.ts";
 import { handleUsage } from "./usage/routes.ts";
 import { handleSprints } from "./work/sprints.ts";
 import { handleTasks } from "./work/tasks.ts";
 
 export { AgentRuntime } from "./agent.ts";
 export { LiveHub } from "./hub.ts";
+export { KnowledgeIndexer } from "./knowledge/indexer.ts";
 export { OfficePresence } from "./office/presence.ts";
 
 const DEFAULT_PROJECT = "uguroezdamar";
@@ -354,6 +356,9 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     if (managed) return managed;
     if (path === "/api/organization" && method === "GET") return json(await organizationCatalog(env));
   }
+
+  const knowledge = await handleKnowledge(request, env, caller, path);
+  if (knowledge) return knowledge;
 
   const usage = await handleUsage(request, env, caller, path);
   if (usage) return usage;

@@ -120,6 +120,12 @@ Jede Stufe ist einzeln auslieferbar, hat Tests gegen echtes SQLite und wird auf 
 
 ### Stufe 3: Gedächtnis und Wissen
 
+> **Umgesetzt am 26.11.2026** ([ADR 0037](../architecture/decisions/0037-agent-memory-and-knowledge.md)):
+> - Arbeitsgedächtnis je Mitarbeiter und Projekt (`memory_update`, steht vorn im Kontext).
+> - Wissensindex je Projekt aus Doku und erledigten Aufgaben, mit hybrider Suche (Volltext plus Vektoren, funktioniert auch ohne Vektoren), Indexer als Durable Object und Werkzeug `knowledge_search`.
+> - Projektseite mit „Wissen & Gedächtnis“.
+> - Mastra-Speicher wird nicht übernommen (Begründung in der ADR).
+
 - **Arbeitsgedächtnis:** Werkzeug `memory_update` mit festem Schema je Mitarbeiter und Projekt.
 - **Thread-Verdichtung:** Sobald der Verlauf ein Token-Limit überschreitet, fasst ein günstiges Modell ihn zusammen (nach dem Muster von Mastras Observational Memory).
 - **Wissensindex in Vectorize** je Projekt:

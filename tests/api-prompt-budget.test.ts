@@ -16,7 +16,8 @@ const fixedPart = (agentId: string) => {
 describe("prompt budget", () => {
   it("keeps the chef's fixed part small", () => {
     expect(fixedPart("chef").size).toBeLessThan(6_500);
-    expect(fixedPart("reviewer").size).toBeLessThan(4_200);
+    // +knowledge_search in stage 3 (26.11.2026): about 260 characters for the reviewer.
+    expect(fixedPart("reviewer").size).toBeLessThan(4_400);
   });
 
   it("keeps every working rule of the chef", () => {

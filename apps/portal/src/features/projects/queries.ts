@@ -3,7 +3,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { agentsApi } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/auth";
-import type { GithubRepository, GithubStatus, Project, ProjectOverview, ProjectTask, Sprint } from "./types";
+import type { GithubRepository, GithubStatus, KnowledgeHit, KnowledgeStatus, Project, ProjectKnowledge, ProjectOverview, ProjectTask, Sprint, WorkingMemoryEntry } from "./types";
 
 async function actor(): Promise<string> {
   const session = await getCurrentSession();
@@ -57,5 +57,21 @@ export async function getProjectOverview(id: string): Promise<ProjectOverview> {
     return { project: projects.find((project) => project.id === id) ?? null, sprints, tasks: tasks.map((task) => ({ ...task, sprintId: task.sprintId ?? null })), error: null };
   } catch (error) {
     return { project: null, sprints: [], tasks: [], error: describe(error) };
+  }
+}
+
+/** Knowledge status, the agents' working memory and, with a query, search hits for one project. */
+export async function getProjectKnowledge(id: string, query: string): Promise<ProjectKnowledge> {
+  const who = await actor();
+  const q = query.trim().slice(0, 300);
+  try {
+    const [status, memory, hits] = await Promise.all([
+      agentsApi<KnowledgeStatus>(`/api/projects/${encodeURIComponent(id)}/knowledge`, who),
+      agentsApi<WorkingMemoryEntry[]>(`/api/projects/${encodeURIComponent(id)}/memory`, who),
+      q ? agentsApi<KnowledgeHit[]>(`/api/projects/${encodeURIComponent(id)}/knowledge/search?q=${encodeURIComponent(q)}`, who) : Promise.resolve([] as KnowledgeHit[]),
+    ]);
+    return { status, memory, query: q, hits, error: null };
+  } catch (error) {
+    return { status: null, memory: [], query: q, hits: [], error: describe(error) };
   }
 }

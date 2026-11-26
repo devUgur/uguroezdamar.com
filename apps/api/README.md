@@ -13,6 +13,7 @@ Agenten-Backend des Admin-Portals: Threads, Agentenschleife, Modelle, Werkzeuge,
 | `src/events.ts` | Event-Log in D1, Tagesbudget |
 | `src/models/` | `ModelPort`, Router mit Fallback, Modellwahl je Thread und je Rolle, Katalog aller Anbieter, Adapter (Anthropic über das SDK, OpenAI-kompatibel, Workers AI), verschlüsselte Schlüssel je Mandant ([ADR 0033](../../docs/architecture/decisions/0033-model-providers-and-tenant-keys.md)) |
 | `src/work/sprints.ts` | Sprints je Projekt; Aufgaben tragen `sprint_id` |
+| `src/knowledge/` | Wissensindex je Projekt (Doku und erledigte Aufgaben, hybride Suche über FTS5 und Vectorize), Indexer als Durable Object, Arbeitsgedächtnis je Mitarbeiter ([ADR 0037](../../docs/architecture/decisions/0037-agent-memory-and-knowledge.md)) |
 | `src/usage/` | Verbrauchsprotokoll: `runs`, `model_calls`, `tool_calls` (Migration `0017`), Auswertung, Lauf-Trace, CSV; das Tagesbudget zählt daraus |
 | `src/tools/` | `ToolPort`, GitHub-Werkzeuge, Projekt- und Notiz-Werkzeuge; PR-Diff lesen ist nur dem read-only QA-Reviewer freigegeben |
 | `src/agents/registry.ts` | die Agenten: Prompt, Modell-Alias, Werkzeuge |
@@ -45,6 +46,7 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 | `GET /api/providers/credentials` | hinterlegte Schlüssel ohne Wert: Anbieter, letzte vier Zeichen, Test, Modelle |
 | `PUT/DELETE /api/providers/:id/key`, `POST /api/providers/:id/verify` | Scope `providers:write`: Schlüssel speichern (testet sofort und lädt die Modelle), löschen, erneut prüfen; `custom-…` mit `label`, `baseUrl`, `trainsOnData` |
 | `PUT/DELETE /api/models/defaults/:alias` | Scope `providers:write`: Standardmodell einer Rolle `{ provider, model }` |
+| `GET /api/projects/:id/knowledge`, `POST …/knowledge/reindex`, `GET …/knowledge/search?q=`, `GET /api/projects/:id/memory` | Wissensindex: Status, Neuaufbau im Hintergrund, Testsuche; Arbeitsgedächtnis der Mitarbeiter |
 | `GET/POST /api/projects/:id/sprints`, `PATCH /api/sprints/:id` | Sprints eines Projekts; `planned → active → done`, ein aktiver Sprint je Projekt |
 | `GET /api/approvals`, `POST /api/approvals/:id` | offene Freigaben; `{ "decision": "approve" \| "reject" }` |
 | `GET /api/events?thread=…&since=…` | Events nachladen |

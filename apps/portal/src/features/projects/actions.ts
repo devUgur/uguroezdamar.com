@@ -177,3 +177,16 @@ export async function setModelPolicy(formData: FormData): Promise<void> {
   }
   backTo(projectId, "notice", modelPolicy === "open" ? "Richtlinie offen: alle Anbieter mit Schlüssel dürfen dieses Projekt sehen." : modelPolicy === "strict" ? "Richtlinie streng: nur Anbieter ohne Datenauswertung." : "Richtlinie folgt wieder dem Repository.");
 }
+
+/** Starts (or refreshes) the knowledge index of a project; it runs in the background in stages. */
+export async function reindexKnowledge(formData: FormData): Promise<void> {
+  const projectId = String(formData.get("projectId") ?? "");
+  const who = await actor();
+  if (!PROJECT_ID.test(projectId)) back("error", "Ungültiges Projekt.");
+  try {
+    await agentsApi(`/api/projects/${projectId}/knowledge/reindex`, who, { method: "POST" });
+  } catch (error) {
+    backTo(projectId, "error", failure(error));
+  }
+  backTo(projectId, "notice", "Indexierung gestartet. Sie läuft im Hintergrund; lade die Seite in einer Minute neu.");
+}

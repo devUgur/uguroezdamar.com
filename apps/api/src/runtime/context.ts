@@ -20,13 +20,16 @@ export interface ThreadSummary {
   upTo: number;
 }
 
-export function buildContext(messages: StoredMessage[], runFrom: number, summary: ThreadSummary | null): ChatMessage[] {
+export function buildContext(messages: StoredMessage[], runFrom: number, summary: ThreadSummary | null, workingMemory?: string | null): ChatMessage[] {
   const prior = messages.filter((message) => message.id < runFrom);
   const current = messages.filter((message) => message.id >= runFrom).map(strip);
   const tail = prior.slice(-PRIOR_MESSAGES).map((message) => (message.role === "tool" ? { ...strip(message), content: shorten(message.content) } : strip(message)));
   // A window must not open with tool results whose call fell outside it.
   while (tail.length && tail[0]?.role === "tool") tail.shift();
   const context: ChatMessage[] = [];
+  if (workingMemory?.trim()) {
+    context.push({ role: "system", content: `Dein Arbeitsgedächtnis für dieses Projekt (mit memory_update aktuell halten):\n${workingMemory.trim()}` });
+  }
   if (summary?.text) {
     context.push({ role: "system", content: `Zusammenfassung des bisherigen Gesprächs (ältere Nachrichten sind nicht mehr im Verlauf):\n${summary.text}` });
   }

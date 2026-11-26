@@ -22,7 +22,8 @@ export type EventType =
   | "organization_updated"
   | "sprint_created"
   | "sprint_updated"
-  | "project_policy_changed";
+  | "project_policy_changed"
+  | "knowledge_indexed";
 
 export interface AgentEvent {
   /** The tenant the event belongs to. Required: an event without it would silently land with the owner. */

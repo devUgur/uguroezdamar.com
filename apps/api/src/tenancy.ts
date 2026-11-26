@@ -16,7 +16,7 @@ export const TENANT_TABLES = ["projects", "threads", "tasks", "task_reviews", "a
  * Every table a tenant's rows live in: the ones above, the installations that connect a tenant to GitHub, the
  * tenant's model keys and model choices (ADR 0033) and its sprints.
  */
-export const TENANT_SCOPED_TABLES = [...TENANT_TABLES, "tenant_installations", "provider_credentials", "tenant_model_defaults", "sprints", "agent_settings"] as const;
+export const TENANT_SCOPED_TABLES = [...TENANT_TABLES, "tenant_installations", "provider_credentials", "tenant_model_defaults", "sprints", "agent_settings", "working_memory", "knowledge_sources", "knowledge_chunks", "knowledge_fts"] as const;
 
 /**
  * Name of the Durable Object of a chat thread. The owner keeps the original name so existing threads and

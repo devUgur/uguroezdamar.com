@@ -1,8 +1,9 @@
 import { githubTools } from "./github.ts";
+import { knowledgeTools } from "./knowledge.ts";
 import { workspaceTools } from "./workspace.ts";
 import type { Tool } from "./port.ts";
 
-const ALL: Tool[] = [...githubTools, ...workspaceTools];
+const ALL: Tool[] = [...githubTools, ...workspaceTools, ...knowledgeTools];
 const BY_NAME = new Map(ALL.map((tool) => [tool.spec.name, tool]));
 
 export function toolsByName(names: readonly string[]): Tool[] {

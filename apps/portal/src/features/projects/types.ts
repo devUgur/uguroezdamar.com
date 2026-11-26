@@ -74,3 +74,36 @@ export interface ProjectOverview {
   tasks: ProjectTask[];
   error: string | null;
 }
+
+/** Knowledge index of a project (agent API: GET /api/projects/:id/knowledge). */
+export interface KnowledgeStatus {
+  sources: number;
+  chunks: number;
+  embedded: number;
+  lastIndexedAt: number | null;
+  job: { status: "queued" | "running" | "done" | "failed"; indexed: number; skipped: number; queued: number; vectorsMissing: boolean; startedAt: number; finishedAt: number | null; error: string | null } | null;
+}
+
+export interface KnowledgeHit {
+  chunkId: string;
+  source: string;
+  heading: string | null;
+  text: string;
+  via: ("text" | "vector")[];
+}
+
+export interface WorkingMemoryEntry {
+  agentId: string;
+  agent: string;
+  content: string;
+  version: number;
+  updatedAt: number;
+}
+
+export interface ProjectKnowledge {
+  status: KnowledgeStatus | null;
+  memory: WorkingMemoryEntry[];
+  query: string;
+  hits: KnowledgeHit[];
+  error: string | null;
+}

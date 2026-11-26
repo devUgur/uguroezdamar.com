@@ -1,3 +1,4 @@
+import { readWorkingMemory } from "./knowledge/store.ts";
 import { loadAgentSettings, stepsOf } from "./agents/settings.ts";
 import { buildContext, PRIOR_MESSAGES, SUMMARIZE_AFTER, summaryPrompt, type ThreadSummary, unsummarized } from "./runtime/context.ts";
 import { finishRun, recordModelCall, recordToolCall, spentTodayFromLedger, startRun } from "./usage/ledger.ts";
@@ -338,6 +339,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     };
     // Every stage may run in a fresh object instance: the summary comes from storage, not from memory.
     this.summaryCache = (await this.ctx.storage.get<ThreadSummary>(SUMMARY)) ?? null;
+    this.workingMemory = (await readWorkingMemory(this.env, tenantId, agentId, projectId))?.content ?? null;
     if (run.stages === 0 && run.historyFrom !== undefined) {
       await this.summarize({ tenantId, agentId, projectId, threadId, taskId: run.taskId, runId: run.runId, runFrom: run.historyFrom, router, budget, strict: privateContent() });
     }
@@ -588,10 +590,11 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
         PRIOR_MESSAGES,
       )
       .toArray();
-    return buildContext(rows.map((row) => ({ id: Number(row.id), ...toMessage(row) })), runFrom, this.summaryCache);
+    return buildContext(rows.map((row) => ({ id: Number(row.id), ...toMessage(row) })), runFrom, this.summaryCache, this.workingMemory);
   }
 
   private summaryCache: ThreadSummary | null = null;
+  private workingMemory: string | null = null;
 
   /**
    * Folds earlier messages into the thread summary with the cheap role model, once at the start of a run and only when

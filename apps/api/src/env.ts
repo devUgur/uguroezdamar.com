@@ -1,5 +1,6 @@
 import type { AgentRuntime } from "./agent.ts";
 import type { LiveHub } from "./hub.ts";
+import type { KnowledgeIndexer } from "./knowledge/indexer.ts";
 import type { OfficePresence } from "./office/presence.ts";
 
 /** Bindings from wrangler.jsonc plus secrets set by the deploy workflow. */
@@ -11,6 +12,9 @@ export interface Env {
   AGENTS: DurableObjectNamespace<AgentRuntime>;
   HUB: DurableObjectNamespace<LiveHub>;
   OFFICE: DurableObjectNamespace<OfficePresence>;
+  /** Knowledge index of the projects (plan stage 3): vectors from @cf/baai/bge-m3, 1024 dimensions, cosine. */
+  KNOWLEDGE: VectorizeIndex;
+  INDEXER: DurableObjectNamespace<KnowledgeIndexer>;
 
   DEFAULT_REPO: string;
   /** GitHub accounts whose repositories may become projects, comma-separated. Organizations stay out until decided. */
