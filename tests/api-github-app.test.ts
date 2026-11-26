@@ -90,6 +90,13 @@ describe("GitHub App sign-in", () => {
     expect(calls).toHaveLength(used);
   });
 
+  it("does not cache an empty installation list, so a fresh installation shows up at once", async () => {
+    const { env, config } = envWith();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("[]", { status: 200 })));
+    expect(await installationToken(env, "devUgur")).toBeNull();
+    expect(config.store.has("github:installations")).toBe(false);
+  });
+
   it("returns nothing for an account the app is not installed on", async () => {
     stubGithub();
     const { env } = envWith();

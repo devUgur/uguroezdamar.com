@@ -100,7 +100,8 @@ export async function installations(env: Env, beforeFetch?: () => void): Promise
   const list = rows
     .filter((row) => row.account)
     .map((row) => ({ id: row.id, account: row.account?.login ?? "", selection: row.repository_selection }));
-  await env.CONFIG.put("github:installations", JSON.stringify(list), { expirationTtl: INSTALLATIONS_TTL_SECONDS });
+  // An empty list is not cached: right after installing the app, the next call must already see it.
+  if (list.length) await env.CONFIG.put("github:installations", JSON.stringify(list), { expirationTtl: INSTALLATIONS_TTL_SECONDS });
   return list;
 }
 
