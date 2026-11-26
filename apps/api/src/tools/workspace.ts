@@ -1,5 +1,5 @@
 import type { Tool } from "./port.ts";
-import { listRepositories } from "../projects/repositories.ts";
+import { createRepository, listRepositories, registerProject } from "../projects/repositories.ts";
 import { str } from "./port.ts";
 
 const listProjects: Tool = {
@@ -39,6 +39,50 @@ const listGithubRepositories: Tool = {
   },
 };
 
+const registerProjectTool: Tool = {
+  requiresApproval: true,
+  spec: {
+    name: "project_register",
+    description:
+      "Schlägt vor, ein Repository des Kontos als Projekt zu registrieren, damit Agenten dort schreiben dürfen (nur auf agent/…-Branches, per Pull Request). Braucht Ugurs Freigabe. Lesen geht auch ohne Registrierung.",
+    parameters: { type: "object", properties: { repo: { type: "string", description: "owner/name" } }, required: ["repo"] },
+  },
+  async run(args, context) {
+    const result = await registerProject(context.env, str(args, "repo").trim());
+    return {
+      projectId: result.id,
+      created: result.created,
+      writeMode: "pr-only",
+      hint: "Ugur wechselt im Chat-Kopf auf dieses Projekt; geschrieben wird nur auf agent/…-Branches per Pull Request.",
+    };
+  },
+};
+
+const createRepositoryTool: Tool = {
+  requiresApproval: true,
+  spec: {
+    name: "repo_create",
+    description:
+      "Schlägt vor, ein neues Repository auf Ugurs GitHub-Konto anzulegen und als Projekt zu registrieren. Standardmäßig privat. Braucht Ugurs Freigabe.",
+    parameters: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Repository-Name ohne Besitzer" },
+        description: { type: "string" },
+        private: { type: "boolean", description: "Standard true" },
+      },
+      required: ["name"],
+    },
+  },
+  async run(args, context) {
+    return createRepository(context.env, {
+      name: str(args, "name").trim(),
+      description: typeof args.description === "string" ? args.description : undefined,
+      private: args.private !== false,
+    });
+  },
+};
+
 const remember: Tool = {
   spec: {
     name: "memory_save",
@@ -62,4 +106,4 @@ export async function projectMemories(db: D1Database, projectId: string, limit =
   return results.map((row) => row.content);
 }
 
-export const workspaceTools: Tool[] = [listProjects, listGithubRepositories, remember];
+export const workspaceTools: Tool[] = [listProjects, listGithubRepositories, registerProjectTool, createRepositoryTool, remember];

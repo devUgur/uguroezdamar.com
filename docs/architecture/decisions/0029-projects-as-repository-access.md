@@ -29,13 +29,14 @@ Ein feingranularer GitHub-Token hat genau einen Besitzer, also das Konto oder ei
 5. **Private Repositories nur mit Modellen ohne Datenauswertung.** Jeder Modellanbieter trägt `trainsOnData`; fehlt die Angabe, gilt „wertet aus“. Bei `visibility = private` filtert der Router solche Anbieter aus, auch bei einem im Thread fest gewählten Modell. Bleibt keiner übrig, schlägt der Lauf mit einer klaren Meldung fehl, statt zu einem auswertenden Anbieter zu wechseln. Aktuell erlaubt sind Workers AI und Modal; Gemini (Gratis-Stufe) und OpenRouter sind gesperrt.
 6. **Projekt entfernen** archiviert die Zeile. Threads und Aufgaben behalten ihren Verlauf; ein Lauf in einem entfernten Projekt endet mit einer Meldung. Das Hauptprojekt lässt sich nicht entfernen.
 7. **Token.** Ein feingranularer Token (Besitzer: das eigene Konto, Zugriff auf alle Repositories, Rechte nur Contents und Pull requests lesen und schreiben sowie Checks lesen). Kein `Workflows`, kein `Administration`. Der Token der lokalen `gh`-Anmeldung wird nie verwendet.
+8. **Registrieren und Anlegen nur per Freigabe.** `project_register` und `repo_create` sind freigabepflichtige Werkzeuge (Risikostufe „security“, rote Karte). `repo_create` legt auf dem Konto des Tokens an (nie in einer Organisation, nur wenn der Besitzer freigegeben ist), standardmäßig privat, mit README, und registriert das Repository danach als `pr-only`-Projekt. Ein Token braucht dafür `Administration: Read and write`, das auch Einstellungen und Löschen umfasst; ohne dieses Recht scheitert das Anlegen mit einer klaren Meldung, alles andere läuft weiter. Löschen von Repositories bleibt ausgeschlossen.
 
 ## Alternativen
 
 - **Alle sichtbaren Repositories automatisch freigeben:** verworfen. Ein kompromittierter Prompt oder Fehler träfe jedes Repository, auch fremde Produkte.
 - **Einen Token je Repository:** verworfen, zu viele Secrets. Die Registrierung im Backend leistet dasselbe feiner.
 - **Organisationen sofort einbeziehen:** zurückgestellt. Sie brauchen eigene Tokens und eine Entscheidung zur Trennung der Produkte.
-- **Repositories vom Agenten anlegen lassen:** zurückgestellt. Das braucht vermutlich `Administration: Read and write`, das auch Einstellungen und Löschen umfasst. Erst wenn das Recht geprüft ist und eine eigene Freigabe-Stufe feststeht.
+- **Repositories vom Agenten anlegen lassen:** zunächst zurückgestellt, später gebaut (`repo_create`, siehe Entscheidung 8).
 
 ## Konsequenzen
 
@@ -44,8 +45,8 @@ Ein feingranularer GitHub-Token hat genau einen Besitzer, also das Konto oder ei
 - Lesen eines privaten Repositories markiert den Thread zuerst als privat (Punkt 5); gelesener Code ist nicht vertrauenswürdig, kann aber ohne Registrierung und Freigabe nirgends schreiben.
 - Ein Thread arbeitet im Repository seines Projekts. Der Chat-Start in `/projects` legt ihn mit dem Projekt an.
 - Die Datenschutzregel ist durch Tests abgesichert, darunter ein Fall, der beim Aushebeln der Filterung scheitert (`tests/api-projects.test.ts`).
-- Das Anlegen von Repositories, die Organisationen sind offen.
+- Die Organisationen sind offen.
 
 ## Rückprüfung
 
-Neu entscheiden, wenn Organisations-Repositories einbezogen werden, wenn Gemini auf eine bezahlte Stufe ohne Auswertung wechselt (dann `trainsOnData: false`), oder wenn Agenten Repositories anlegen sollen.
+Neu entscheiden, wenn Organisations-Repositories einbezogen werden oder wenn Gemini auf eine bezahlte Stufe ohne Auswertung wechselt (dann `trainsOnData: false`).

@@ -24,12 +24,15 @@ interface GithubRepo {
   pushed_at: string | null;
 }
 
-async function github<T>(env: Env, path: string, beforeFetch?: () => void): Promise<T> {
+async function github<T>(env: Env, path: string, beforeFetch?: () => void, init: { method: "POST"; body: unknown } | undefined = undefined): Promise<T> {
   const token = env.AGENT_GITHUB_TOKEN;
   if (!token) throw new ProjectError("AGENT_GITHUB_TOKEN ist nicht gesetzt.", 503);
   beforeFetch?.();
   const response = await fetch(`${API}${path}`, {
+    method: init?.method ?? "GET",
+    body: init ? JSON.stringify(init.body) : undefined,
     headers: {
+      ...(init ? { "content-type": "application/json" } : {}),
       accept: "application/vnd.github+json",
       authorization: `Bearer ${token}`,
       "user-agent": "uguroezdamar-api",
@@ -37,6 +40,10 @@ async function github<T>(env: Env, path: string, beforeFetch?: () => void): Prom
     },
   });
   if (response.status === 401) throw new ProjectError("GitHub lehnt den Token ab (abgelaufen oder ungültig).", 502);
+  if (init && (response.status === 403 || response.status === 404)) {
+    throw new ProjectError("GitHub erlaubt dem Token diese Aktion nicht (zum Anlegen braucht er Administration: Read and write).", 403);
+  }
+  if (init && response.status === 422) throw new ProjectError("GitHub lehnt den Namen ab (oft: gibt es schon).", 409);
   if (response.status === 404) throw new ProjectError("Repository nicht gefunden oder für den Token nicht freigegeben.", 404);
   if (!response.ok) throw new ProjectError(`GitHub antwortet mit ${response.status}.`, 502);
   return (await response.json()) as T;
@@ -114,6 +121,29 @@ export async function registerProject(env: Env, fullName: string): Promise<{ id:
     return { id, created: true };
   }
   throw new ProjectError("Kein freier Projektname gefunden.", 409);
+}
+
+const NEW_REPO_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+
+/**
+ * Creates a repository on the token's own account (never an organization) and registers it as a project.
+ * Private unless asked otherwise; the first commit (README) gives it a default branch.
+ */
+export async function createRepository(
+  env: Env,
+  input: { name: string; description?: string; private?: boolean },
+): Promise<{ fullName: string; private: boolean; projectId: string }> {
+  if (!NEW_REPO_NAME.test(input.name) || input.name.endsWith(".git")) {
+    throw new ProjectError("Ungültiger Repository-Name (Buchstaben, Ziffern, Punkt, Bindestrich, Unterstrich).", 400);
+  }
+  const me = await github<{ login: string }>(env, "/user");
+  if (!ownerAllowed(env, me.login)) throw new ProjectError(`Das Konto „${me.login}“ ist nicht freigegeben.`, 403);
+  const created = await github<GithubRepo>(env, "/user/repos", undefined, {
+    method: "POST",
+    body: { name: input.name, description: input.description?.slice(0, 300), private: input.private !== false, auto_init: true },
+  });
+  const { id } = await registerProject(env, created.full_name);
+  return { fullName: created.full_name, private: created.private, projectId: id };
 }
 
 /** Takes a project out of use. Rows stay for the history of threads and tasks; this repository's project cannot be removed. */

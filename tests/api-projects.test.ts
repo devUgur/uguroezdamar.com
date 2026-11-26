@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ModelRouter } from "../apps/api/src/models/router.ts";
-import { listRepositories, ProjectError, registerProject, unregisterProject } from "../apps/api/src/projects/repositories.ts";
+import { createRepository, listRepositories, ProjectError, registerProject, unregisterProject } from "../apps/api/src/projects/repositories.ts";
+import { describeApproval } from "../apps/api/src/approvals.ts";
 import { workspaceTools } from "../apps/api/src/tools/workspace.ts";
 import { githubTools } from "../apps/api/src/tools/github.ts";
 import { SubrequestBudget } from "../apps/api/src/runtime/budget.ts";
@@ -308,5 +309,61 @@ describe("reading other repositories of the account", () => {
     await commit?.run({ repo: "devUgur/notes", branch: "dev", message: "m", files: [{ path: "a.txt", content: "x" }] }, context).catch(() => undefined);
     expect(calls.length).toBeGreaterThan(0);
     expect(calls.every((url) => url.includes("/repos/devUgur/main/"))).toBe(true);
+  });
+});
+
+describe("registering and creating repositories through approvals", () => {
+  /** Answers /user, POST /user/repos and the lookup that registration does afterwards; records every call. */
+  function stubAccount(login: string, createStatus = 201) {
+    const calls: { method: string; url: string; body: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        calls.push({ method, url, body: init?.body ? JSON.parse(String(init.body)) : undefined });
+        if (url.endsWith("/user")) return new Response(JSON.stringify({ login }), { status: 200 });
+        if (method === "POST") {
+          const requested = calls.at(-1)?.body as { name: string; private: boolean };
+          return new Response(JSON.stringify(repoJson({ full_name: `${login}/${requested.name}`, name: requested.name, private: requested.private })), { status: createStatus });
+        }
+        return new Response(JSON.stringify(repoJson({ full_name: url.split("/repos/")[1], name: String(url.split("/").at(-1)) })), { status: 200 });
+      }),
+    );
+    return calls;
+  }
+
+  it("creates a private repository on the own account and registers it as a pr-only project", async () => {
+    const calls = stubAccount("devUgur");
+    const { env, db } = envWith();
+    const result = await createRepository(env, { name: "neues-projekt", description: "Test" });
+    expect(result).toMatchObject({ fullName: "devUgur/neues-projekt", private: true, projectId: "neues-projekt" });
+    expect(calls.find((call) => call.method === "POST")?.body).toMatchObject({ name: "neues-projekt", private: true, auto_init: true });
+    expect(db.projects[0]).toMatchObject({ repo: "devUgur/neues-projekt", write_mode: "pr-only", status: "active" });
+  });
+
+  it("refuses accounts that are not allowed and bad names before creating anything", async () => {
+    const calls = stubAccount("fremd");
+    const { env } = envWith();
+    await expect(createRepository(env, { name: "x" })).rejects.toThrow(/nicht freigegeben/);
+    await expect(createRepository(env, { name: "../boese" })).rejects.toThrow(/Ungültiger/);
+    expect(calls.some((call) => call.method === "POST")).toBe(false);
+  });
+
+  it("explains the missing token permission instead of a bare GitHub error", async () => {
+    stubAccount("devUgur", 403);
+    const { env } = envWith();
+    await expect(createRepository(env, { name: "x" })).rejects.toThrow(/Administration/);
+  });
+
+  it("only proposes both actions: they need approval and show as security relevant", () => {
+    for (const name of ["project_register", "repo_create"]) {
+      expect(workspaceTools.find((tool) => tool.spec.name === name)?.requiresApproval).toBe(true);
+    }
+    expect(describeApproval("project_register", { repo: "devUgur/video-lab" })).toMatchObject({ risk: "security" });
+    const publicRepo = describeApproval("repo_create", { name: "x", private: false });
+    expect(publicRepo.summary).toContain("öffentlich");
+    expect(publicRepo.warnings.join(" ")).toContain("ÖFFENTLICH");
+    expect(describeApproval("repo_create", { name: "x" }).summary).toContain("privat");
   });
 });

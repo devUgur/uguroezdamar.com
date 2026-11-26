@@ -61,6 +61,24 @@ export function describeApproval(tool: string, args: Record<string, unknown>): A
       warnings: release ? ["Release-PR: sein Merge liefert in Produktion aus."] : [],
     };
   }
+  if (tool === "project_register") {
+    return {
+      summary: `Projekt registrieren: ${String(args.repo ?? "?")}`,
+      risk: "security",
+      warnings: ["Agenten dürfen dort danach Branches agent/… und Pull Requests anlegen (jeder Commit bleibt freigabepflichtig). Lesen ging schon vorher."],
+    };
+  }
+  if (tool === "repo_create") {
+    const isPublic = args.private === false;
+    return {
+      summary: `Repository anlegen: ${String(args.name ?? "?")} (${isPublic ? "öffentlich" : "privat"}) und als Projekt registrieren`,
+      risk: "security",
+      warnings: [
+        isPublic ? "ÖFFENTLICH: Jeder im Internet kann den Inhalt sehen." : "Privat, auf deinem Konto.",
+        "Das Anlegen lässt sich nur auf GitHub wieder rückgängig machen (Löschen).",
+      ],
+    };
+  }
   const text = JSON.stringify(args);
   return { summary: `${tool}: ${text.length > 400 ? `${text.slice(0, 400)}…` : text}`, risk: null, warnings: [] };
 }
