@@ -45,6 +45,12 @@ pnpm ugur --help    # Secrets, Datenbank, Admin-Konten
 
 Details: [`docs/operations/secrets.md`](docs/operations/secrets.md).
 
+## Skills und Framework-Doku
+
+- Projekt-Skills liegen in [`.claude/skills/`](.claude/skills/README.md) und sind versioniert. Dort steht auch, woher jeder Skill stammt und was lokal geändert ist. Eigene: `design-system` (vor jeder UI-Arbeit), `release` (vor jedem Push). Diese Datei hat Vorrang vor jedem Skill.
+- Next.js bringt versionsgleiche Doku für Agenten mit: `apps/site/node_modules/next/dist/docs/`. Bei Framework-Fragen zuerst dort nachlesen.
+- Neue Skills nur nach Prüfung und mit festem Commit-Stand; nichts automatisch nachladen.
+
 ## Struktur
 
 - `apps/site` – öffentliche Website. `apps/portal` – Admin-Portal. Beide Next.js App Router.
