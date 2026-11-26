@@ -142,6 +142,7 @@ export class ModelRouter {
       : provider.baseUrl);
     if (!baseUrl) return undefined;
     const apiKey = provider.apiKeySecret ? secret(this.env, provider.apiKeySecret) : undefined;
-    return new OpenAICompatibleModel(providerId, baseUrl, apiKey);
+    const shortToolCallIds = provider.models?.find((entry) => entry.id === model)?.shortToolCallIds;
+    return new OpenAICompatibleModel(providerId, baseUrl, apiKey, {}, { shortToolCallIds });
   }
 }

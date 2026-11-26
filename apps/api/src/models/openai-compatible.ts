@@ -41,6 +41,7 @@ export class OpenAICompatibleModel implements ModelPort {
     private readonly baseUrl: string,
     private readonly apiKey: string | undefined,
     private readonly extraHeaders: Record<string, string> = {},
+    private readonly options: { shortToolCallIds?: boolean } = {},
   ) {}
 
   available(): boolean {
@@ -62,7 +63,7 @@ export class OpenAICompatibleModel implements ModelPort {
   private async send(request: ChatRequest, onDelta?: (text: string) => void): Promise<ChatResult> {
     const body = {
       model: request.model,
-      messages: request.messages.map(toWire),
+      messages: request.messages.map((message) => toWire(message, this.options.shortToolCallIds ? shortId : undefined)),
       tools: request.tools?.length ? request.tools.map((tool) => ({ type: "function", function: tool })) : undefined,
       temperature: request.temperature,
       max_tokens: request.maxTokens,
@@ -154,14 +155,28 @@ async function readStream(body: ReadableStream<Uint8Array>, onDelta: (text: stri
   };
 }
 
-function toWire(message: ChatMessage): Record<string, unknown> {
+/**
+ * Mistral models reject any tool-call id that is not exactly nine letters or digits. The mapping is a
+ * pure function of the id, so a call and its result still match, and stored history stays unchanged.
+ */
+export function shortId(id: string): string {
+  let a = 0x811c9dc5;
+  let b = 0x01000193;
+  for (const char of id) {
+    a = Math.imul(a ^ char.charCodeAt(0), 0x01000193) >>> 0;
+    b = Math.imul(b + char.charCodeAt(0), 0x85ebca6b) >>> 0;
+  }
+  return (a.toString(36).padStart(7, "0") + b.toString(36)).slice(0, 9).padEnd(9, "0");
+}
+
+function toWire(message: ChatMessage, mapId: (id: string) => string = (id) => id): Record<string, unknown> {
   if (message.role === "tool") {
-    return { role: "tool", tool_call_id: message.toolCallId, content: message.content ?? "" };
+    return { role: "tool", tool_call_id: message.toolCallId ? mapId(message.toolCallId) : message.toolCallId, content: message.content ?? "" };
   }
   const wire: Record<string, unknown> = { role: message.role, content: message.content ?? "" };
   if (message.toolCalls?.length) {
     wire.tool_calls = message.toolCalls.map((call) => ({
-      id: call.id,
+      id: mapId(call.id),
       type: "function",
       function: { name: call.name, arguments: call.arguments },
     }));

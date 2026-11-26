@@ -23,6 +23,8 @@ export interface CatalogModel {
   baseUrl?: string;
   /** Shown next to the name in the portal, e.g. cost or cold start. */
   note?: string;
+  /** The model only accepts tool-call ids of exactly nine letters/digits (Mistral); ids are rewritten on the way out. */
+  shortToolCallIds?: boolean;
 }
 
 export interface ProviderConfig {
@@ -93,6 +95,7 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
         {
           id: "mistralai/Ministral-3-8B-Instruct-2512",
           label: "Ministral 3 8B",
+          shortToolCallIds: true,
           baseUrl: "https://ugur44ist--uguroezdamar-llm-ministral.us-east.modal.run/v1",
           note: "L40S, ca. 1,95 $/h, Kaltstart 1–2 min",
           inputUsdPerM: 0,

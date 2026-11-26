@@ -24,7 +24,9 @@ FAST_BOOT = True
 vllm_image = (
     modal.Image.from_registry("nvidia/cuda:12.9.0-devel-ubuntu22.04", add_python="3.12")
     .entrypoint([])
-    .uv_pip_install("vllm==0.21.0", "transformers==5.8.1")
+    # mistral-common 1.13 changed GrammarFactory.get_lark_from_jinja (new required force_tool_names), which
+    # vLLM 0.21 does not pass: every Ministral tool call failed with 400. Pinned to vLLM's minimum.
+    .uv_pip_install("vllm==0.21.0", "transformers==5.8.1", "mistral-common[image]==1.11.2")
     .env({"HF_XET_HIGH_PERFORMANCE": "1"})
 )
 
