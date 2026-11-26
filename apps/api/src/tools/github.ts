@@ -90,7 +90,7 @@ function decodeBase64(content: string): string {
 const REPO_FORMAT = /^[A-Za-z0-9._-]{1,100}\/[A-Za-z0-9._-]{1,100}$/;
 const repoParam = {
   type: "string",
-  description: "owner/name eines anderen Repositories des Kontos; ohne Angabe das Repository dieses Gesprächs. Nur lesend.",
+  description: "owner/name, nur lesend; leer = dieses Projekt",
 } as const;
 
 interface RepoMeta {
@@ -127,13 +127,13 @@ const listFiles: Tool = {
   spec: {
     name: "repo_list_files",
     description:
-      "Listet Dateien und Ordner im Repository. Ohne path die oberste Ebene. Mit recursive=true alle Dateien unter path (max. 400).",
+      "Dateien und Ordner unter path (leer = Wurzel); recursive=true listet alles darunter (max. 400).",
     parameters: {
       type: "object",
       properties: {
         repo: repoParam,
-        path: { type: "string", description: "Ordner relativ zur Wurzel, z. B. apps/site" },
-        ref: { type: "string", description: "Branch oder Commit, Standard ist dev" },
+        path: { type: "string", description: "z. B. apps/site" },
+        ref: { type: "string", description: "Branch/Commit, Standard dev" },
         recursive: { type: "boolean" },
       },
     },
@@ -164,13 +164,13 @@ const listFiles: Tool = {
 const readFile: Tool = {
   spec: {
     name: "repo_read_file",
-    description: "Liest eine Textdatei aus dem Repository vollständig (bis 60.000 Zeichen).",
+    description: "Liest eine Textdatei (bis 60.000 Zeichen).",
     parameters: {
       type: "object",
       properties: {
         repo: repoParam,
         path: { type: "string" },
-        ref: { type: "string", description: "Branch oder Commit, Standard ist dev" },
+        ref: { type: "string", description: "Branch/Commit, Standard dev" },
       },
       required: ["path"],
     },
@@ -201,7 +201,7 @@ const readFile: Tool = {
 const searchCode: Tool = {
   spec: {
     name: "repo_search_code",
-    description: "Sucht Text im Code (Index des Default-Branches auf GitHub) und liefert die Dateipfade der Treffer.",
+    description: "Codesuche im Standardbranch; liefert Dateipfade.",
     parameters: { type: "object", properties: { repo: repoParam, query: { type: "string" } }, required: ["query"] },
   },
   async run(args, context) {
@@ -228,19 +228,19 @@ const commitFiles: Tool = {
   spec: {
     name: "repo_commit_files",
     description:
-      "Schreibt einen Commit mit einer oder mehreren Dateien auf dev (Standard, wird danach automatisch in die Dev-Umgebung ausgeliefert) oder auf einen Branch agent/... (wird bei Bedarf von dev angelegt). Nie main. Jede Datei bekommt ihren VOLLSTÄNDIGEN neuen Inhalt. Braucht Ugurs Freigabe.",
+      "Commit auf dev (geht in die Dev-Umgebung) oder agent/… (wird von dev angelegt), nie main. Jede Datei mit vollständigem neuem Inhalt. Braucht Ugurs Freigabe.",
     parameters: {
       type: "object",
       properties: {
-        branch: { type: "string", description: "dev oder agent/..., z. B. agent/fix-footer-link" },
-        message: { type: "string", description: "Commit-Nachricht, Deutsch, im Imperativ" },
+        branch: { type: "string", description: "dev oder agent/…" },
+        message: { type: "string", description: "Deutsch, Imperativ" },
         files: {
           type: "array",
           items: {
             type: "object",
             properties: {
               path: { type: "string" },
-              content: { type: "string", description: "vollständiger neuer Dateiinhalt" },
+              content: { type: "string", description: "vollständiger neuer Inhalt" },
               delete: { type: "boolean" },
             },
             required: ["path"],
@@ -299,13 +299,13 @@ const openPullRequest: Tool = {
   spec: {
     name: "repo_open_pull_request",
     description:
-      "Öffnet einen Pull Request: von agent/... nach dev, oder von dev nach main (Release in Produktion). Kein Merge, kein Deploy. Braucht Ugurs Freigabe.",
+      "Pull Request von agent/… nach dev oder von dev nach main (Release). Kein Merge, kein Deploy. Braucht Ugurs Freigabe.",
     parameters: {
       type: "object",
       properties: {
         branch: { type: "string" },
         title: { type: "string" },
-        body: { type: "string", description: "Was geändert wurde, warum, und wie man es prüft" },
+        body: { type: "string", description: "Was, warum, wie prüfen" },
       },
       required: ["branch", "title", "body"],
     },
@@ -330,7 +330,7 @@ const openPullRequest: Tool = {
 const listPullRequests: Tool = {
   spec: {
     name: "repo_list_pull_requests",
-    description: "Listet Pull Requests des Repositories mit Status.",
+    description: "Pull Requests mit Status.",
     parameters: { type: "object", properties: { repo: repoParam, state: { type: "string", enum: ["open", "closed", "all"] } } },
   },
   async run(args, context) {
@@ -389,7 +389,7 @@ const readPullRequest: Tool = {
 const checkStatus: Tool = {
   spec: {
     name: "repo_check_status",
-    description: "Zeigt den CI-Status (GitHub Checks) eines Branches oder Commits.",
+    description: "CI-Status (GitHub Checks) eines Branches oder Commits.",
     parameters: { type: "object", properties: { repo: repoParam, ref: { type: "string" } }, required: ["ref"] },
   },
   async run(args, context) {

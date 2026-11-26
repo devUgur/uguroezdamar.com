@@ -6,7 +6,7 @@ const listProjects: Tool = {
   spec: {
     name: "projects_list",
     description:
-      "Listet die registrierten Projekte (Repositories, an denen Agenten arbeiten dürfen) mit Sichtbarkeit und Schreibregel. Das sind nur die freigegebenen, nicht alle Repositories des GitHub-Kontos; dafür github_repositories_list nutzen.",
+      "Registrierte Projekte mit Sichtbarkeit und Schreibregel (nicht alle Repositories: dafür github_repositories_list).",
     parameters: { type: "object", properties: {} },
   },
   async run(_args, context) {
@@ -23,7 +23,7 @@ const listGithubRepositories: Tool = {
   spec: {
     name: "github_repositories_list",
     description:
-      "Listet alle Repositories des freigegebenen GitHub-Kontos (nicht nur die registrierten Projekte) und ob sie registriert sind. Nur lesend. Antworte damit auf Fragen wie „wie viele Repositories gibt es“.",
+      "Alle Repositories des Kontos und ob sie registriert sind. Nur lesend.",
     parameters: { type: "object", properties: {} },
   },
   async run(_args, context) {
@@ -46,7 +46,7 @@ const registerProjectTool: Tool = {
   spec: {
     name: "project_register",
     description:
-      "Schlägt vor, ein Repository des Kontos als Projekt zu registrieren, damit Agenten dort schreiben dürfen (nur auf agent/…-Branches, per Pull Request). Braucht Ugurs Freigabe. Lesen geht auch ohne Registrierung.",
+      "Schlägt vor, ein Repository als Projekt zu registrieren, damit Agenten dort schreiben dürfen (agent/…-Branches, per PR). Braucht Ugurs Freigabe.",
     parameters: { type: "object", properties: { repo: { type: "string", description: "owner/name" } }, required: ["repo"] },
   },
   async run(args, context) {
@@ -65,11 +65,11 @@ const createRepositoryTool: Tool = {
   spec: {
     name: "repo_create",
     description:
-      "Schlägt vor, ein neues Repository auf Ugurs GitHub-Konto anzulegen und als Projekt zu registrieren. Standardmäßig privat. Braucht Ugurs Freigabe.",
+      "Schlägt ein neues Repository auf Ugurs Konto vor und registriert es; standardmäßig privat. Braucht Ugurs Freigabe.",
     parameters: {
       type: "object",
       properties: {
-        name: { type: "string", description: "Repository-Name ohne Besitzer" },
+        name: { type: "string", description: "ohne Besitzer" },
         description: { type: "string" },
         private: { type: "boolean", description: "Standard true" },
       },
@@ -88,7 +88,7 @@ const createRepositoryTool: Tool = {
 const remember: Tool = {
   spec: {
     name: "memory_save",
-    description: "Speichert eine dauerhafte Notiz für dieses Projekt, z. B. eine Entscheidung von Ugur oder eine Konvention.",
+    description: "Speichert eine dauerhafte Projektnotiz, z. B. eine Entscheidung oder Konvention.",
     parameters: { type: "object", properties: { content: { type: "string" } }, required: ["content"] },
   },
   async run(args, context) {
