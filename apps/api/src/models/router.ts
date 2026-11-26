@@ -84,6 +84,26 @@ export class ModelRouter {
     return Boolean(this.config.providers[pinned.provider]?.models?.some((model) => model.id === pinned.model));
   }
 
+  /**
+   * Starts the GPU behind a model that has its own endpoint (Modal) without waiting for it. A cold start
+   * takes longer than the 100 s Cloudflare allows a request, so the first message would otherwise fail
+   * and fall back to another provider. The request only needs to arrive; it is not awaited for long.
+   */
+  async warmUp(pinned: PinnedModel): Promise<void> {
+    const provider = this.config.providers[pinned.provider];
+    const baseUrl = provider?.models?.find((model) => model.id === pinned.model)?.baseUrl;
+    if (!baseUrl || !this.hasCredentials(pinned.provider)) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 1500);
+    try {
+      await fetch(`${baseUrl.replace(/\/v1$/, "")}/health`, { signal: controller.signal });
+    } catch {
+      // Expected: the request is cut off on purpose while the container boots.
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async chat(alias: string, request: Omit<ChatRequest, "model">, options: RouteOptions = {}): Promise<RoutedResult> {
     const chain = this.config.aliases[alias] ?? [];
     const ordered = options.pinned ? [this.pinnedTarget(options.pinned), ...chain.filter((target) => !(target.provider === options.pinned?.provider && target.model === options.pinned?.model))] : chain;

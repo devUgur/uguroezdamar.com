@@ -236,6 +236,7 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
     if (input.model) {
       const router = await ModelRouter.load(env);
       if (!router.offers(input.model)) return json({ error: "Unbekanntes Modell" }, 400);
+      await router.warmUp(input.model);
     }
     await env.DB.prepare(
       `UPDATE threads SET title = COALESCE(?, title), model = CASE WHEN ? THEN ? ELSE model END, updated_at = unixepoch() WHERE id = ?`,
