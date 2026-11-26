@@ -66,7 +66,8 @@ const NUDGE: ChatMessage = {
 };
 
 /** True when the turn ends on an announcement of work that was not done. Questions and finished answers do not count. */
-export function announcesUndoneWork(text: string): boolean {
+export function announcesUndoneWork(text: unknown): boolean {
+  if (typeof text !== "string") return false;
   const tail = text.trim().split(/\n{2,}/).at(-1)?.slice(-300) ?? "";
   return !tail.endsWith("?") && ANNOUNCEMENT.test(tail);
 }
@@ -116,7 +117,8 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
         nudgeNext = true;
         continue;
       }
-      const reply = turn.message.content?.trim() || "(keine Antwort)";
+      const content: unknown = turn.message.content;
+      const reply = (typeof content === "string" ? content : content == null ? "" : JSON.stringify(content)).trim() || "(keine Antwort)";
       await deps.emit({ type: "message", data: { text: reply, step } });
       return { kind: "done", reply, steps: step };
     }

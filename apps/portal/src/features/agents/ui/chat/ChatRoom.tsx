@@ -10,6 +10,8 @@ import { MessageList } from "./MessageList";
 import { ModelPicker } from "./ModelPicker";
 import { ProjectPicker } from "./ProjectPicker";
 import { RunActivity } from "./RunActivity";
+import { RunFailureNotice } from "./RunFailureNotice";
+import { latestRunFailure } from "./runFailure";
 import { useLiveRun } from "./useLiveRun";
 
 interface ChatRoomProps {
@@ -27,6 +29,7 @@ export function ChatRoom({ detail, catalog, liveOrigin, onRefresh, headerActions
   const { thread, messages, status, approvals, events, projects } = detail;
   const [pending, setPending] = useState<string[]>([]);
   const bottom = useRef<HTMLDivElement>(null);
+  const failure = latestRunFailure(events);
 
   const { run, connected, markRunning, reset, dropApproval } = useLiveRun({
     threadId: thread.id,
@@ -93,6 +96,7 @@ export function ChatRoom({ detail, catalog, liveOrigin, onRefresh, headerActions
             </p>
           ) : null}
           <MessageList messages={messages} />
+          {failure && !run.running && !pending.length ? <RunFailureNotice failure={failure} /> : null}
           <RunActivity pending={pending} activity={run.activity} streaming={run.streaming} running={run.running} status={run.status} />
           {run.approvals.map((approval) => (
             <ApprovalCard key={approval.id} approval={approval} onDecided={dropApproval} />

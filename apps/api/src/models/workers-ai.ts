@@ -1,8 +1,17 @@
 import type { ChatRequest, ChatResult, ModelPort, ToolCall } from "./port.ts";
 import { ModelError } from "./port.ts";
 
+/**
+ * Workers AI parses an answer that is valid JSON and returns it as an object (the QA reviewer is asked
+ * to answer with JSON). The rest of the runtime expects text, so it is turned back into a string.
+ */
+export function responseText(response: unknown): string | null {
+  if (response === undefined || response === null) return null;
+  return typeof response === "string" ? response : JSON.stringify(response);
+}
+
 interface WorkersAiOutput {
-  response?: string | null;
+  response?: unknown;
   tool_calls?: { id?: string; name?: string; arguments?: unknown; function?: { name?: string; arguments?: unknown } }[];
   usage?: { prompt_tokens?: number; completion_tokens?: number };
 }
@@ -64,7 +73,7 @@ export class WorkersAiModel implements ModelPort {
     return {
       message: {
         role: "assistant",
-        content: output.response ?? null,
+        content: responseText(output.response),
         toolCalls: toolCalls.length ? toolCalls : undefined,
       },
       usage: {
