@@ -11,10 +11,10 @@ export interface ToolContext {
   /** External calls left in this invocation; take() before every fetch. */
   budget: SubrequestBudget;
   /**
-   * Content of private repositories may enter the model's context: the project is private or the chat is
-   * pinned to a model that does not evaluate content. Everything the run sends on stays on such models.
+   * Call before returning content of private repositories to the model. From then on this thread is
+   * private for good: its history holds that content, so only models that do not evaluate requests answer.
    */
-  allowPrivate?: boolean;
+  markPrivate?: () => Promise<void>;
 }
 
 /**

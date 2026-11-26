@@ -46,6 +46,8 @@ interface RunState {
 
 const RUN = "run";
 const INBOX = "inbox";
+/** Set once private repository content entered this thread; see ToolContext.markPrivate. */
+const PRIVATE_THREAD = "private";
 type ReviewVerdict = "pass" | "changes_requested" | "needs_human";
 
 interface ReviewResult {
@@ -179,6 +181,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
   async reset(): Promise<void> {
     await this.stop();
     this.ctx.storage.sql.exec("DELETE FROM messages");
+    await this.ctx.storage.delete(PRIVATE_THREAD);
   }
 
   /** Messages wait in the inbox until a stage boundary, so tool-call sequences stay intact. */
@@ -272,10 +275,22 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     const budget = new SubrequestBudget();
     const router = await ModelRouter.load(this.env);
     const pinned = parsePinned(thread?.model);
-    // Private content stays on models that do not evaluate it: always in a private project, and in any chat
-    // whose pinned model is such a model (then a failing model never falls back to an evaluating provider).
-    const privateContent = project?.visibility === "private" || Boolean(pinned && router.keepsContentPrivate(pinned));
-    const context: ToolContext = { env: this.env, agentId, projectId, repo, budget, allowPrivate: privateContent };
+    // Private content stays on models that do not evaluate it: always in a private project, in a chat pinned to
+    // such a model (a failing model then never falls back to an evaluating provider), and in a thread that has
+    // already received private content (marked by a tool, remembered for the whole thread).
+    let tainted = (await this.ctx.storage.get<boolean>(PRIVATE_THREAD)) === true;
+    const privateContent = () => tainted || project?.visibility === "private" || Boolean(pinned && router.keepsContentPrivate(pinned));
+    const context: ToolContext = {
+      env: this.env,
+      agentId,
+      projectId,
+      repo,
+      budget,
+      markPrivate: async () => {
+        tainted = true;
+        await this.ctx.storage.put(PRIVATE_THREAD, true);
+      },
+    };
     const deltas = new DeltaBuffer(this.env, agentId, threadId);
 
     const outcome = await runAgentLoop({
@@ -292,7 +307,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
         const result = await router.chat(
           definition.modelAlias,
           { ...request, temperature: 0.3, maxTokens: 8192 },
-          { budget, onDelta, pinned: pinned && router.offers(pinned) ? pinned : undefined, privateContent },
+          { budget, onDelta, pinned: pinned && router.offers(pinned) ? pinned : undefined, privateContent: privateContent() },
         );
         await deltas.flush();
         return {

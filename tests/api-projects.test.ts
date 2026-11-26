@@ -222,22 +222,23 @@ describe("answering questions about repositories", () => {
       repoJson({ full_name: "devUgur/old", name: "old", archived: true }),
     ]);
 
-  it("counts every repository of the account, not only the registered projects, and leaves private names out in a public project", async () => {
+  it("counts every repository of the account, names the private ones and marks the thread private first", async () => {
     stubRepos();
     const { env } = envWith(rows("public"));
-    const context: ToolContext = { env, agentId: "chef", projectId: "p", repo: "devUgur/open", budget: new SubrequestBudget() };
+    const marked = vi.fn(async () => undefined);
+    const context: ToolContext = { env, agentId: "chef", projectId: "p", repo: "devUgur/open", budget: new SubrequestBudget(), markPrivate: marked };
     const result = (await tool("github_repositories_list")?.run({}, context)) as { total: number; private: number; registered: number; repositories: { fullName: string }[] };
     expect(result).toMatchObject({ total: 2, private: 1, registered: 1 });
-    expect(result.repositories.map((repo) => repo.fullName)).toEqual(["devUgur/open"]);
-    expect(JSON.stringify(result)).not.toContain("secret-client");
+    expect(result.repositories.map((repo) => repo.fullName)).toEqual(["devUgur/open", "devUgur/secret-client"]);
+    expect(marked).toHaveBeenCalledOnce();
   });
 
-  it("names private repositories when the chat runs only on models without training", async () => {
-    stubRepos();
+  it("leaves the thread unmarked when the account has no private repository", async () => {
+    stubGithub(() => [repoJson({ full_name: "devUgur/open", name: "open", private: false })]);
     const { env } = envWith(rows("public"));
-    const context: ToolContext = { env, agentId: "chef", projectId: "p", repo: "devUgur/open", budget: new SubrequestBudget(), allowPrivate: true };
-    const result = (await tool("github_repositories_list")?.run({}, context)) as { repositories: { fullName: string }[] };
-    expect(result.repositories.map((repo) => repo.fullName)).toContain("devUgur/secret-client");
+    const marked = vi.fn(async () => undefined);
+    await tool("github_repositories_list")?.run({}, { env, agentId: "chef", projectId: "p", repo: "devUgur/open", budget: new SubrequestBudget(), markPrivate: marked });
+    expect(marked).not.toHaveBeenCalled();
   });
 
   it("counts the GitHub call against the subrequest budget", async () => {

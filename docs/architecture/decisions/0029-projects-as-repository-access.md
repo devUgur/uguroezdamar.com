@@ -40,7 +40,7 @@ Ein feingranularer GitHub-Token hat genau einen Besitzer, also das Konto oder ei
 ## Konsequenzen
 
 - Migration `0009_project_repositories.sql` ergänzt `visibility`, `default_branch` und `write_mode`; das Hauptprojekt wird `public` und `dev-first`.
-- Ein Thread arbeitet im Repository seines Projekts; im Chat lässt sich das Projekt wechseln, solange der Agent nicht läuft. Private Repository-Namen sieht der Agent nur, wenn der Chat auf einem Modell ohne Datenauswertung läuft (privates Projekt oder dort fest gewähltes Modell); ein dort gewähltes Modell fällt bei Ausfall nie auf einen auswertenden Anbieter zurück.
+- Ein Thread arbeitet im Repository seines Projekts; im Chat lässt sich das Projekt wechseln, solange der Agent nicht läuft. Sieht oder liest der Agent private Repository-Inhalte (Namen aus `github_repositories_list`, Dateien in einem privaten Projekt), wird der Thread dauerhaft „privat“ (`markPrivate`, im Durable Object gespeichert): danach antworten nur Modelle ohne Datenauswertung, ohne Fallback auf einen auswertenden Anbieter. Der Owner muss dafür nichts einstellen; die Schritte vor dem ersten Zugriff enthalten keine privaten Inhalte.
 - Ein Thread arbeitet im Repository seines Projekts. Der Chat-Start in `/projects` legt ihn mit dem Projekt an.
 - Die Datenschutzregel ist durch Tests abgesichert, darunter ein Fall, der beim Aushebeln der Filterung scheitert (`tests/api-projects.test.ts`).
 - Das Anlegen von Repositories, die Organisationen sind offen.
