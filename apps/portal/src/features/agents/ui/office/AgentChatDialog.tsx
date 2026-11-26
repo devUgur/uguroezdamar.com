@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogTitle, toast } from "@ugur/ui";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, toast } from "@ugur/ui";
 import { loadChat, openAgentChat } from "../../actions";
 import type { AgentSummary, ChatView } from "../../types";
 import { ChatRoom } from "../chat/ChatRoom";
@@ -41,11 +41,21 @@ export function AgentChatDialog({ agent, fresh, onClose }: AgentChatDialogProps)
 
   return (
     <Dialog open={Boolean(agent)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex h-[min(46rem,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+      <DialogContent showCloseButton={false} className="flex h-[min(46rem,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
         <DialogTitle className="sr-only">Chat mit {agent?.name ?? "Agent"}</DialogTitle>
         <DialogDescription className="sr-only">{agent?.summary}</DialogDescription>
         {view ? (
-          <ChatRoom detail={view.detail} catalog={view.catalog} liveOrigin={view.liveOrigin} onRefresh={refresh} />
+          <ChatRoom
+            detail={view.detail}
+            catalog={view.catalog}
+            liveOrigin={view.liveOrigin}
+            onRefresh={refresh}
+            headerActions={
+              <DialogClose className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                Schließen
+              </DialogClose>
+            }
+          />
         ) : (
           <p className="p-8 text-sm text-muted-foreground">{failed ?? "Chat wird geöffnet …"}</p>
         )}

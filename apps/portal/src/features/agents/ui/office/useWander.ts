@@ -13,7 +13,7 @@ export interface FigurePose extends Point {
 }
 
 /** The open floor idle agents stroll across (SVG units of the office, see OfficeRoom). */
-const FLOOR = { left: 80, right: 880, top: 330, bottom: 510 };
+const FLOOR = { left: 90, right: 860, top: 360, bottom: 470 };
 const SPEED = 70; // units per second
 
 function randomSpot(): Point {

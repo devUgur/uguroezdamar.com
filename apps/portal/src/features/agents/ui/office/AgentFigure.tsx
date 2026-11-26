@@ -31,6 +31,7 @@ export function AgentFigure({ name, pose, activity, bubble, selected, onSelect }
         }
       }}
     >
+      <g transform="scale(1.6)">
       <ellipse cx={0} cy={2} rx={18} ry={5} className="fill-foreground/10" />
       <circle
         r={30}
@@ -39,10 +40,10 @@ export function AgentFigure({ name, pose, activity, bubble, selected, onSelect }
       />
       {/* Legs step while walking. */}
       <g className={cn(pose.walking && "motion-safe:animate-agent-step")}>
-        <rect x={-8} y={-14} width={6} height={14} rx={3} className="fill-foreground/70" />
+        <rect x={-8} y={-14} width={6} height={14} rx={3} className="fill-foreground/80" />
       </g>
       <g className={cn(pose.walking && "motion-safe:animate-agent-step [animation-delay:160ms]")}>
-        <rect x={2} y={-14} width={6} height={14} rx={3} className="fill-foreground/70" />
+        <rect x={2} y={-14} width={6} height={14} rx={3} className="fill-foreground/80" />
       </g>
       <rect
         x={-13}
@@ -79,6 +80,7 @@ export function AgentFigure({ name, pose, activity, bubble, selected, onSelect }
       <text y={34} textAnchor="middle" className="fill-muted-foreground text-[10px]">
         {ACTIVITY_LABEL[activity]}
       </text>
+      </g>
     </g>
   );
 }

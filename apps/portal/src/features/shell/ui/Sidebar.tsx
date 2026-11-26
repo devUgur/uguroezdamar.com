@@ -3,7 +3,7 @@ import { ThemeToggle } from "@ugur/ui";
 
 export function Sidebar() {
   return (
-    <aside className="h-full w-64 shrink-0 border-r bg-card flex flex-col overflow-y-auto">
+    <aside className="hidden h-full w-64 shrink-0 border-r bg-card md:flex flex-col overflow-y-auto">
       <div className="p-6 border-b">
         <Link href="/" className="text-xl font-bold tracking-tight">
           Portfolio
