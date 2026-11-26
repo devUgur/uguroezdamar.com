@@ -13,10 +13,11 @@ export interface ToolContext {
   /** External calls left in this invocation; take() before every fetch. */
   budget: SubrequestBudget;
   /**
-   * Call before returning content of private repositories to the model. From then on this thread is
-   * private for good: its history holds that content, so only models that do not evaluate requests answer.
+   * Call with the private repositories (owner/name) before their content reaches the model. The thread remembers
+   * them for good: as long as one of them is a strict project or no project at all, only models that do not
+   * evaluate requests answer (ADR 0033). Repositories whose project the owner set to "open" do not restrict it.
    */
-  markPrivate?: () => Promise<void>;
+  markPrivate?: (repos: string[]) => Promise<void>;
 }
 
 /**

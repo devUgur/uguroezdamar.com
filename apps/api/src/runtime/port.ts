@@ -47,7 +47,7 @@ export interface AgentRuntimePort {
   chat(input: ChatInput): Promise<Accepted>;
   resume(input: ResumeInput): Promise<Accepted>;
   stop(): Promise<void>;
-  status(): Promise<AgentStatus>;
+  status(tenantId?: string): Promise<AgentStatus>;
   history(): Promise<ChatMessage[]>;
   reset(): Promise<void>;
 }

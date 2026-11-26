@@ -33,6 +33,13 @@ Die Agenten hatten nur kostenlose Modelle: Gemini Free Tier (auf Dev ohne Schlü
 - `tenant_model_defaults`: Der Mandant legt je Rollen-Alias (`chef-smart`, `coder`, `worker-cheap`) ein Modell fest. Es wird vor der eingebauten Kette versucht. Die eingebauten Ketten beginnen mit Claude: Ohne Schlüssel wird es übersprungen und kostet nichts.
 - Die Modellwahl im Chat zeigt nur Anbieter mit Schlüssel.
 - Die Datenschutzregel bleibt hart: In privaten Repositories antworten nur Anbieter mit `trainsOnData: false` (Claude, OpenAI, Workers AI, Modal, eigene Anbieter mit ausdrücklicher Angabe).
+- **Datenrichtlinie je Projekt** (Migration `0016`, `projects.model_policy`, Ergänzung vom 26.11.2026):
+  - `strict`: nur Anbieter ohne Datenauswertung.
+  - `open`: alle Anbieter mit Schlüssel.
+  - Ohne Wahl gilt die Sichtbarkeit des Repositories: privat heißt streng, öffentlich heißt offen.
+  - Der Owner setzt sie auf der Projektseite (`PATCH /api/projects/:id`, Scope `providers:write`). Für eigene Repositories ohne Kundendaten ist „offen“ eine bewusste, sichtbare Entscheidung.
+  - Ein Thread, der ein anderes privates Repository gelesen hat, merkt sich dessen Namen. Er bleibt streng, solange eines davon kein Projekt oder ein strenges Projekt ist.
+  - Hintergrund DeepSeek: Die Datenschutzerklärung nennt das Training der Modelle als Zweck (mit Widerspruchsrecht). Die API-Bedingungen nehmen API-Eingaben nicht ausdrücklich aus, und die Daten liegen in China. Deshalb bleibt DeepSeek als „wertet aus“ eingestuft.
 - Die Regel wirkt sichtbar, nicht still:
   - Ein Chat in einem privaten Projekt lässt auswertende Anbieter (DeepSeek, Kimi, Gemini …) nicht wählen; die API lehnt die Wahl mit einer Begründung ab.
   - Wechselt ein Chat mit solchem Modell in ein privates Projekt, fällt er auf die automatische Wahl zurück und meldet das.

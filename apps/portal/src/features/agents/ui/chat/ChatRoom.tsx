@@ -82,7 +82,7 @@ export function ChatRoom({ detail, catalog, liveOrigin, onRefresh, headerActions
           threadId={thread.id}
           value={thread.model}
           catalog={catalog}
-          privateContent={status.private === true || (projects ?? []).find((project) => project.id === thread.projectId)?.visibility === "private"}
+          privateContent={status.private === true || (projects ?? []).find((project) => project.id === thread.projectId)?.modelPolicy === "strict"}
           defaultAlias={catalog.agentAliases[thread.agentId] ?? "Standard"}
           onChanged={onRefresh}
         />

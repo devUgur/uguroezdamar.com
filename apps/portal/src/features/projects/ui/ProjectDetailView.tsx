@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@ugur/ui";
 import { startProjectChat } from "../actions";
 import type { Project, ProjectTask, Sprint } from "../types";
+import { ModelPolicyForm } from "./ModelPolicyForm";
 import { PlanningForms } from "./PlanningForms";
 import { SprintSection } from "./SprintSection";
 import { TaskLine } from "./TaskLine";
@@ -40,7 +41,7 @@ export function ProjectDetailView({ project, sprints, tasks, notice, error }: Pr
               )}
               {" · "}
               {project.visibility === "private" ? "privat" : "öffentlich"} · Ziel {project.defaultBranch}
-              {project.domain ? ` · ${project.domain}` : ""}
+              {project.domain ? ` · ${project.domain}` : ""} · Datenrichtlinie {project.modelPolicy === "strict" ? "streng" : "offen"}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -90,6 +91,13 @@ export function ProjectDetailView({ project, sprints, tasks, notice, error }: Pr
         ) : (
           <p className="text-sm text-muted-foreground">Keine offenen Aufgaben ohne Sprint.</p>
         )}
+      </section>
+
+      <section className="flex flex-col gap-4" aria-labelledby="policy-title">
+        <h2 id="policy-title" className="font-serif text-xl">
+          Datenrichtlinie für Modelle
+        </h2>
+        <ModelPolicyForm project={project} />
       </section>
 
       <section className="flex flex-col gap-4" aria-labelledby="plan-title">

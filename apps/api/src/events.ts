@@ -21,7 +21,8 @@ export type EventType =
   | "task_review_completed"
   | "organization_updated"
   | "sprint_created"
-  | "sprint_updated";
+  | "sprint_updated"
+  | "project_policy_changed";
 
 export interface AgentEvent {
   /** The tenant the event belongs to. Required: an event without it would silently land with the owner. */

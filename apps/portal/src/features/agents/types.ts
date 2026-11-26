@@ -60,6 +60,8 @@ export interface ThreadProject {
   name: string;
   repo: string | null;
   visibility: "public" | "private";
+  /** strict: only providers without data evaluation may see this project (ADR 0033). */
+  modelPolicy?: "strict" | "open";
 }
 
 export interface ThreadDetail {

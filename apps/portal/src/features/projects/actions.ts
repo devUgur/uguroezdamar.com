@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { agentsApi, isAgentsApiId } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/auth";
+import { currentOrganizationAccess } from "@/src/server/organization-access";
 
 /** Server Actions are public endpoints: each one checks the session itself. */
 async function actor(): Promise<string> {
@@ -159,4 +160,20 @@ export async function createProjectTask(formData: FormData): Promise<void> {
     backTo(projectId, "error", failure(error));
   }
   backTo(projectId, "notice", "Aufgabe angelegt.");
+}
+
+/** Only the owner decides which model providers may see a project's content (ADR 0033). */
+export async function setModelPolicy(formData: FormData): Promise<void> {
+  const projectId = String(formData.get("projectId") ?? "");
+  const value = String(formData.get("modelPolicy") ?? "");
+  const access = await currentOrganizationAccess();
+  if (!PROJECT_ID.test(projectId)) back("error", "Ungültiges Projekt.");
+  if (!access.canManage) backTo(projectId, "error", "Nur der Owner darf die Datenrichtlinie ändern.");
+  const modelPolicy = value === "strict" || value === "open" ? value : null;
+  try {
+    await agentsApi(`/api/projects/${projectId}`, access.actor, { method: "PATCH", body: { modelPolicy }, scopes: ["providers:write"] });
+  } catch (error) {
+    backTo(projectId, "error", failure(error));
+  }
+  backTo(projectId, "notice", modelPolicy === "open" ? "Richtlinie offen: alle Anbieter mit Schlüssel dürfen dieses Projekt sehen." : modelPolicy === "strict" ? "Richtlinie streng: nur Anbieter ohne Datenauswertung." : "Richtlinie folgt wieder dem Repository.");
 }

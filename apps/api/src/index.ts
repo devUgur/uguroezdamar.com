@@ -4,7 +4,8 @@ import { authorize, type Caller } from "./auth.ts";
 import type { Env } from "./env.ts";
 import { emit, recentEvents } from "./events.ts";
 import { ModelRouter } from "./models/router.ts";
-import { handleModels } from "./models/routes.ts";
+import { handleModels, PROVIDERS_WRITE } from "./models/routes.ts";
+import { effectivePolicy, MODEL_POLICIES, setProjectPolicy, type ModelPolicy } from "./projects/policy.ts";
 import { GithubAccessError } from "./github/app.ts";
 import { completeConnect, startConnect } from "./github/connect.ts";
 import { githubStatus } from "./github/credentials.ts";
@@ -239,12 +240,19 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
   const stub = threadStub(env, caller.tenantId, threadId);
 
   if (!action && method === "GET") {
-    const [messages, status, approvals] = await Promise.all([stub.history(), stub.status(), pendingApprovals(env, caller.tenantId, threadId)]);
+    const [messages, status, approvals] = await Promise.all([stub.history(), stub.status(caller.tenantId), pendingApprovals(env, caller.tenantId, threadId)]);
     const events = await recentEvents(env, { tenantId: caller.tenantId, threadId, limit: 200 });
-    const { results: projects } = await env.DB.prepare("SELECT id, name, repo, visibility FROM projects WHERE tenant_id = ? AND status = 'active' ORDER BY name")
+    const { results: projects } = await env.DB.prepare("SELECT id, name, repo, visibility, model_policy FROM projects WHERE tenant_id = ? AND status = 'active' ORDER BY name")
       .bind(caller.tenantId)
       .all();
-    return json({ thread: toThread(thread), messages, status, approvals, events, projects });
+    return json({
+      thread: toThread(thread),
+      messages,
+      status,
+      approvals,
+      events,
+      projects: projects.map((row) => ({ ...row, model_policy: undefined, modelPolicy: effectivePolicy(row as { visibility: string; model_policy: string | null }) })),
+    });
   }
 
   if (!action && method === "PATCH") {
@@ -252,25 +260,27 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
     if (input.projectId !== undefined) {
       const project = await env.DB.prepare("SELECT 1 FROM projects WHERE tenant_id = ? AND id = ? AND status = 'active'").bind(caller.tenantId, input.projectId).first();
       if (!project) return json({ error: "Unbekanntes oder entferntes Projekt" }, 400);
-      if ((await stub.status()).running) return json({ error: "Das Projekt lässt sich nicht wechseln, solange der Agent arbeitet." }, 409);
+      if ((await stub.status(caller.tenantId)).running) return json({ error: "Das Projekt lässt sich nicht wechseln, solange der Agent arbeitet." }, 409);
     }
     const router = await ModelRouter.load(env, caller.tenantId);
     if (input.model && !router.offers(input.model)) return json({ error: "Unbekanntes Modell" }, 400);
     // A private repository never goes to a provider that may evaluate it: refuse that choice instead of skipping it later.
     const projectId = input.projectId ?? thread.project_id ?? DEFAULT_PROJECT;
-    const target = await env.DB.prepare("SELECT name, visibility FROM projects WHERE tenant_id = ? AND id = ?").bind(caller.tenantId, projectId).first<{ name: string; visibility: string }>();
-    const isPrivate = target?.visibility === "private" || (await stub.status()).private === true;
+    const target = await env.DB.prepare("SELECT name, visibility, model_policy FROM projects WHERE tenant_id = ? AND id = ?")
+      .bind(caller.tenantId, projectId)
+      .first<{ name: string; visibility: string; model_policy: string | null }>();
+    const isPrivate = (target ? effectivePolicy(target) === "strict" : false) || (await stub.status(caller.tenantId)).private === true;
     const currentModel = thread.model ? (JSON.parse(thread.model) as { provider: string; model: string }) : null;
     let model = input.model !== undefined ? input.model : currentModel;
     let notice: string | undefined;
     if (isPrivate && model && router.trainsOnData(model.provider)) {
       const label = router.catalog().providers.find((provider) => provider.id === model?.provider)?.label ?? model.provider;
       if (input.model) {
-        return json({ error: `${label} darf Eingaben auswerten und ist für private Repositories gesperrt („${target?.name ?? projectId}“). Wähle ein Modell ohne Datenauswertung, z. B. Claude oder OpenAI.` }, 400);
+        return json({ error: `${label} darf Eingaben auswerten und ist für dieses Projekt gesperrt („${target?.name ?? projectId}“ hat die strenge Datenrichtlinie). Wähle ein Modell ohne Datenauswertung, z. B. Claude oder OpenAI, oder stelle die Richtlinie des Projekts auf „offen“.` }, 400);
       }
       // Switched to a private project with an evaluating model chosen: back to the automatic choice.
       model = null;
-      notice = `${label} ist für private Repositories gesperrt; der Chat nutzt wieder die automatische Modellwahl.`;
+      notice = `${label} ist für dieses Projekt gesperrt (strenge Datenrichtlinie); der Chat nutzt wieder die automatische Modellwahl.`;
     }
     if (model && input.model) await router.warmUp(model);
     const modelChanged = input.model !== undefined || model !== currentModel;
@@ -418,12 +428,12 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 
   if (path === "/api/projects" && method === "GET") {
     const { results } = await env.DB.prepare(
-      `SELECT id, name, repo, domain, status, visibility, default_branch AS defaultBranch, write_mode AS writeMode
+      `SELECT id, name, repo, domain, status, visibility, model_policy, default_branch AS defaultBranch, write_mode AS writeMode
          FROM projects WHERE tenant_id = ? AND status = 'active' ORDER BY name`,
     )
       .bind(caller.tenantId)
-      .all();
-    return json(results);
+      .all<Record<string, unknown> & { visibility: string; model_policy: string | null }>();
+    return json(results.map(({ model_policy, ...row }) => ({ ...row, modelPolicy: effectivePolicy({ visibility: row.visibility, model_policy }), modelPolicyExplicit: model_policy !== null })));
   }
 
   // The link behind the portal's "Connect GitHub" button.
@@ -467,6 +477,15 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   }
 
   const projectMatch = path.match(/^\/api\/projects\/([a-z0-9-]{1,40})$/);
+  // The owner decides which providers may see a project's content (ADR 0033); null returns to the repository's default.
+  if (projectMatch && method === "PATCH") {
+    if (!caller.scopes.includes(PROVIDERS_WRITE)) return json({ error: "Nur der Owner darf die Datenrichtlinie eines Projekts ändern." }, 403);
+    const { modelPolicy } = await body<{ modelPolicy: ModelPolicy | null }>(request);
+    if (modelPolicy !== null && !MODEL_POLICIES.includes(modelPolicy as ModelPolicy)) return json({ error: "modelPolicy: strict | open | null" }, 400);
+    if (!(await setProjectPolicy(env, caller.tenantId, projectMatch[1] ?? "", modelPolicy ?? null))) return json({ error: "Projekt nicht gefunden" }, 404);
+    await emit(env, { tenantId: caller.tenantId, projectId: projectMatch[1], type: "project_policy_changed", data: { modelPolicy: modelPolicy ?? null, by: caller.actor } });
+    return json({ ok: true });
+  }
   if (projectMatch && method === "DELETE") {
     try {
       return (await unregisterProject(env, caller.tenantId, projectMatch[1] ?? "")) ? json({ ok: true }) : json({ error: "Projekt nicht gefunden" }, 404);

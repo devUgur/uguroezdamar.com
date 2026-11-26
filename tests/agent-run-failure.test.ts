@@ -34,8 +34,8 @@ describe("failure of a private repository run", () => {
   it("says that the chosen provider is locked for private repositories", () => {
     const failure = latestRunFailure([
       event("user_message"),
-      event("error", { message: 'All models for "chef-smart" failed. deepseek/deepseek-chat: gesperrt (privates Repository, Anbieter wertet Daten aus) | anthropic/claude-sonnet-5-5: skipped (no credentials)' }),
+      event("error", { message: 'All models for "chef-smart" failed. deepseek/deepseek-chat: gesperrt (strenge Datenrichtlinie, Anbieter wertet Daten aus) | anthropic/claude-sonnet-5-5: skipped (no credentials)' }),
     ]);
-    expect(failure?.title).toMatch(/privat.*deepseek.*gesperrt/);
+    expect(failure?.title).toMatch(/strenge Datenrichtlinie.*deepseek.*gesperrt/);
   });
 });

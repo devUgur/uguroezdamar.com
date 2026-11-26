@@ -8,6 +8,10 @@ export interface Project {
   visibility: "public" | "private";
   defaultBranch: string;
   writeMode: "dev-first" | "pr-only";
+  /** Which model providers may see the content (ADR 0033): strict = only those without data evaluation. */
+  modelPolicy: "strict" | "open";
+  /** False while the policy just follows the repository's visibility. */
+  modelPolicyExplicit: boolean;
 }
 
 /** A repository the agent token can see; `projectId` is set once it is registered as a project. */

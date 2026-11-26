@@ -11,7 +11,7 @@ interface ModelPickerProps {
   catalog: ModelCatalog;
   /** The agent's alias, shown for the default choice. */
   defaultAlias: string;
-  /** Private repository in play: providers that may evaluate prompts are shown but cannot be chosen. */
+  /** Strict data policy in play: providers that may evaluate prompts are shown but cannot be chosen. */
   privateContent: boolean;
   onChanged: () => void;
 }
@@ -51,7 +51,7 @@ export function ModelPicker({ threadId, value, catalog, defaultAlias, privateCon
                 <SelectItem key={model.id} value={`${provider.id}${SEPARATOR}${model.id}`} disabled={privateContent && provider.trainsOnData}>
                   {provider.shortLabel} · {model.label}
                   {provider.trainsOnData ? (
-                    <span className="ml-2 text-xs text-muted-foreground">{privateContent ? "gesperrt: privates Repository" : "wertet Daten aus"}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">{privateContent ? "gesperrt: strenge Datenrichtlinie" : "wertet Daten aus"}</span>
                   ) : null}
                   {model.note ? <span className="ml-2 text-xs text-muted-foreground">{model.note}</span> : null}
                 </SelectItem>

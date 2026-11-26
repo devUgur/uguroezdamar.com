@@ -109,7 +109,7 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
       kind: "openai-compatible",
       label: "DeepSeek",
       shortLabel: "DeepSeek",
-      description: "Sehr günstig; Eingaben dürfen ausgewertet werden, daher nie für private Repositories.",
+      description: "Sehr günstig. Laut Datenschutzerklärung dürfen Eingaben zum Training genutzt werden (Widerspruch möglich), Speicherung in China: nur für Projekte mit offener Datenrichtlinie.",
       trainsOnData: true,
       paid: true,
       discoverModels: true,

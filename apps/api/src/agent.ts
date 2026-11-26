@@ -1,3 +1,4 @@
+import { anyStrict, effectivePolicy } from "./projects/policy.ts";
 import { DurableObject } from "cloudflare:workers";
 import { AGENTS } from "./agents/registry.ts";
 import { APPROVAL_TTL_SECONDS, describeApproval } from "./approvals.ts";
@@ -33,6 +34,8 @@ interface ProjectRow {
   status: string;
   /** 'private' projects only talk to models that never train on the content (see models/config.ts). */
   visibility: string;
+  /** Explicit data policy, NULL follows visibility (projects/policy.ts). */
+  model_policy: string | null;
 }
 
 interface RunState {
@@ -49,6 +52,8 @@ interface RunState {
 
 const RUN = "run";
 const INBOX = "inbox";
+/** Private repositories whose content entered this thread (legacy: true); see ToolContext.markPrivate. */
+type PrivateMark = boolean | string[];
 /** Set once private repository content entered this thread; see ToolContext.markPrivate. */
 const PRIVATE_THREAD = "private";
 type ReviewVerdict = "pass" | "changes_requested" | "needs_human";
@@ -176,10 +181,17 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     }
   }
 
-  async status(): Promise<AgentStatus> {
-    const [run, isPrivate] = await Promise.all([this.activeRun(), this.ctx.storage.get<boolean>(PRIVATE_THREAD)]);
+  /** True when content this thread has seen must stay with providers that do not evaluate it. */
+  private async privateRestricted(tenantId: string): Promise<boolean> {
+    const seen = await this.ctx.storage.get<PrivateMark>(PRIVATE_THREAD);
+    if (seen === true) return true;
+    return Array.isArray(seen) ? anyStrict(this.env, tenantId, seen) : false;
+  }
+
+  async status(tenantId: string = OWNER_TENANT): Promise<AgentStatus> {
+    const run = await this.activeRun();
     const base = run ? { running: true, step: run.steps, startedAt: run.startedAt } : { running: false, step: 0 };
-    return { ...base, private: isPrivate === true };
+    return { ...base, private: await this.privateRestricted(tenantId) };
   }
 
   async history(): Promise<ChatMessage[]> {
@@ -262,7 +274,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     if (!definition) throw new Error(`Unbekannter Agent "${agentId}"`);
 
     const [project, budgetRow, spent, thread] = await Promise.all([
-      this.env.DB.prepare("SELECT id, name, repo, status, visibility FROM projects WHERE tenant_id = ? AND id = ?").bind(tenantId, projectId).first<ProjectRow>(),
+      this.env.DB.prepare("SELECT id, name, repo, status, visibility, model_policy FROM projects WHERE tenant_id = ? AND id = ?").bind(tenantId, projectId).first<ProjectRow>(),
       this.env.DB.prepare("/* tenant:platform */ SELECT daily_budget_usd FROM agents WHERE id = ?").bind(agentId).first<{ daily_budget_usd: number }>(),
       spentToday(this.env, tenantId, agentId),
       this.env.DB.prepare("SELECT model FROM threads WHERE tenant_id = ? AND id = ?").bind(tenantId, threadId).first<{ model: string | null }>(),
@@ -288,8 +300,10 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     // Private content stays on models that do not evaluate it: always in a private project, in a chat pinned to
     // such a model (a failing model then never falls back to an evaluating provider), and in a thread that has
     // already received private content (marked by a tool, remembered for the whole thread).
-    let tainted = (await this.ctx.storage.get<boolean>(PRIVATE_THREAD)) === true;
-    const privateContent = () => tainted || project?.visibility === "private" || Boolean(pinned && router.keepsContentPrivate(pinned));
+    // The project's data policy decides (ADR 0033): private repositories are strict unless the owner opened them.
+    let tainted = await this.privateRestricted(tenantId);
+    const strictProject = project ? effectivePolicy(project) === "strict" : false;
+    const privateContent = () => tainted || strictProject || Boolean(pinned && router.keepsContentPrivate(pinned));
     const context: ToolContext = {
       env: this.env,
       tenantId,
@@ -297,9 +311,13 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       projectId,
       repo,
       budget,
-      markPrivate: async () => {
-        tainted = true;
-        await this.ctx.storage.put(PRIVATE_THREAD, true);
+      markPrivate: async (repos) => {
+        const seen = await this.ctx.storage.get<PrivateMark>(PRIVATE_THREAD);
+        const known = Array.isArray(seen) ? seen : [];
+        const next = [...new Set([...known, ...repos.map((repo) => repo.toLowerCase())])];
+        // A legacy mark (true) came without names and stays strict.
+        await this.ctx.storage.put(PRIVATE_THREAD, seen === true ? true : next);
+        if (!tainted) tainted = seen === true || (await anyStrict(this.env, tenantId, next));
       },
     };
     const deltas = new DeltaBuffer(this.env, agentId, threadId);

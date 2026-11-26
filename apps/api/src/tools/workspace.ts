@@ -30,7 +30,7 @@ const listGithubRepositories: Tool = {
     const repositories = (await listRepositories(context.env, context.tenantId, () => context.budget.take())).filter((repo) => !repo.archived);
     const privateCount = repositories.filter((repo) => repo.private).length;
     // The names go to the model next: from here on this thread only runs on models that do not evaluate requests.
-    if (privateCount) await context.markPrivate?.();
+    if (privateCount) await context.markPrivate?.(repositories.filter((repo) => repo.private).map((repo) => repo.fullName));
     return {
       total: repositories.length,
       public: repositories.length - privateCount,

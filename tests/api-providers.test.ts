@@ -240,7 +240,7 @@ describe("private repositories and evaluating providers", () => {
     await call("/api/providers/deepseek/key", { method: "PUT", body: { apiKey: KEY }, scopes: "providers:write" });
     const router = await ModelRouter.load(keyed);
     await expect(router.chat("worker-cheap", { messages: [] }, { privateContent: true, pinned: { provider: "deepseek", model: "deepseek-chat" } })).rejects.toThrow(
-      /deepseek\/deepseek-chat: gesperrt \(privates Repository/,
+      /deepseek\/deepseek-chat: gesperrt \(strenge Datenrichtlinie/,
     );
   });
 
@@ -258,5 +258,40 @@ describe("private repositories and evaluating providers", () => {
     const moved = await call(`/api/threads/${open.id}`, { method: "PATCH", body: { projectId: "video-studio" } });
     expect(moved.body).toMatchObject({ projectId: "video-studio", model: null });
     expect((moved.body as { notice: string }).notice).toMatch(/gesperrt/);
+  });
+});
+
+describe("data policy per project", () => {
+  it("follows the repository by default and lets only the owner open a private project for evaluating providers", async () => {
+    const status = { running: false, step: 0, private: false };
+    const { call, db } = setup({ AGENTS: { idFromName: (name: string) => name, get: () => ({ status: async () => status, history: async () => [] }) } } as unknown as Partial<Env>);
+    db.raw.prepare("INSERT INTO projects (id, name, repo, visibility, status) VALUES ('video-studio', 'video-studio', 'devUgur/video-studio', 'private', 'active')").run();
+    stubModels(["deepseek-chat"]);
+    await call("/api/providers/deepseek/key", { method: "PUT", body: { apiKey: KEY }, scopes: "providers:write" });
+
+    const before = (await call("/api/projects")).body as { id: string; modelPolicy: string; modelPolicyExplicit: boolean }[];
+    expect(before.find((project) => project.id === "video-studio")).toMatchObject({ modelPolicy: "strict", modelPolicyExplicit: false });
+    expect((await call("/api/projects/video-studio", { method: "PATCH", body: { modelPolicy: "open" } })).status).toBe(403);
+    expect((await call("/api/projects/video-studio", { method: "PATCH", body: { modelPolicy: "loose" }, scopes: "providers:write" })).status).toBe(400);
+    expect((await call("/api/projects/video-studio", { method: "PATCH", body: { modelPolicy: "open" }, scopes: "providers:write" })).status).toBe(200);
+
+    const thread = (await call("/api/threads", { method: "POST", body: { projectId: "video-studio" } })).body as { id: string };
+    expect((await call(`/api/threads/${thread.id}`, { method: "PATCH", body: { model: { provider: "deepseek", model: "deepseek-chat" } } })).status).toBe(200);
+    const detail = (await call(`/api/threads/${thread.id}`)).body as { projects: { id: string; modelPolicy: string }[] };
+    expect(detail.projects.find((project) => project.id === "video-studio")?.modelPolicy).toBe("open");
+
+    expect((await call("/api/projects/video-studio", { method: "PATCH", body: { modelPolicy: null }, scopes: "providers:write" })).status).toBe(200);
+    expect((await call(`/api/threads/${thread.id}`, { method: "PATCH", body: { model: { provider: "deepseek", model: "deepseek-chat" } } })).status).toBe(400);
+  });
+
+  it("keeps a thread strict for unregistered or strict private repositories, not for opened ones", async () => {
+    const { anyStrict } = await import("../apps/api/src/projects/policy.ts");
+    const { env, db } = setup();
+    db.raw.prepare("INSERT INTO projects (id, name, repo, visibility, status, model_policy) VALUES ('open-one', 'open-one', 'devUgur/Open-One', 'private', 'active', 'open')").run();
+    db.raw.prepare("INSERT INTO projects (id, name, repo, visibility, status) VALUES ('closed', 'closed', 'devUgur/closed', 'private', 'active')").run();
+    expect(await anyStrict(env, "owner", ["devugur/open-one"])).toBe(false);
+    expect(await anyStrict(env, "owner", ["devUgur/open-one", "devUgur/closed"])).toBe(true);
+    expect(await anyStrict(env, "owner", ["someone/unknown"])).toBe(true);
+    expect(await anyStrict(env, "acme", ["devUgur/open-one"])).toBe(true);
   });
 });

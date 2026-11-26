@@ -30,7 +30,7 @@ export function ProjectList({ projects }: { projects: Project[] }) {
           </div>
           <p className="text-xs text-muted-foreground">
             {WRITE_RULE[project.writeMode]} · Ziel {project.defaultBranch}
-            {project.visibility === "private" ? " · nur Modelle ohne Datenauswertung" : ""}
+            {project.modelPolicy === "strict" ? " · nur Modelle ohne Datenauswertung" : " · alle Modelle mit Schlüssel"}
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <Button asChild variant="secondary">

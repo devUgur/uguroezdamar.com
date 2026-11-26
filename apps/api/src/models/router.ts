@@ -12,7 +12,7 @@ import { WorkersAiModel } from "./workers-ai.ts";
 import type { SubrequestBudget } from "../runtime/budget.ts";
 
 /** Marker in the attempts of a run: the target was left out because the content is private. The portal reads it. */
-export const PRIVATE_BLOCK = "gesperrt (privates Repository, Anbieter wertet Daten aus)";
+export const PRIVATE_BLOCK = "gesperrt (strenge Datenrichtlinie, Anbieter wertet Daten aus)";
 
 export interface RouteOptions {
   /** Each external attempt takes one subrequest; without a budget nothing is counted. */

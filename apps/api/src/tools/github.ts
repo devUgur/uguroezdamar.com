@@ -119,7 +119,7 @@ async function readTarget(args: Record<string, unknown>, context: ToolContext): 
   let meta = cache.get(requested.toLowerCase());
   if (!meta) cache.set(requested.toLowerCase(), (meta = gh<RepoMeta>(context, `/repos/${requested}`)));
   const info = await meta;
-  if (info.private) await context.markPrivate?.();
+  if (info.private) await context.markPrivate?.([info.full_name]);
   return { repo: info.full_name, ref: info.default_branch };
 }
 
