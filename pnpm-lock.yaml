@@ -211,6 +211,9 @@ importers:
       '@types/three':
         specifier: ^0.187.0
         version: 0.187.0
+      autoprefixer:
+        specifier: 'catalog:'
+        version: 10.6.1(postcss@8.5.29)
       postcss:
         specifier: 'catalog:'
         version: 8.5.29
