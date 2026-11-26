@@ -36,7 +36,10 @@ export async function getRepositories(): Promise<{ repositories: GithubRepositor
 /** The GitHub connection (app installations or token); an unreachable API is reported, not thrown. */
 export async function getGithubStatus(): Promise<{ status: GithubStatus | null; error: string | null }> {
   try {
-    return { status: await agentsApi<GithubStatus>("/api/github/status", await actor()), error: null };
+    const status = await agentsApi<GithubStatus>("/api/github/status", await actor());
+    // An API that has not been updated yet answers in the older shape (no configuredOnly, `id` instead of `installationId`).
+    const installations = (status.installations ?? []).map((entry) => ({ ...entry, installationId: entry.installationId ?? (entry as { id?: number }).id ?? 0 }));
+    return { status: { ...status, installations, configuredOnly: status.configuredOnly ?? [] }, error: null };
   } catch (error) {
     return { status: null, error: describe(error) };
   }
