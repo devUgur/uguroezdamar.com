@@ -13,6 +13,7 @@ Agenten-Backend des Admin-Portals: Threads, Agentenschleife, Modelle, Werkzeuge,
 | `src/events.ts` | Event-Log in D1, Tagesbudget |
 | `src/models/` | `ModelPort`, Router mit Fallback, Modellwahl je Thread und je Rolle, Katalog aller Anbieter, Adapter (Anthropic über das SDK, OpenAI-kompatibel, Workers AI), verschlüsselte Schlüssel je Mandant ([ADR 0033](../../docs/architecture/decisions/0033-model-providers-and-tenant-keys.md)) |
 | `src/work/sprints.ts` | Sprints je Projekt; Aufgaben tragen `sprint_id` |
+| `src/usage/` | Verbrauchsprotokoll: `runs`, `model_calls`, `tool_calls` (Migration `0017`), Auswertung, Lauf-Trace, CSV; das Tagesbudget zählt daraus |
 | `src/tools/` | `ToolPort`, GitHub-Werkzeuge, Projekt- und Notiz-Werkzeuge; PR-Diff lesen ist nur dem read-only QA-Reviewer freigegeben |
 | `src/agents/registry.ts` | die Agenten: Prompt, Modell-Alias, Werkzeuge |
 | `src/agents/describe.ts` | Konfigurationsansicht eines Agenten für das Portal |
@@ -46,6 +47,7 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 | `GET/POST /api/projects/:id/sprints`, `PATCH /api/sprints/:id` | Sprints eines Projekts; `planned → active → done`, ein aktiver Sprint je Projekt |
 | `GET /api/approvals`, `POST /api/approvals/:id` | offene Freigaben; `{ "decision": "approve" \| "reject" }` |
 | `GET /api/events?thread=…&since=…` | Events nachladen |
+| `GET /api/usage/summary`, `…/calls`, `…/runs`, `…/runs/:id`, `…/export.csv` | Verbrauch je Mitarbeiter, Modell, Projekt, Anbieter und Tag; Läufe; Trace eines Laufs; CSV. Filter: `from`, `to` (YYYY-MM-DD, UTC), `project`, `agent`, `provider`, `model`, `status` |
 | `POST /api/live-ticket`, `GET /api/live?ticket=…` | Einmal-Ticket, dann WebSocket für Events und `delta` |
 | `GET/POST /api/tasks`, `PATCH /api/tasks/:id` | persistente Tasks, validierte Statusübergänge und Owner-Abnahme |
 | `POST /api/tasks/:id/run`, `POST /api/tasks/:id/review` | Chef-Ausführung bzw. getrennte, read-only QA-Übergabe |

@@ -80,6 +80,8 @@ Jede Stufe ist einzeln auslieferbar, hat Tests gegen echtes SQLite und wird auf 
 
 ### Stufe 1: Protokoll und Kosten
 
+> **Umgesetzt am 26.11.2026:** Migration `0017_usage_ledger.sql`, `apps/api/src/usage/`, Portal `/usage` (Verbrauch) mit Filtern, Summen, Tagesbudgets, Tagesverlauf, Aufteilung nach Mitarbeiter, Modell, Projekt und Anbieter, Läufen, letzten Aufrufen und CSV. Dazu `/usage/runs/[id]` mit dem Trace eines Laufs. Das Tagesbudget zählt jetzt aus `model_calls`. Noch offen: Cache-Rabatte im Preis, Budgets je Projekt und Mandant, Umzug von Codex' `/costs` auf das Protokoll.
+
 - **Tabellen:** `runs`, `model_calls`, `tool_calls`. Die Laufzeit schreibt in jedem Schritt mit.
 - **Preise:** im Katalog versioniert. Die Kosten eines Aufrufs speichern die Preis-Version.
 - **`/costs` als Tabelle:**

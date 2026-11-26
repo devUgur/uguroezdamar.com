@@ -165,7 +165,7 @@ describe("Anthropic wire format", () => {
     const base = { id: "m", type: "message", role: "assistant", model: "claude-sonnet-5-5", stop_sequence: null, usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 90, cache_creation_input_tokens: 0 } };
     const ok = fromAnthropic({ ...base, stop_reason: "tool_use", content: [{ type: "text", text: "Ich lese." }, { type: "tool_use", id: "toolu_2", name: "repo_read_file", input: { path: "x" } }] } as never);
     expect(ok.message).toMatchObject({ content: "Ich lese.", toolCalls: [{ id: "toolu_2", name: "repo_read_file", arguments: '{"path":"x"}' }], raw: { provider: "anthropic" } });
-    expect(ok.usage).toEqual({ inputTokens: 100, outputTokens: 5 });
+    expect(ok.usage).toEqual({ inputTokens: 100, outputTokens: 5, cacheReadTokens: 90, cacheWriteTokens: 0 });
     const cut = fromAnthropic({ ...base, stop_reason: "max_tokens", content: [{ type: "tool_use", id: "toolu_3", name: "repo_commit_files", input: {} }] } as never);
     expect(cut.message.toolCalls).toBeUndefined();
     expect(cut.message.raw).toBeUndefined();
@@ -221,7 +221,7 @@ describe("Anthropic adapter over the SDK", () => {
     expect(sent).toMatchObject({ model: "claude-sonnet-5-5", system: "S", output_config: { effort: "medium" }, cache_control: { type: "ephemeral" }, fallbacks: "default", stream: true });
     expect(deltas.join("")).toBe("Hallo Ugur");
     expect(result.message).toMatchObject({ content: "Hallo Ugur", toolCalls: [{ id: "toolu_9", name: "repo_read_file", arguments: '{"path":"AGENTS.md"}' }] });
-    expect(result.usage).toEqual({ inputTokens: 12, outputTokens: 7 });
+    expect(result.usage).toEqual({ inputTokens: 12, outputTokens: 7, cacheReadTokens: 0, cacheWriteTokens: 0 });
   });
 });
 

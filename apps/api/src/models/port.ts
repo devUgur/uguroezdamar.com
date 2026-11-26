@@ -39,8 +39,13 @@ export interface ChatRequest {
 }
 
 export interface Usage {
+  /** All input tokens, cached ones included. */
   inputTokens: number;
   outputTokens: number;
+  /** Part of the input served from the provider's prompt cache, where it reports it. */
+  cacheReadTokens?: number;
+  /** Input written to the prompt cache (Anthropic). */
+  cacheWriteTokens?: number;
 }
 
 export interface ChatResult {

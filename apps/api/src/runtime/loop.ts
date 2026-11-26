@@ -135,7 +135,7 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
         });
         continue;
       }
-      const output = await runTool(call, deps);
+      const output = await runTool(call, deps, step);
       deps.history.append({ role: "tool", toolCallId: call.id, content: output.slice(0, TOOL_RESULT_CHARS) });
     }
     if (deferred) return { kind: "paused", steps: step };
@@ -146,7 +146,7 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
   return { kind: "step_limit", reply, steps: step };
 }
 
-async function runTool(call: ToolCall, deps: LoopDeps): Promise<string> {
+async function runTool(call: ToolCall, deps: LoopDeps, step: number): Promise<string> {
   const tool = deps.tools.find((candidate) => candidate.spec.name === call.name);
   let args: Record<string, unknown>;
   try {
@@ -154,12 +154,13 @@ async function runTool(call: ToolCall, deps: LoopDeps): Promise<string> {
   } catch {
     return JSON.stringify({ error: "Argumente sind kein gültiges JSON." });
   }
-  await deps.emit({ type: "tool_call", data: { tool: call.name, args: preview(args) } });
+  await deps.emit({ type: "tool_call", data: { tool: call.name, args: preview(args), step } });
+  const started = Date.now();
   if (!tool) return JSON.stringify({ error: `Werkzeug "${call.name}" steht dir nicht zur Verfügung.` });
 
   if (tool.requiresApproval) {
     const { approvalId, description } = await deps.requestApproval(call.name, args);
-    await deps.emit({ type: "approval_requested", data: { approvalId, tool: call.name, ...description } });
+    await deps.emit({ type: "approval_requested", data: { approvalId, tool: call.name, step, ...description } });
     return JSON.stringify({
       status: "pending_approval",
       approvalId,
@@ -172,13 +173,13 @@ async function runTool(call: ToolCall, deps: LoopDeps): Promise<string> {
     const resultPreview = call.name === "repo_read_pull_request" || call.name === "repo_check_status"
       ? preview(result, 40_000)
       : preview(result);
-    await deps.emit({ type: "tool_result", data: { tool: call.name, ok: true, preview: resultPreview } });
+    await deps.emit({ type: "tool_result", data: { tool: call.name, ok: true, preview: resultPreview, step, durationMs: Date.now() - started } });
     return JSON.stringify(result);
   } catch (error) {
     const message = error instanceof BudgetExhausted
       ? "Budget dieser Etappe erschöpft; in der nächsten Etappe erneut versuchen."
       : error instanceof Error ? error.message : String(error);
-    await deps.emit({ type: "tool_result", data: { tool: call.name, ok: false, preview: message } });
+    await deps.emit({ type: "tool_result", data: { tool: call.name, ok: false, preview: message, step, durationMs: Date.now() - started } });
     return JSON.stringify({ error: message });
   }
 }

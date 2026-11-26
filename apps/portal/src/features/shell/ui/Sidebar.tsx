@@ -19,6 +19,9 @@ export function Sidebar() {
         <Link href="/work" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Aufgaben
         </Link>
+        <Link href="/usage" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
+          Verbrauch
+        </Link>
         <Link href="/organization" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Organisation
         </Link>

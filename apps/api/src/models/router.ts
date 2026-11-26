@@ -55,7 +55,12 @@ export interface RoutedResult extends ChatResult {
   target: ModelTarget;
   costUsd: number;
   attempts: string[];
+  /** Where the price came from (catalog, provider_default, paid_default, free) and the key (tenant, environment, builtin). */
+  priceSource: PriceSource;
+  keySource: KeySource;
 }
+
+export type PriceSource = "catalog" | "provider_default" | "paid_default" | "free";
 
 /** Resolves an alias to providers and falls back along the configured chain, with the tenant's own keys and choices. */
 export class ModelRouter {
@@ -181,7 +186,9 @@ export class ModelRouter {
         const result = await port.chat({ ...request, model: target.model }, options.onDelta);
         attempts.push(`${target.provider}/${target.model}: ok`);
         const costUsd = (result.usage.inputTokens * target.inputUsdPerM + result.usage.outputTokens * target.outputUsdPerM) / 1_000_000;
-        return { ...result, target, costUsd, attempts };
+        const provider = this.config.providers[target.provider];
+        const priceSource = priceSourceOf(provider, provider?.models?.find((model) => model.id === target.model), target);
+        return { ...result, target, costUsd, attempts, priceSource, keySource: this.keySource(target.provider) };
       } catch (error) {
         lastError = error;
         attempts.push(`${target.provider}/${target.model}: ${error instanceof Error ? error.message.slice(0, 200) : String(error)}`);
@@ -249,6 +256,15 @@ export class ModelRouter {
 
 function sameTarget(target: ModelTarget, other: PinnedModel | undefined): boolean {
   return Boolean(other) && target.provider === other?.provider && target.model === other?.model;
+}
+
+/** Where a target's price comes from; alias chains carry their own price, which counts as catalog. */
+export function priceSourceOf(provider: ProviderConfig | undefined, model: CatalogModel | undefined, target: ModelTarget): PriceSource {
+  if (model?.inputUsdPerM !== undefined && model.outputUsdPerM !== undefined) return model.inputUsdPerM || model.outputUsdPerM ? "catalog" : "free";
+  if (!model && (target.inputUsdPerM || target.outputUsdPerM)) return "catalog";
+  if (provider?.unknownModelPrice) return "provider_default";
+  if (provider?.paid) return "paid_default";
+  return "free";
 }
 
 /** Known price, or for a paid provider the deliberately high default, so the daily budget also limits unknown models. */

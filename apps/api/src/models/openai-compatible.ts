@@ -17,6 +17,10 @@ interface WireMessage {
 interface WireUsage {
   prompt_tokens?: number;
   completion_tokens?: number;
+  /** OpenAI and most compatible providers. */
+  prompt_tokens_details?: { cached_tokens?: number };
+  /** DeepSeek. */
+  prompt_cache_hit_tokens?: number;
 }
 
 interface WireResponse {
@@ -68,6 +72,8 @@ export class OpenAICompatibleModel implements ModelPort {
       temperature: request.temperature,
       max_tokens: request.maxTokens,
       stream: onDelta ? true : undefined,
+      // Without it most providers send no token counts in a stream, and the ledger would record zero.
+      stream_options: onDelta ? { include_usage: true } : undefined,
     };
 
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -95,7 +101,11 @@ export class OpenAICompatibleModel implements ModelPort {
 }
 
 function usageOf(usage: WireUsage | undefined): Usage {
-  return { inputTokens: usage?.prompt_tokens ?? 0, outputTokens: usage?.completion_tokens ?? 0 };
+  return {
+    inputTokens: usage?.prompt_tokens ?? 0,
+    outputTokens: usage?.completion_tokens ?? 0,
+    cacheReadTokens: usage?.prompt_tokens_details?.cached_tokens ?? usage?.prompt_cache_hit_tokens ?? 0,
+  };
 }
 
 /** Reads a server-sent-events stream and assembles text and tool calls from the deltas. */

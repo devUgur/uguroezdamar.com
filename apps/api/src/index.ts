@@ -18,6 +18,7 @@ import { handleOrganizationManagement } from "./organization/manage.ts";
 import { SubrequestBudget } from "./runtime/budget.ts";
 import { officeObjectName, threadObjectName } from "./tenancy.ts";
 import { toolByName } from "./tools/registry.ts";
+import { handleUsage } from "./usage/routes.ts";
 import { handleSprints } from "./work/sprints.ts";
 import { handleTasks } from "./work/tasks.ts";
 
@@ -352,6 +353,9 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     if (managed) return managed;
     if (path === "/api/organization" && method === "GET") return json(await organizationCatalog(env));
   }
+
+  const usage = await handleUsage(request, env, caller, path);
+  if (usage) return usage;
 
   const sprints = await handleSprints(request, env, caller, path);
   if (sprints) return sprints;

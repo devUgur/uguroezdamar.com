@@ -1,7 +1,7 @@
 import { APPROVAL_TTL_SECONDS, PROTECTED_PATHS } from "../approvals.ts";
 import type { Env } from "../env.ts";
 import { secret } from "../env.ts";
-import { spentToday } from "../events.ts";
+import { spentTodayFromLedger } from "../usage/ledger.ts";
 import { parseList } from "../organization/catalog.ts";
 import { ModelRouter } from "../models/router.ts";
 import { EXTERNAL_SUBREQUESTS_PER_STAGE } from "../runtime/budget.ts";
@@ -72,7 +72,7 @@ export async function describeAgent(env: Env, tenantId: string, agentId: string)
     env.DB.prepare("SELECT id, name, repo FROM projects WHERE tenant_id = ? AND id = ?")
       .bind(tenantId, DEFAULT_PROJECT)
       .first<{ id: string; name: string; repo: string | null }>(),
-    spentToday(env, tenantId, agentId),
+    spentTodayFromLedger(env, tenantId, agentId),
     count(env, "SELECT COUNT(*) AS n FROM threads WHERE tenant_id = ? AND agent_id = ? AND archived = 0", tenantId, agentId),
     count(env, "SELECT COUNT(*) AS n FROM approvals WHERE tenant_id = ? AND agent_id = ? AND status = 'pending' AND (expires_at IS NULL OR expires_at > unixepoch())", tenantId, agentId),
     count(env, "SELECT COUNT(*) AS n FROM memories WHERE tenant_id = ? AND project_id = ?", tenantId, DEFAULT_PROJECT),

@@ -62,3 +62,9 @@ export async function agentsApi<T>(
   }
   return data as T;
 }
+
+/** A raw response of the API, for downloads such as CSV. The caller checks the status. */
+export async function agentsApiResponse(path: string, actor: string): Promise<Response> {
+  const { origin, token } = config();
+  return fetch(`${origin}${path}`, { headers: { authorization: `Bearer ${token}`, "x-portal-actor": actor }, cache: "no-store" });
+}

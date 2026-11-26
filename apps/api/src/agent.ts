@@ -1,13 +1,14 @@
+import { finishRun, recordModelCall, recordToolCall, spentTodayFromLedger, startRun } from "./usage/ledger.ts";
 import { anyStrict, effectivePolicy } from "./projects/policy.ts";
 import { DurableObject } from "cloudflare:workers";
 import { AGENTS } from "./agents/registry.ts";
 import { APPROVAL_TTL_SECONDS, describeApproval } from "./approvals.ts";
 import type { Env } from "./env.ts";
-import { emit, spentToday } from "./events.ts";
+import { emit } from "./events.ts";
 import type { ChatMessage, ToolCall } from "./models/port.ts";
-import { ModelRouter, type PinnedModel } from "./models/router.ts";
+import { ModelRouter, type PinnedModel, type RoutedResult } from "./models/router.ts";
 import { OWNER_TENANT } from "./tenancy.ts";
-import { SubrequestBudget } from "./runtime/budget.ts";
+import { BudgetExhausted, SubrequestBudget } from "./runtime/budget.ts";
 import { DELTA_FLUSH_MS, HISTORY_LIMIT, MAX_STEPS, STALE_RUN_MS } from "./runtime/limits.ts";
 import { runAgentLoop, type LoopEvent } from "./runtime/loop.ts";
 import type { Accepted, AgentRuntimePort, AgentStatus, ChatInput, ResumeInput } from "./runtime/port.ts";
@@ -48,6 +49,8 @@ interface RunState {
   stages: number;
   startedAt: number;
   touchedAt: number;
+  /** Row in the usage ledger (runs); missing on runs started before the ledger existed. */
+  runId?: string;
 }
 
 const RUN = "run";
@@ -176,6 +179,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     await this.ctx.storage.delete([RUN, INBOX]);
     await this.ctx.storage.deleteAlarm();
     if (run) {
+      if (run.runId) await finishRun(this.env, run.tenantId ?? OWNER_TENANT, run.runId, "stopped", { steps: run.steps, stages: run.stages, outcome: "gestoppt" });
       await emit(this.env, { tenantId: run.tenantId, threadId: run.threadId, agentId: run.agentId, projectId: run.projectId, taskId: run.taskId, type: "stopped", data: { steps: run.steps } });
       if (run.taskId) await this.finishTaskRun(run, "cancelled", "Agentenlauf gestoppt. Die Aufgabe kann nach Prüfung erneut gestartet werden.");
     }
@@ -213,7 +217,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       return { accepted: true, busy: true, message: "Ich arbeite gerade; dein Hinweis fließt in den nächsten Schritt ein." };
     }
     const now = Date.now();
-    await this.ctx.storage.put<RunState>(RUN, { tenantId, threadId, agentId, projectId, taskId, steps: 0, stages: 0, startedAt: now, touchedAt: now });
+    await this.ctx.storage.put<RunState>(RUN, await this.openRun({ tenantId, threadId, agentId, projectId, taskId, steps: 0, stages: 0, startedAt: now, touchedAt: now }));
     await this.ctx.storage.setAlarm(now);
     return { accepted: true };
   }
@@ -222,6 +226,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     const run = await this.ctx.storage.get<RunState>(RUN);
     if (run && Date.now() - run.touchedAt > STALE_RUN_MS) {
       await this.ctx.storage.delete(RUN);
+      if (run.runId) await finishRun(this.env, run.tenantId ?? OWNER_TENANT, run.runId, "failed", { steps: run.steps, stages: run.stages, outcome: "abgelaufen" });
       if (run.taskId) await this.finishTaskRun(run, "failed", "Agentenlauf ist abgelaufen. Bitte Aufgabe prüfen und erneut starten.");
       return undefined;
     }
@@ -231,8 +236,9 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
   override async alarm(): Promise<void> {
     const run = await this.ctx.storage.get<RunState>(RUN);
     if (!run) return;
-    // A run stored before tenants existed belongs to the owner.
+    // A run stored before tenants existed belongs to the owner; one stored before the ledger gets its row now.
     run.tenantId ??= OWNER_TENANT;
+    if (!run.runId) Object.assign(run, await this.openRun(run));
     const base = { tenantId: run.tenantId, threadId: run.threadId, agentId: run.agentId, projectId: run.projectId, taskId: run.taskId };
     try {
       const inbox = (await this.ctx.storage.get<string[]>(INBOX)) ?? [];
@@ -248,19 +254,21 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
         await this.ctx.storage.setAlarm(Date.now() + 200);
         return;
       }
+      if (run.runId) await finishRun(this.env, run.tenantId, run.runId, outcome.kind === "done" ? "done" : "failed", { steps: run.steps, stages: run.stages + 1, outcome: outcome.reply });
       const hasQueuedMessage = ((await this.ctx.storage.get<string[]>(INBOX)) ?? []).length > 0;
       if (run.taskId && !hasQueuedMessage) await this.finishTaskRun(run, outcome.kind === "done" ? "done" : "failed", outcome.reply);
       await this.ctx.storage.delete(RUN);
       // Something arrived while the run was finishing: start the next one right away.
       if (((await this.ctx.storage.get<string[]>(INBOX)) ?? []).length) {
         const now = Date.now();
-        await this.ctx.storage.put<RunState>(RUN, { ...base, steps: 0, stages: 0, startedAt: now, touchedAt: now });
+        await this.ctx.storage.put<RunState>(RUN, await this.openRun({ ...base, steps: 0, stages: 0, startedAt: now, touchedAt: now }));
         await this.ctx.storage.setAlarm(now);
       }
     } catch (error) {
       // No rethrow: a retried alarm would repeat side effects. Report and end the run.
       await this.ctx.storage.delete(RUN);
       const message = error instanceof Error ? error.message : String(error);
+      if (run.runId) await finishRun(this.env, run.tenantId, run.runId, "failed", { steps: run.steps, stages: run.stages + 1, outcome: message });
       if (run.taskId) await this.finishTaskRun(run, "failed", message).catch(() => undefined);
       await emit(this.env, { ...base, type: "error", data: { message } }).catch(() => undefined);
     }
@@ -276,7 +284,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     const [project, budgetRow, spent, thread] = await Promise.all([
       this.env.DB.prepare("SELECT id, name, repo, status, visibility, model_policy FROM projects WHERE tenant_id = ? AND id = ?").bind(tenantId, projectId).first<ProjectRow>(),
       this.env.DB.prepare("/* tenant:platform */ SELECT daily_budget_usd FROM agents WHERE id = ?").bind(agentId).first<{ daily_budget_usd: number }>(),
-      spentToday(this.env, tenantId, agentId),
+      spentTodayFromLedger(this.env, tenantId, agentId),
       this.env.DB.prepare("SELECT model FROM threads WHERE tenant_id = ? AND id = ?").bind(tenantId, threadId).first<{ model: string | null }>(),
     ]);
     const dailyBudget = budgetRow?.daily_budget_usd ?? 0.5;
@@ -321,6 +329,10 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       },
     };
     const deltas = new DeltaBuffer(this.env, agentId, threadId);
+    // The step the loop is in and the arguments of the tool call in flight, for the usage ledger.
+    let step = run.steps;
+    const currentStep = () => step + 1;
+    const toolArgs = new Map<string, string>();
 
     const outcome = await runAgentLoop({
       system: {
@@ -333,11 +345,49 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       },
       history: { recent: () => this.recent(HISTORY_LIMIT), append: (message) => this.append(message) },
       model: async (request, onDelta) => {
-        const result = await router.chat(
-          definition.modelAlias,
-          { ...request, temperature: 0.3, maxTokens: 8192 },
-          { budget, onDelta, pinned: pinned && router.offers(pinned) ? pinned : undefined, privateContent: privateContent() },
-        );
+        const started = Date.now();
+        let firstToken: number | null = null;
+        const strict = privateContent();
+        const call = { tenantId, runId: run.runId, agentId, projectId, threadId, taskId: run.taskId, step: currentStep(), alias: definition.modelAlias, strictPolicy: strict };
+        let result: RoutedResult;
+        try {
+          result = await router.chat(
+            definition.modelAlias,
+            { ...request, temperature: 0.3, maxTokens: 8192 },
+            {
+              budget,
+              onDelta: (text) => {
+                firstToken ??= Date.now() - started;
+                onDelta(text);
+              },
+              pinned: pinned && router.offers(pinned) ? pinned : undefined,
+              privateContent: strict,
+            },
+          );
+        } catch (error) {
+          if (!(error instanceof BudgetExhausted)) {
+            await recordModelCall(this.env, { ...call, provider: "router", model: definition.modelAlias, status: "error", latencyMs: Date.now() - started, error: error instanceof Error ? error.message : String(error) });
+          }
+          throw error;
+        }
+        await recordModelCall(this.env, {
+          ...call,
+          provider: result.target.provider,
+          model: result.target.model,
+          status: "ok",
+          tokensIn: result.usage.inputTokens,
+          tokensOut: result.usage.outputTokens,
+          cacheReadTokens: result.usage.cacheReadTokens,
+          cacheWriteTokens: result.usage.cacheWriteTokens,
+          inputUsdPerM: result.target.inputUsdPerM,
+          outputUsdPerM: result.target.outputUsdPerM,
+          priceSource: result.priceSource,
+          costUsd: result.costUsd,
+          latencyMs: Date.now() - started,
+          firstTokenMs: firstToken,
+          keySource: result.keySource,
+          attempts: result.attempts,
+        });
         await deltas.flush();
         return {
           message: result.message,
@@ -373,7 +423,28 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
           .run();
         return { approvalId, description };
       },
-      emit: (event: LoopEvent) => emit(this.env, { ...base, ...event }).then(() => undefined),
+      emit: async (event: LoopEvent) => {
+        const data = (event.data ?? {}) as Record<string, unknown>;
+        if (event.type === "thinking" && typeof data.step === "number") step = data.step - 1;
+        await emit(this.env, { ...base, ...event });
+        if (event.type === "tool_call") {
+          toolArgs.set(String(data.tool), typeof data.args === "string" ? data.args : JSON.stringify(data.args ?? ""));
+        } else if (event.type === "tool_result" || event.type === "approval_requested") {
+          await recordToolCall(this.env, {
+            tenantId,
+            runId: run.runId,
+            agentId,
+            projectId,
+            step: typeof data.step === "number" ? data.step : currentStep(),
+            tool: String(data.tool ?? "unbekannt"),
+            argsPreview: toolArgs.get(String(data.tool)),
+            ok: event.type === "approval_requested" ? true : data.ok === true,
+            approvalId: typeof data.approvalId === "string" ? data.approvalId : null,
+            durationMs: typeof data.durationMs === "number" ? data.durationMs : null,
+            resultPreview: typeof data.preview === "string" ? data.preview : typeof data.summary === "string" ? data.summary : null,
+          });
+        }
+      },
       delta: (step, text) => deltas.push(step, text),
       stepsDone: run.steps,
       maxSteps: MAX_STEPS,
@@ -382,6 +453,14 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     run.steps = outcome.steps;
     if (outcome.kind === "paused") return { kind: "paused" };
     return outcome.kind === "done" ? { kind: "done", reply: outcome.reply } : { kind: "failed", reply: outcome.reply };
+  }
+
+  /** Gives a run its row in the usage ledger. */
+  private async openRun(run: RunState): Promise<RunState> {
+    const runId = run.runId ?? crypto.randomUUID();
+    const kind = !run.taskId ? "chat" : run.agentId === "reviewer" ? "review" : "task";
+    await startRun(this.env, { id: runId, tenantId: run.tenantId ?? OWNER_TENANT, agentId: run.agentId, projectId: run.projectId, threadId: run.threadId, taskId: run.taskId, kind, startedAt: run.startedAt });
+    return { ...run, runId };
   }
 
   private async finishTaskRun(run: RunState, outcome: "done" | "failed" | "cancelled", output: string): Promise<void> {
