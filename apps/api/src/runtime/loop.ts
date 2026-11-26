@@ -56,6 +56,21 @@ export type LoopOutcome =
   | { kind: "step_limit"; reply: string; steps: number }
   | { kind: "failed"; reply: string; steps: number };
 
+/** Smaller models sometimes end a turn with "Ich werde jetzt X lesen." and no tool call. */
+const ANNOUNCEMENT = /\b(ich werde|ich lese|ich öffne|ich prüfe|ich schaue|ich sehe mir|ich suche|ich liste|ich rufe|lass mich|als nächstes|im nächsten schritt|zunächst werde)\b/i;
+const MAX_NUDGES = 2;
+const NUDGE: ChatMessage = {
+  role: "user",
+  content:
+    "Du hast eine Aktion angekündigt, aber kein Werkzeug aufgerufen. Führe sie jetzt mit dem passenden Werkzeug aus. Ist nichts mehr zu tun, antworte abschließend ohne Ankündigung.",
+};
+
+/** True when the turn ends on an announcement of work that was not done. Questions and finished answers do not count. */
+export function announcesUndoneWork(text: string): boolean {
+  const tail = text.trim().split(/\n{2,}/).at(-1)?.slice(-300) ?? "";
+  return !tail.endsWith("?") && ANNOUNCEMENT.test(tail);
+}
+
 export function preview(value: unknown, maxChars = PREVIEW_CHARS): string {
   const text = typeof value === "string" ? value : JSON.stringify(value);
   return text.length > maxChars ? `${text.slice(0, maxChars)}…` : text;
@@ -64,6 +79,8 @@ export function preview(value: unknown, maxChars = PREVIEW_CHARS): string {
 export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
   const specs = deps.tools.map((tool) => tool.spec);
   let step = deps.stepsDone;
+  let nudges = 0;
+  let nudgeNext = false;
 
   while (step < deps.maxSteps) {
     if (deps.budget.remaining < STEP_RESERVE) return { kind: "paused", steps: step };
@@ -72,7 +89,9 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
 
     let turn: ModelTurn;
     try {
-      turn = await deps.model({ messages: [deps.system, ...deps.history.recent()], tools: specs }, (text) => deps.delta(step, text));
+      const reminder = nudgeNext ? [NUDGE] : [];
+      nudgeNext = false;
+      turn = await deps.model({ messages: [deps.system, ...deps.history.recent(), ...reminder], tools: specs }, (text) => deps.delta(step, text));
     } catch (error) {
       if (error instanceof BudgetExhausted) return { kind: "paused", steps: step - 1 };
       const message = error instanceof Error ? error.message : String(error);
@@ -91,6 +110,12 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
 
     const calls = turn.message.toolCalls ?? [];
     if (!calls.length) {
+      // The reminder is not stored: it only steers the next model call, so the chat shows no message Ugur did not write.
+      if (nudges < MAX_NUDGES && specs.length && announcesUndoneWork(turn.message.content ?? "")) {
+        nudges += 1;
+        nudgeNext = true;
+        continue;
+      }
       const reply = turn.message.content?.trim() || "(keine Antwort)";
       await deps.emit({ type: "message", data: { text: reply, step } });
       return { kind: "done", reply, steps: step };

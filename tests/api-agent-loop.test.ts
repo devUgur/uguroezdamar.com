@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { describeApproval } from "../apps/api/src/approvals.ts";
 import type { ChatMessage } from "../apps/api/src/models/port.ts";
 import { SubrequestBudget } from "../apps/api/src/runtime/budget.ts";
-import { type LoopDeps, type LoopEvent, type ModelTurn, runAgentLoop } from "../apps/api/src/runtime/loop.ts";
+import { announcesUndoneWork, type LoopDeps, type LoopEvent, type ModelTurn, runAgentLoop } from "../apps/api/src/runtime/loop.ts";
 import type { Tool, ToolContext } from "../apps/api/src/tools/port.ts";
 
 /** Smoke test of the agent core: user → tool call → result → answer, with every step as an event. */
@@ -86,5 +86,37 @@ describe("platform agent loop", () => {
   it("continues a run from the steps of earlier stages and stops at the step limit", async () => {
     const { deps } = harness([toolTurn("repo_read_file", { path: "a" })], { stepsDone: 23, maxSteps: 24 });
     expect(await runAgentLoop(deps)).toMatchObject({ kind: "step_limit", steps: 24 });
+  });
+
+  it("sends a reminder when a turn only announces work, without storing it as a chat message", async () => {
+    const requests: ChatMessage[][] = [];
+    const { deps, messages, events } = harness([
+      answer("Die README hilft nicht. Ich werde den Inhalt von AGENTS.md lesen."),
+      toolTurn("repo_read_file", { path: "AGENTS.md" }),
+      answer("Die Regeln sind …"),
+    ]);
+    const model = deps.model;
+    deps.model = async (request, onDelta) => {
+      requests.push(request.messages);
+      return model(request, onDelta);
+    };
+    const outcome = await runAgentLoop(deps);
+
+    expect(outcome).toMatchObject({ kind: "done", reply: "Die Regeln sind …" });
+    expect(requests[1]?.at(-1)?.content).toContain("kein Werkzeug aufgerufen");
+    expect(requests[2]?.some((message) => message.content?.includes("kein Werkzeug aufgerufen"))).toBe(false);
+    expect(messages.some((message) => message.role === "user" && message.content?.includes("kein Werkzeug aufgerufen"))).toBe(false);
+    expect(events.filter((event) => event.type === "message")).toHaveLength(1);
+  });
+
+  it("reminds at most twice, then accepts the answer", async () => {
+    const { deps } = harness([answer("Ich werde lesen."), answer("Ich werde lesen."), answer("Ich werde lesen."), answer("zu viel")]);
+    expect(await runAgentLoop(deps)).toMatchObject({ kind: "done", reply: "Ich werde lesen.", steps: 3 });
+  });
+
+  it("does not mistake questions or finished answers for announcements", () => {
+    expect(announcesUndoneWork("Soll ich die Datei lesen?")).toBe(false);
+    expect(announcesUndoneWork("Das Repository enthält apps und packages. Es ist ein Monorepo.")).toBe(false);
+    expect(announcesUndoneWork("Die README ist leer. Ich werde nun AGENTS.md lesen.")).toBe(true);
   });
 });

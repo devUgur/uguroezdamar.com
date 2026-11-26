@@ -106,14 +106,14 @@ const listFiles: Tool = {
       const files = tree.tree
         .filter((entry) => entry.type === "blob" && (!path || entry.path.startsWith(`${path}/`)))
         .map((entry) => entry.path);
-      return { ref, count: files.length, files: files.slice(0, 400), truncated: files.length > 400 || tree.truncated };
+      return { repo: context.repo, ref, count: files.length, files: files.slice(0, 400), truncated: files.length > 400 || tree.truncated };
     }
     const entries = await gh<{ name: string; type: string; size: number }[] | { type: string }>(
       context,
       `/repos/${context.repo}/contents/${path}?ref=${encodeURIComponent(ref)}`,
     );
-    if (!Array.isArray(entries)) return { ref, note: `${path} ist eine Datei, kein Ordner.` };
-    return { ref, entries: entries.map((entry) => `${entry.type === "dir" ? "📁" : "📄"} ${entry.name}`) };
+    if (!Array.isArray(entries)) return { repo: context.repo, ref, note: `${path} ist eine Datei, kein Ordner.` };
+    return { repo: context.repo, ref, entries: entries.map((entry) => `${entry.type === "dir" ? "📁" : "📄"} ${entry.name}`) };
   },
 };
 
@@ -142,6 +142,7 @@ const readFile: Tool = {
     }
     const text = decodeBase64(file.content);
     return {
+      repo: context.repo,
       path,
       ref,
       sha: file.sha,
