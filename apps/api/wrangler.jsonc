@@ -44,8 +44,8 @@
       { "name": "INDEXER", "class_name": "KnowledgeIndexer" }
     ]
   },
-  // Knowledge index (plan stage 3), created with: wrangler vectorize create <name> --dimensions=1024 --metric=cosine,
-  // plus metadata indexes "tenant" and "project" (string) for filtered queries.
+  // Knowledge index (ADR 0037). The deploy workflow creates it in the deploy account if missing (1024 dimensions,
+  // cosine, metadata indexes "tenant" and "project"); never create it with a local wrangler login of another account.
   "vectorize": [{ "binding": "KNOWLEDGE", "index_name": "uguroezdamar-knowledge" }],
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["AgentRuntime", "LiveHub"] },
