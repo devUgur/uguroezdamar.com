@@ -39,6 +39,23 @@ jobs:
       # Plain wrangler instead of wrangler-action: the action uploads secrets before `deploy`,
       # which fails while the Worker does not exist yet. --secrets-file ships code and secrets
       # as one version. The file lives in RUNNER_TEMP and is never printed.
+      # Cloudflare refuses any Worker upload (code 10063) until the account has a workers.dev
+      # subdomain, even though this Worker serves only its custom domains. Create it once if missing.
+      - name: Ensure account workers.dev subdomain
+        run: |
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          if curl -fsS -H "$auth" "$api" | grep -q '"subdomain":"[^"]'; then echo "subdomain exists"; exit 0; fi
+          for name in uguroezdamar uguroezdamar-platform; do
+            if curl -fsS -X PUT -H "$auth" -H "content-type: application/json" --data "{\"subdomain\":\"$name\"}" "$api" >/dev/null; then
+              echo "created $name.workers.dev"; exit 0
+            fi
+          done
+          echo "::error::Could not create a workers.dev subdomain; open Workers & Pages once in the dashboard of this account."
+          exit 1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Apply D1 migrations
         working-directory: apps/platform
         run: pnpm exec wrangler d1 migrations apply DB --remote $WRANGLER_ENV_FLAG
