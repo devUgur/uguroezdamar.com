@@ -25,9 +25,6 @@ export function Sidebar() {
         <Link href="/projects" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Repositorys
         </Link>
-        <Link href="/portfolio" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
-          Portfolio
-        </Link>
         <Link href="/chat" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Chat
         </Link>

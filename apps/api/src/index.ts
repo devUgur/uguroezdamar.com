@@ -10,7 +10,6 @@ import { completeConnect, startConnect } from "./github/connect.ts";
 import { githubStatus } from "./github/credentials.ts";
 import { handleGithubWebhook } from "./github/webhook.ts";
 import { listRepositories, ProjectError, registerProject, unregisterProject } from "./projects/repositories.ts";
-import { handlePortfolioProjects } from "./projects/portfolio.ts";
 import { buildOfficeLayout } from "./office/layout.ts";
 import { officeActivityOf } from "./office/presence.ts";
 import { organizationCatalog } from "./organization/catalog.ts";
@@ -379,8 +378,6 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   const models = await handleModels(request, env, caller, path);
   if (models) return models;
 
-  const portfolio = await handlePortfolioProjects(request, env, caller, path);
-  if (portfolio) return portfolio;
 
   if (path === "/api/events" && method === "GET") {
     return json(

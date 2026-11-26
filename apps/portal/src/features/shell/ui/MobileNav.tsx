@@ -7,7 +7,6 @@ const LINKS = [
   { href: "/work", label: "Aufgaben" },
   { href: "/organization", label: "Organisation" },
   { href: "/projects", label: "Repositorys" },
-  { href: "/portfolio", label: "Portfolio" },
   { href: "/models", label: "Modelle" },
   { href: "/chat", label: "Chat" },
   { href: "/admin/team", label: "Team" },

@@ -21,7 +21,7 @@ export async function authorize(request: Request, env: Env): Promise<Caller | nu
   const header = request.headers.get("authorization");
   const given = header?.startsWith("Bearer ") ? header.slice(7) : null;
   if (!given || !(await constantTimeEqual(given, expected))) return null;
-  const allowedScopes = new Set(["organization:write", "providers:write", "portfolio:write"]);
+  const allowedScopes = new Set(["organization:write", "providers:write"]);
   const scopes = (request.headers.get("x-portal-scopes") ?? "")
     .split(",")
     .map((scope) => scope.trim())
