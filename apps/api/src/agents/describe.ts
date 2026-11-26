@@ -21,6 +21,7 @@ const CREDENTIALS = [
   { name: "GEMINI_API_KEY", purpose: "Gemini-Modelle" },
   { name: "MODAL_LLM_API_KEY", purpose: "Eigene Modelle auf Modal" },
   { name: "PROVIDER_KEYS_SECRET", purpose: "Verschlüsselt die im Portal hinterlegten Modellschlüssel" },
+  { name: "AGENT_CF_PREVIEW_TOKEN", purpose: "Preview-Uploads der Workstations (nur im Worker, nie im Container)" },
 ] as const;
 
 const DEFAULT_PROJECT = "uguroezdamar";

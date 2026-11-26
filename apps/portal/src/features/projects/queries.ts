@@ -3,7 +3,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { agentsApi } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/auth";
-import type { GithubRepository, GithubStatus, KnowledgeHit, KnowledgeStatus, Project, ProjectKnowledge, ProjectOverview, ProjectTask, Sprint, WorkingMemoryEntry } from "./types";
+import type { GithubRepository, GithubStatus, KnowledgeHit, KnowledgeStatus, Project, ProjectKnowledge, ProjectOverview, ProjectPreviews, ProjectTask, Sprint, WorkingMemoryEntry } from "./types";
 
 async function actor(): Promise<string> {
   const session = await getCurrentSession();
@@ -45,18 +45,28 @@ export async function getGithubStatus(): Promise<{ status: GithubStatus | null; 
   }
 }
 
-/** One project with its sprints and tasks. Missing project: project is null and the page shows a 404. */
+const NO_PREVIEWS: ProjectPreviews = { available: false, previews: [] };
+
+/** One project with its sprints, tasks and preview URLs. Missing project: project is null and the page shows a 404. */
 export async function getProjectOverview(id: string): Promise<ProjectOverview> {
   const who = await actor();
   try {
-    const [projects, sprints, tasks] = await Promise.all([
+    const [projects, sprints, tasks, previews] = await Promise.all([
       agentsApi<Project[]>("/api/projects", who),
       agentsApi<Sprint[]>(`/api/projects/${encodeURIComponent(id)}/sprints`, who).catch(() => [] as Sprint[]),
       agentsApi<ProjectTask[]>(`/api/tasks?project=${encodeURIComponent(id)}`, who),
+      // An API without the previews route yet answers 404; the page then shows previews as not set up.
+      agentsApi<ProjectPreviews>(`/api/projects/${encodeURIComponent(id)}/previews`, who).catch(() => NO_PREVIEWS),
     ]);
-    return { project: projects.find((project) => project.id === id) ?? null, sprints, tasks: tasks.map((task) => ({ ...task, sprintId: task.sprintId ?? null })), error: null };
+    return {
+      project: projects.find((project) => project.id === id) ?? null,
+      sprints,
+      tasks: tasks.map((task) => ({ ...task, sprintId: task.sprintId ?? null })),
+      previews,
+      error: null,
+    };
   } catch (error) {
-    return { project: null, sprints: [], tasks: [], error: describe(error) };
+    return { project: null, sprints: [], tasks: [], previews: NO_PREVIEWS, error: describe(error) };
   }
 }
 

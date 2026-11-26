@@ -25,7 +25,10 @@ export type EventType =
   | "github_issue_synced"
   | "agent_handoff"
   | "project_policy_changed"
-  | "knowledge_indexed";
+  | "knowledge_indexed"
+
+  | "sandbox_run"
+  | "preview_deployed";
 
 export interface AgentEvent {
   /** The tenant the event belongs to. Required: an event without it would silently land with the owner. */

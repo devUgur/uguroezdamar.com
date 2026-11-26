@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Button } from "@ugur/ui";
 import { startProjectChat } from "../actions";
-import type { Project, ProjectKnowledge, ProjectTask, Sprint } from "../types";
+import type { Project, ProjectKnowledge, ProjectPreviews, ProjectTask, Sprint } from "../types";
 import { KnowledgeSection } from "./KnowledgeSection";
 import { ModelPolicyForm } from "./ModelPolicyForm";
 import { PlanningForms } from "./PlanningForms";
+import { PreviewSection } from "./PreviewSection";
 import { SprintSection } from "./SprintSection";
 import { TaskLine } from "./TaskLine";
 
@@ -13,12 +14,13 @@ interface ProjectDetailViewProps {
   sprints: Sprint[];
   tasks: ProjectTask[];
   knowledge: ProjectKnowledge;
+  previews: ProjectPreviews;
   notice?: string;
   error?: string;
 }
 
 /** /projects/[id]: one project (= one repository) with its sprints, backlog and planning. */
-export function ProjectDetailView({ project, sprints, tasks, knowledge, notice, error }: ProjectDetailViewProps) {
+export function ProjectDetailView({ project, sprints, tasks, knowledge, previews, notice, error }: ProjectDetailViewProps) {
   const openSprints = sprints.filter((sprint) => sprint.status !== "done");
   const done = sprints.filter((sprint) => sprint.status === "done");
   const backlog = tasks.filter((task) => !task.sprintId && task.status !== "done");
@@ -68,6 +70,8 @@ export function ProjectDetailView({ project, sprints, tasks, knowledge, notice, 
           {error}
         </p>
       ) : null}
+
+      <PreviewSection previews={previews} />
 
       <section className="flex flex-col gap-4" aria-labelledby="sprints-title">
         <h2 id="sprints-title" className="font-serif text-xl">

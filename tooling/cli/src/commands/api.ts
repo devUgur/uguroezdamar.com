@@ -73,6 +73,17 @@ const REPO_SECRETS: RepoSecret[] = [
     purpose: "Verschlüsselt die im Portal hinterlegten Modellschlüssel (wird von diesem Befehl erzeugt, ADR 0033)",
   },
   {
+    name: "AGENT_CF_PREVIEW_TOKEN",
+    required: false,
+    fromInfisical: true,
+    purpose: "Preview-Uploads der Workstations (ADR 0036); bleibt im Worker, nie im Container",
+    howTo: [
+      "https://dash.cloudflare.com/profile/api-tokens → „Create Token“ → Custom token",
+      "Permissions: Account · Workers Scripts · Edit; Account Resources: nur dieses Konto",
+      "„Create Token“ → kopieren",
+    ],
+  },
+  {
     name: "AGENT_GITHUB_TOKEN",
     required: false,
     purpose: "Repo lesen, Commits und Pull Requests des Agenten",

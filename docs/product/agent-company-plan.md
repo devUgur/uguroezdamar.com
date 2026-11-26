@@ -188,16 +188,13 @@ Jeder Schritt ist ein `step.do` mit eigenem Lauf in `runs` (`parent_run_id` = Wo
 
 ### Stufe 6: Ausführung (Workstations) und Previews
 
-- **Stand:** Fertig gebaut auf `refs/heads/claude/modest-stonebraker-2e8223` (3 Commits, 231 Tests laut Session-Bericht), nicht gemergt.
+- **Stand:** Am 26.11.2026 nach `dev` gemergt ([ADR 0036](../architecture/decisions/0036-isolated-workstations-and-previews.md), Migration `0022_previews.sql`). Der Code ist da, aber noch nicht aktiv, bis Workers Paid und die Container-Bindung stehen.
   - **Workstation:** Ein Durable Object mit Container je Lauf, ohne Internet. Nur `github.com` (nur Lesen des einen Repositories) und `registry.npmjs.org` sind über Gateways im Worker erreichbar.
   - **Kein Token im Container:** Der Worker setzt es erst unterwegs ein.
   - **Feste Befehle:** Nur `install`, `check`, `test`, `lint`, `typecheck`, `build`.
   - **Werkzeuge:** `sandbox_run` und `preview_deploy` (mit Freigabe).
   - **Previews:** Je Projekt gibt es einen Worker `pv-<projekt>` mit einem Preview-Alias je Branch oder PR.
-- **Vor dem Merge:**
-  1. ADR auf **0036** umnummerieren (0035 ist Codex' Issue-Sync).
-  2. Auf den aktuellen `dev` bringen (Migrationen fortlaufend ab 0020).
-  3. Gegen Stufen 1–3 prüfen: Werkzeugaufrufe ins Verbrauchsprotokoll, Grenzen im Prompt-Budget-Test.
+- **Beim Merge erledigt:** ADR auf 0036 umnummeriert, Migration auf 0022, `markPrivate` an die Datenrichtlinie angepasst, Werkzeugbeschreibungen gekürzt, Prompt-Budget bewusst angehoben (Chef 7.700, QA 5.200 Zeichen).
 - **Voraussetzungen des Owners:**
   - **Workers Paid (5 $/Monat).** Nötig für Containers, mehr Workflow-Kapazität (10.000 statt 50 Subrequests je Aufruf, 30 s CPU je Schritt) und ein Workers-AI-Kontingent über die 10.000 Neurons am Tag hinaus.
   - **Container-Bindung** in `apps/api/wrangler.jsonc`.
@@ -253,7 +250,7 @@ Danach folgen Kundenanmeldung mit GitHub, Rollen je Mandant, Grenzen und Budgets
 | --- | --- | --- | --- |
 | 1 | Codex-Arbeit uncommittet | erledigt | Übernommen mit Korrekturen: Migrationen als 0020/0021, Tenancy-Wächter grün, Issue-Webhook nur für die Mandanten der sendenden Installation |
 | 2 | `/costs` und `/usage` doppelt | erledigt | `/costs` leitet auf `/usage` weiter, Auswertung aus Events entfernt |
-| 3 | Sandbox-Branch ungemergt, ADR-Nummer doppelt (0035) | Agent | Siehe Stufe 6 |
+| 3 | Sandbox-Branch ungemergt, ADR-Nummer doppelt | erledigt | Gemergt als ADR 0036, Migration 0022; aktiv erst mit Workers Paid |
 | 4 | Workers Paid nicht gebucht | Owner | Entscheidung, siehe Abschnitt 7 |
 | 5 | Workers-AI-Kontingent (10.000 Neurons am Tag) ist täglich schnell leer: Vektoren des Wissensindex fehlen, Workers AI als Modell fällt aus | Owner | Workers Paid oder Embeddings über einen anderen Anbieter |
 | 6 | Kein Anbieter ohne Datenauswertung mit Schlüssel (Claude oder OpenAI); strenge Projekte haben nur Workers AI | Owner | Claude-Schlüssel mit Guthaben unter `/models` |

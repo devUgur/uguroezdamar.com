@@ -15,7 +15,9 @@ Agenten-Backend des Admin-Portals: Threads, Agentenschleife, Modelle, Werkzeuge,
 | `src/work/sprints.ts` | Sprints je Projekt; Aufgaben tragen `sprint_id` |
 | `src/knowledge/` | Wissensindex je Projekt (Doku und erledigte Aufgaben, hybride Suche über FTS5 und Vectorize), Indexer als Durable Object, Arbeitsgedächtnis je Mitarbeiter ([ADR 0037](../../docs/architecture/decisions/0037-agent-memory-and-knowledge.md)) |
 | `src/usage/` | Verbrauchsprotokoll: `runs`, `model_calls`, `tool_calls` (Migration `0017`), Auswertung, Lauf-Trace, CSV; das Tagesbudget zählt daraus |
-| `src/tools/` | `ToolPort`, GitHub-Werkzeuge, Projekt- und Notiz-Werkzeuge; PR-Diff lesen ist nur dem read-only QA-Reviewer freigegeben |
+| `src/tools/` | `ToolPort`, GitHub-Werkzeuge, Projekt- und Notiz-Werkzeuge, `sandbox_run` und `preview_deploy` (`sandbox.ts`); PR-Diff lesen ist nur dem read-only QA-Reviewer freigegeben |
+| `src/workstation/` | Workstations ([ADR 0036](../../docs/architecture/decisions/0036-isolated-workstations-and-previews.md)): Durable Object mit Container je Lauf, Gateways für `github.com`, `registry.npmjs.org` und `api.cloudflare.com` (Zugangsdaten nur im Worker), Befehls-Allowlist, Preview-Regeln |
+| `workstation/Dockerfile` | Image der Workstations (Node, pnpm, git); wird erst gebaut, wenn `wrangler.jsonc` es nennt |
 | `src/agents/registry.ts` | die Agenten: Prompt, Modell-Alias, Werkzeuge |
 | `src/agents/describe.ts` | Konfigurationsansicht eines Agenten für das Portal |
 | `src/runtime/limits.ts` | Grenzwerte eines Laufs, von Laufzeit und Ansicht gemeinsam genutzt |
@@ -40,6 +42,7 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 | `POST /api/threads/:id/chat`, `…/stop` | Auftrag annehmen, Lauf abbrechen |
 | `GET /api/github/repositories` | Repositories des Kontos, die der Token sieht (nur freigegebene Besitzer, `GITHUB_OWNERS`), mit ihrem Projekt |
 | `POST /api/github/connect`, `GET /api/github/setup`, `GET /api/github/status` | „GitHub verbinden“: Link zur App-Installation, Rücksprung (Setup URL der App, ohne Dienst-Token, mit signiertem Einmal-`state`), Stand der Verbindung. [ADR 0032](../../docs/architecture/decisions/0032-multi-tenant-github-connect.md) |
+| `GET /api/projects/:id/previews` | Preview-URLs der Branches und Pull Requests eines Projekts und ob Previews eingerichtet sind ([ADR 0036](../../docs/architecture/decisions/0036-isolated-workstations-and-previews.md)) |
 | `POST /webhooks/github` | Webhook der App: Signatur, Wiederholungsschutz, Installationsstand |
 | `GET/POST /api/projects`, `DELETE /api/projects/:id` | Projekte auflisten; ein Repository als Projekt registrieren (`{ "repo": "owner/name" }`); entfernen. [ADR 0029](../../docs/architecture/decisions/0029-projects-as-repository-access.md) |
 | `GET /api/models` | Anbieter, Modelle, Verfügbarkeit, Herkunft des Schlüssels, Aliase und Wahl je Rolle |
@@ -111,6 +114,7 @@ Jeder Push auf `dev`, der `apps/api/**` ändert, deployt nach Dev; der Merge `de
 | `AGENT_GH_APP_ID`, `AGENT_GH_APP_PRIVATE_KEY` | Repository | nein | GitHub App der Agenten ([ADR 0031](../../docs/architecture/decisions/0031-github-app-access.md)); ersetzt den Token, wo sie installiert ist |
 | `AGENT_GITHUB_TOKEN` | Repository | nein | Rückfall zur App und Anlegen von Repositories |
 | `MODAL_LLM_API_KEY` | Repository, gleicher Wert im Modal-Secret `uguroezdamar-llm` | nein | eigene Modelle auf Modal |
+| `AGENT_CF_PREVIEW_TOKEN` | Repository, Sicherung in Infisical (prod) | nein | Preview-Uploads der Workstations (Workers Scripts: Edit); bleibt im Worker ([ADR 0036](../../docs/architecture/decisions/0036-isolated-workstations-and-previews.md)) |
 | `PROVIDER_KEYS_SECRET` | Repository, erzeugt von `pnpm ugur api secrets --apply`, Sicherung in Infisical (prod) | für `/models` | verschlüsselt die im Portal hinterlegten Modellschlüssel; nie rotieren |
 
 `pnpm ugur api secrets` zeigt, was gesetzt ist (nur Namen). Mit `--apply` erzeugt der Befehl je Stage ein Service-Token und setzt es in GitHub und Infisical, setzt `API_URL` in Infisical, fragt die optionalen Schlüssel verdeckt ab und startet den Dev-Deploy. Danach übernimmt `pnpm ugur hosting env --stage dev --apply` die Portal-Werte in Vercel (Preview).

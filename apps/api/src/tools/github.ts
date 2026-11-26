@@ -63,7 +63,7 @@ function ownerOfPath(path: string, fallback: string): string {
   return path.match(/^\/repos\/([^/]+)\//)?.[1] ?? fallback.split("/")[0] ?? "";
 }
 
-async function gh<T>(context: ToolContext, path: string, init: RequestInit = {}, owner?: string): Promise<T> {
+export async function gh<T>(context: ToolContext, path: string, init: RequestInit = {}, owner?: string): Promise<T> {
   const token = await githubToken(context.env, context.tenantId, owner ?? ownerOfPath(path, context.repo), () => context.budget.take());
   context.budget.take();
   const response = await fetch(`${API}${path}`, {
@@ -101,12 +101,21 @@ interface RepoMeta {
 
 const foreignRepos = new WeakMap<ToolContext, Map<string, Promise<RepoMeta>>>();
 
+/** Name, visibility and default branch of a repository, fetched once per run. */
+export function repoMeta(context: ToolContext, repo: string): Promise<RepoMeta> {
+  let cache = foreignRepos.get(context);
+  if (!cache) foreignRepos.set(context, (cache = new Map()));
+  let meta = cache.get(repo.toLowerCase());
+  if (!meta) cache.set(repo.toLowerCase(), (meta = gh<RepoMeta>(context, `/repos/${repo}`)));
+  return meta;
+}
+
 /**
  * Which repository a read tool looks at. Reading reaches every repository of an allowed owner, registered
  * or not; writing stays with the registered project of the chat (ADR 0029). Private content is only
  * returned after the thread has been marked private, so only models without evaluation see it.
  */
-async function readTarget(args: Record<string, unknown>, context: ToolContext): Promise<{ repo: string; ref: string }> {
+export async function readTarget(args: Record<string, unknown>, context: ToolContext): Promise<{ repo: string; ref: string }> {
   const requested = typeof args.repo === "string" ? args.repo.trim() : "";
   if (!requested || requested.toLowerCase() === context.repo.toLowerCase()) return { repo: context.repo, ref: await readRef(context) };
   if (!REPO_FORMAT.test(requested)) throw new ToolInputError("Repository im Format owner/name angeben.");
@@ -114,11 +123,7 @@ async function readTarget(args: Record<string, unknown>, context: ToolContext): 
   if (!(await allowedOwnersFor(context.env, context.tenantId)).includes(owner.toLowerCase())) {
     throw new ToolInputError(`Auf Repositories von „${owner}“ hat dieser Agent keinen Zugriff.`);
   }
-  let cache = foreignRepos.get(context);
-  if (!cache) foreignRepos.set(context, (cache = new Map()));
-  let meta = cache.get(requested.toLowerCase());
-  if (!meta) cache.set(requested.toLowerCase(), (meta = gh<RepoMeta>(context, `/repos/${requested}`)));
-  const info = await meta;
+  const info = await repoMeta(context, requested);
   if (info.private) await context.markPrivate?.([info.full_name]);
   return { repo: info.full_name, ref: info.default_branch };
 }

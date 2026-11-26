@@ -22,5 +22,5 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
     );
   }
   if (!overview.project) notFound();
-  return <ProjectDetailView project={overview.project} sprints={overview.sprints} tasks={overview.tasks} knowledge={knowledge} notice={first(query.notice)} error={first(query.error)} />;
+  return <ProjectDetailView project={overview.project} sprints={overview.sprints} tasks={overview.tasks} knowledge={knowledge} previews={overview.previews} notice={first(query.notice)} error={first(query.error)} />;
 }

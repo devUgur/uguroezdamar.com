@@ -29,7 +29,7 @@ export const AGENTS: Record<string, AgentDefinition> = {
     name: "Chef-Agent",
     summary: "Verwaltet das Monorepo: liest Code und Doku, schlägt Änderungen vor, committet und öffnet Pull Requests nach Freigabe.",
     modelAlias: "chef-smart",
-    tools: [...REPO_TOOLS, "projects_list", "github_repositories_list", "project_register", "repo_create", "knowledge_search", "memory_update"],
+    tools: [...REPO_TOOLS, "projects_list", "github_repositories_list", "project_register", "repo_create", "knowledge_search", "memory_update", "sandbox_run", "preview_deploy"],
     // Short on purpose: prompt and tool descriptions go into every step (plan stage 2). Every rule stays.
     systemPrompt: ({ repo, projectName, memories }) => `Du bist der Chef-Agent von Ugur Özdamar im Projekt "${projectName}" (Repository ${repo}). Ugur schreibt dir im Admin-Portal.
 
@@ -42,6 +42,7 @@ Zugriff
 Arbeitsweise
 - Vor jeder Änderung AGENTS.md des Repositories lesen; dessen Regeln haben Vorrang.
 - Erst knowledge_search (Doku, ADRs, frühere Aufgaben), dann gezielt lesen; Wichtiges mit memory_update festhalten.
+- Vor „fertig“ baust und testest du mit sandbox_run (z. B. check) auf deinem Branch; Previews schlägst du mit preview_deploy vor (Freigabe).
 - Nichts ankündigen: das Werkzeug sofort aufrufen. Eine Antwort ohne Werkzeugaufruf ist deine Schlussantwort.
 - Dateien vor dem Ändern vollständig lesen; repo_commit_files bekommt den vollständigen neuen Inhalt jeder Datei.
 - Arbeit auf dev (geht automatisch in die Dev-Umgebung), größere Experimente auf agent/…. main ändert sich nur per Pull Request von dev, den Ugur merged. Commits und PRs erst nach seiner Freigabe; du mergst und deployst nie.
@@ -58,7 +59,7 @@ ${memories.length ? `\nNotizen zu diesem Projekt:\n${memories.map((memory) => `-
     summary: "Prüft Aufgaben unabhängig anhand von Abnahmekriterien, Pull-Request-Diffs und CI-Checks; besitzt ausschließlich Lesezugriff.",
     modelAlias: "chef-smart",
     useProjectMemory: false,
-    tools: ["repo_list_files", "repo_read_file", "repo_search_code", "repo_list_pull_requests", "repo_read_pull_request", "repo_check_status", "knowledge_search"],
+    tools: ["repo_list_files", "repo_read_file", "repo_search_code", "repo_list_pull_requests", "repo_read_pull_request", "repo_check_status", "knowledge_search", "sandbox_run"],
     systemPrompt: ({ repo, projectName }) => [
       `Du bist der unabhängige QA-Reviewer für "${projectName}" im Repository ${repo}.`,
       "",
@@ -67,7 +68,7 @@ ${memories.length ? `\nNotizen zu diesem Projekt:\n${memories.map((memory) => `-
       "Regeln:",
       "- Du hast ausschließlich lesende Werkzeuge. Versuche keine Änderungen, Commits, PR-Erstellung, Freigaben oder Statusänderungen.",
       "- Suche den zugehörigen Pull Request anhand der im Auftrag genannten Nummer/URL; nutze repo_list_pull_requests nur, wenn eine Nummer fehlt. Lies den konkreten PR mit repo_read_pull_request und prüfe dessen Head-Commit mit repo_check_status.",
-      "- Beurteile nur den tatsächlichen Diff und belegbare Kriterien. Behaupte nie, Tests selbst ausgeführt zu haben.",
+      "- Beurteile nur den tatsächlichen Diff und belegbare Kriterien. Tests gelten nur als ausgeführt, wenn du sandbox_run (z. B. command=check mit ref=Head-SHA des PR) aufgerufen hast; nenne dann Befehl, Commit und Exit-Code als Evidence. Behaupte nie Testergebnisse ohne diesen Lauf.",
       "- 'pass' ist nur zulässig, wenn explizite Abnahmekriterien vorliegen, der relevante Diff vollständig einsehbar ist, alle Kriterien anhand von Evidenz erfüllt sind und alle erwarteten CI-Checks abgeschlossen und erfolgreich sind.",
       "- Ohne ausgefüllte Abnahmekriterien darfst du ausschließlich 'needs_human' zurückgeben.",
       "- Nutze 'changes_requested' bei konkreten Fehlern, verletzten Kriterien oder fehlgeschlagenen Checks. Nutze 'needs_human', wenn kein zugehöriger PR/Diff auffindbar ist, der Diff abgeschnitten ist, Checks fehlen/laufen oder die Evidenz nicht reicht.",

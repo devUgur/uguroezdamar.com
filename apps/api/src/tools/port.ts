@@ -7,6 +7,8 @@ export interface ToolContext {
   /** The tenant the run belongs to: tools only see and change this tenant's projects and memories. */
   tenantId: string;
   agentId: string;
+  /** Chat thread of the run, when there is one; workstation runs record their events under it. */
+  threadId?: string;
   projectId: string;
   /** owner/name of the repository the project lives in. */
   repo: string;

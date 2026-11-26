@@ -2,6 +2,7 @@ import type { AgentRuntime } from "./agent.ts";
 import type { LiveHub } from "./hub.ts";
 import type { KnowledgeIndexer } from "./knowledge/indexer.ts";
 import type { OfficePresence } from "./office/presence.ts";
+import type { Workstation } from "./workstation/workstation.ts";
 
 /** Bindings from wrangler.jsonc plus secrets set by the deploy workflow. */
 export interface Env {
@@ -15,6 +16,8 @@ export interface Env {
   /** Knowledge index of the projects (plan stage 3): vectors from @cf/baai/bge-m3, 1024 dimensions, cosine. */
   KNOWLEDGE: VectorizeIndex;
   INDEXER: DurableObjectNamespace<KnowledgeIndexer>;
+  /** Containers of the agents (ADR 0036). Absent until the owner activates them in wrangler.jsonc. */
+  WORKSTATION?: DurableObjectNamespace<Workstation>;
 
   DEFAULT_REPO: string;
   /** GitHub accounts whose repositories may become projects, comma-separated. Organizations stay out until decided. */
@@ -28,6 +31,8 @@ export interface Env {
   STORAGE: { d1: string; d1Region: string; kv: string; r2: string };
   /** "true" once the models in apps/api/modal/llm.py are deployed; until then Modal stays unselectable. */
   MODAL_ENABLED?: string;
+  /** workers.dev subdomain of the account; preview URLs are built from it (ADR 0036). */
+  CF_WORKERS_SUBDOMAIN?: string;
 
   /** Shared with the portal server, one value per environment; the browser never sees it. */
   API_SERVICE_TOKEN?: string;
@@ -47,6 +52,8 @@ export interface Env {
   PROVIDER_KEYS_SECRET?: string;
   /** Key of the vLLM servers on Modal (apps/api/modal/llm.py); same value as the Modal secret uguroezdamar-llm. */
   MODAL_LLM_API_KEY?: string;
+  /** Cloudflare token for preview uploads (Workers Scripts: Edit). Stays in the Worker; the container never sees it. */
+  AGENT_CF_PREVIEW_TOKEN?: string;
 }
 
 /** Reads a secret by the name a model provider is configured with. */

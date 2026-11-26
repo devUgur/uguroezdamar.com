@@ -22,6 +22,7 @@ import { officeObjectName, threadObjectName } from "./tenancy.ts";
 import { toolByName } from "./tools/registry.ts";
 import { handleKnowledge } from "./knowledge/routes.ts";
 import { handleUsage } from "./usage/routes.ts";
+import { listPreviews } from "./workstation/previews.ts";
 import { handleSprints } from "./work/sprints.ts";
 import { handleTasks } from "./work/tasks.ts";
 
@@ -29,6 +30,9 @@ export { AgentRuntime } from "./agent.ts";
 export { LiveHub } from "./hub.ts";
 export { KnowledgeIndexer } from "./knowledge/indexer.ts";
 export { OfficePresence } from "./office/presence.ts";
+// Containers of the agents (ADR 0036). Exported so activation is configuration only; unused until wrangler.jsonc binds them.
+export { Workstation } from "./workstation/workstation.ts";
+export { GitGateway, PreviewGateway, RegistryGateway } from "./workstation/gateways.ts";
 
 const DEFAULT_PROJECT = "uguroezdamar";
 const DEFAULT_AGENT = "chef";
@@ -171,7 +175,7 @@ async function decideApproval(env: Env, caller: Caller, id: string, approve: boo
     try {
       if (!tool) throw new Error(`Werkzeug ${row.action} existiert nicht mehr.`);
       const budget = new SubrequestBudget();
-      const result = await tool.run(details.args, { env, tenantId: caller.tenantId, agentId: row.agent_id, projectId: details.projectId, repo: details.repo, budget });
+      const result = await tool.run(details.args, { env, tenantId: caller.tenantId, agentId: row.agent_id, threadId: row.thread_id ?? undefined, projectId: details.projectId, repo: details.repo, budget });
       outcome = JSON.stringify(result);
       ok = true;
     } catch (error) {
@@ -490,6 +494,14 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     } catch (error) {
       return projectFailure(error);
     }
+  }
+
+  // Preview URLs of a project's branches and pull requests (ADR 0036).
+  const previewMatch = path.match(/^\/api\/projects\/([a-z0-9-]{1,40})\/previews$/);
+  if (previewMatch && method === "GET") {
+    const project = await env.DB.prepare("SELECT 1 FROM projects WHERE tenant_id = ? AND id = ? AND status = 'active'").bind(caller.tenantId, previewMatch[1] ?? "").first();
+    if (!project) return json({ error: "Projekt nicht gefunden" }, 404);
+    return json({ available: Boolean(env.WORKSTATION && env.CF_WORKERS_SUBDOMAIN && env.AGENT_CF_PREVIEW_TOKEN), previews: await listPreviews(env, caller.tenantId, previewMatch[1] ?? "") });
   }
 
   const projectMatch = path.match(/^\/api\/projects\/([a-z0-9-]{1,40})$/);
