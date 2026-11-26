@@ -22,9 +22,9 @@ Diese Datei ist die einzige Regelquelle für Menschen und Agenten. Editor-spezif
 | Fortschritt | [`PLAN.md`](PLAN.md) und die verlinkten GitHub-Issues |
 | Datenbankschema | `packages/server/src/db/schema.ts` und die Migrationen in `packages/server/drizzle/` |
 | Daten | Neon PostgreSQL, Branches `dev` und `prod` |
-| Secret-Werte | Infisical (eu), nie Dateien; Ausnahme `apps/platform`: GitHub-Actions-Secrets, beim Deploy als Worker-Secrets gesetzt (ADR 0024) |
+| Secret-Werte | Infisical (eu), nie Dateien; Ausnahme `apps/api`: GitHub-Actions-Secrets, beim Deploy als Worker-Secrets gesetzt (ADR 0024) |
 | Variablennamen | `tooling/cli/src/secrets-manifest.ts` |
-| Deployment | Vercel, zwei Projekte aus diesem Repository ([`docs/operations/preview.md`](docs/operations/preview.md), ADR 0020); `apps/platform` als Cloudflare Worker ([ADR 0024](docs/architecture/decisions/0024-agent-platform-on-cloudflare.md)) |
+| Deployment | Vercel, zwei Projekte aus diesem Repository ([`docs/operations/preview.md`](docs/operations/preview.md), ADR 0020); `apps/api` als Cloudflare Worker ([ADR 0024](docs/architecture/decisions/0024-agent-platform-on-cloudflare.md)) |
 | Gestaltung | [`docs/product/r2-design-brief.md`](docs/product/r2-design-brief.md), Tokens in `apps/site/app/globals.css` |
 
 ## Befehle
@@ -54,7 +54,7 @@ Details: [`docs/operations/secrets.md`](docs/operations/secrets.md).
 ## Struktur
 
 - `apps/site` – öffentliche Website. `apps/portal` – Admin-Portal. Beide Next.js App Router.
-- `apps/platform` – Agenten-Plattform, Cloudflare Worker mit eigener D1-Datenbank und eigenen Secrets (ADR 0024). Sie importiert keine anderen Workspace-Pakete; Agenten ändern dieses Repository nur nach Freigabe des Owners, per Commit auf `dev` oder `agent/…` und per Pull Request, nie auf `main`.
+- `apps/api` – Agenten-Backend des Portals (Chat unter `/chat` im Portal), Cloudflare Worker mit eigener D1-Datenbank und eigenen Secrets (ADR 0024). Es importiert keine anderen Workspace-Pakete; Agenten ändern dieses Repository nur nach Freigabe des Owners, per Commit auf `dev` oder `agent/…` und per Pull Request, nie auf `main`.
 - `packages/server` – Datenzugriff, Validierung, Auth-Logik. `packages/ui` – app-neutrale Bausteine. `packages/core` – reine Hilfsfunktionen.
 - Die Pakete werden als TypeScript-Quellcode eingebunden: kein Build, kein `dist`, Exporte nur aus `src` (ADR 0017). `@/…` ist in jeder App der Alias auf die eigene Wurzel.
 - `tooling/cli` – die `pnpm ugur`-CLI. `tests/` – Vitest, Repository-Tests gegen In-Memory-Postgres.
@@ -89,7 +89,7 @@ Details: [`docs/operations/secrets.md`](docs/operations/secrets.md).
 - Metadata-API, `next/image`, selbst gehostete Fonts, Sitemap.
 
 **Arbeitsweise**
-- Gearbeitet wird direkt auf `dev`, ohne Feature-Branches: kleine, nachvollziehbare Commits. `dev` hat eine eigene Umgebung (Plattform: `platform-dev.uguroezdamar.com`, Site und Portal: Vercel-Preview). `main` ist Produktion und ändert sich nur per Pull Request von `dev` mit grüner CI.
+- Gearbeitet wird direkt auf `dev`, ohne Feature-Branches: kleine, nachvollziehbare Commits. `dev` hat eine eigene Umgebung (Agenten-API: `api-dev.uguroezdamar.com`, Site und Portal: Vercel-Preview). `main` ist Produktion und ändert sich nur per Pull Request von `dev` mit grüner CI.
 - Veröffentlichen, Mergen und Ausliefern sind drei Entscheidungen. Vor einem Push nennen, wie viele Commits er enthält und ob er ein Deployment auslösen kann.
 - Kein Produktions-Deploy ohne Freigabe des Owners. Grüne Checks sind keine visuelle Freigabe.
 - Änderungen an Deployment, Datenmodell, Auth, Publishing oder Paketgrenzen aktualisieren die betroffene Doku im selben Pull Request. Überholte ADRs bleiben erhalten und werden als ersetzt markiert.

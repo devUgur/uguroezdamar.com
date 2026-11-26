@@ -1,0 +1,169 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { eventsSince, liveTicket } from "../actions";
+import type { AgentEvent, Approval } from "../types";
+
+export interface ActivityLine {
+  key: string;
+  label: string;
+  detail?: string;
+  state: "running" | "ok" | "failed" | "note";
+}
+
+export interface LiveRun {
+  connected: boolean;
+  running: boolean;
+  status: string;
+  streaming: string;
+  activity: ActivityLine[];
+  approvals: Approval[];
+}
+
+interface Options {
+  threadId: string;
+  origin: string | null;
+  initialRunning: boolean;
+  initialApprovals: Approval[];
+  lastEventId: number;
+  /** Called when a run ends; the page then reloads the stored history. */
+  onSettled: () => void;
+}
+
+const SETTLED = new Set(["message", "error", "stopped", "budget_blocked"]);
+
+/**
+ * Live view of the thread's current run. Events and streamed text arrive over the API's
+ * WebSocket (one-time ticket). The stored history stays server-rendered; once a run settles
+ * the page refreshes and this state starts empty again.
+ */
+export function useLiveRun(options: Options) {
+  const { threadId, origin, onSettled } = options;
+  const [run, setRun] = useState<LiveRun>({
+    connected: false,
+    running: options.initialRunning,
+    status: options.initialRunning ? "arbeitet …" : "",
+    streaming: "",
+    activity: [],
+    approvals: options.initialApprovals,
+  });
+  const lastId = useRef(options.lastEventId);
+  const settledRef = useRef(onSettled);
+  settledRef.current = onSettled;
+
+  const apply = useCallback(
+    (event: AgentEvent) => {
+      if (event.threadId !== threadId || event.id <= lastId.current) return;
+      lastId.current = event.id;
+      const data = event.data ?? {};
+      setRun((current) => reduce(current, event.type, data));
+      if (SETTLED.has(event.type)) settledRef.current();
+    },
+    [threadId],
+  );
+
+  useEffect(() => {
+    if (!origin) return;
+    let socket: WebSocket | undefined;
+    let heartbeat: ReturnType<typeof setInterval> | undefined;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    let closed = false;
+    let first = true;
+
+    const connect = async () => {
+      try {
+        if (!first) (await eventsSince(threadId, lastId.current)).forEach(apply);
+        first = false;
+        const ticket = await liveTicket();
+        socket = new WebSocket(`${origin.replace(/^http/, "ws")}/api/live?ticket=${encodeURIComponent(ticket)}`);
+      } catch {
+        if (!closed) retry = setTimeout(connect, 5000);
+        return;
+      }
+      socket.onopen = () => setRun((current) => ({ ...current, connected: true }));
+      socket.onmessage = (message) => {
+        if (message.data === "pong") return;
+        const payload = JSON.parse(String(message.data)) as { type: string; event?: AgentEvent; threadId?: string; text?: string };
+        if (payload.type === "event" && payload.event) apply(payload.event);
+        if (payload.type === "delta" && payload.threadId === threadId && payload.text) {
+          const text = payload.text;
+          setRun((current) => ({ ...current, running: true, streaming: current.streaming + text }));
+        }
+      };
+      socket.onclose = () => {
+        setRun((current) => ({ ...current, connected: false }));
+        if (!closed) retry = setTimeout(connect, 3000);
+      };
+      heartbeat = setInterval(() => socket?.readyState === WebSocket.OPEN && socket.send("ping"), 25_000);
+    };
+
+    void connect();
+    return () => {
+      closed = true;
+      clearInterval(heartbeat);
+      clearTimeout(retry);
+      socket?.close();
+    };
+  }, [origin, threadId, apply]);
+
+  const markRunning = useCallback(() => setRun((current) => ({ ...current, running: true, status: "arbeitet …" })), []);
+  const reset = useCallback(
+    (running: boolean, approvals: Approval[]) =>
+      setRun((current) => ({ ...current, running, status: running ? current.status : "", streaming: "", activity: [], approvals })),
+    [],
+  );
+  const dropApproval = useCallback(
+    (id: string) => setRun((current) => ({ ...current, approvals: current.approvals.filter((approval) => approval.id !== id) })),
+    [],
+  );
+
+  return { run, markRunning, reset, dropApproval };
+}
+
+function text(value: unknown): string {
+  return typeof value === "string" ? value : value === undefined ? "" : JSON.stringify(value);
+}
+
+function reduce(current: LiveRun, type: string, data: Record<string, unknown>): LiveRun {
+  switch (type) {
+    case "user_message":
+      return { ...current, running: true, status: "arbeitet …" };
+    case "thinking":
+      return { ...current, running: true, status: `denkt · Schritt ${text(data.step)}` };
+    case "stage_paused":
+      return { ...current, status: `Etappe ${text(data.stage)} fertig, geht weiter …` };
+    case "tool_call": {
+      // Text streamed before a tool call is the agent thinking aloud; keep it as a note.
+      const note: ActivityLine[] = current.streaming.trim()
+        ? [{ key: `note-${current.activity.length}`, label: current.streaming.trim(), state: "note" }]
+        : [];
+      const line: ActivityLine = { key: `tool-${current.activity.length + note.length}`, label: text(data.tool), detail: text(data.args), state: "running" };
+      return { ...current, streaming: "", status: `nutzt ${text(data.tool)}`, activity: [...current.activity, ...note, line] };
+    }
+    case "tool_result": {
+      const index = current.activity.findLastIndex((line) => line.label === text(data.tool) && line.state === "running");
+      if (index < 0) return current;
+      const activity = current.activity.slice();
+      const line = activity[index];
+      if (line) activity[index] = { ...line, state: data.ok ? "ok" : "failed", detail: text(data.preview) };
+      return { ...current, activity };
+    }
+    case "approval_requested": {
+      const approval: Approval = {
+        id: text(data.approvalId),
+        agentId: "",
+        threadId: null,
+        action: text(data.tool),
+        summary: text(data.summary),
+        risk: data.risk ? text(data.risk) : null,
+        warnings: Array.isArray(data.warnings) ? data.warnings.map(text) : [],
+        expiresAt: null,
+      };
+      return { ...current, status: "wartet auf deine Freigabe", approvals: [...current.approvals.filter((a) => a.id !== approval.id), approval] };
+    }
+    case "approval_decided":
+      return { ...current, running: true, status: "verarbeitet die Freigabe …", approvals: current.approvals.filter((a) => a.id !== text(data.approvalId)) };
+    default:
+      return SETTLED.has(type) ? { ...current, running: false, status: "" } : current;
+  }
+}

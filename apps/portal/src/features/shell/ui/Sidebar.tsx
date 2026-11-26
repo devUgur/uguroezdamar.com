@@ -13,6 +13,9 @@ export function Sidebar() {
         <Link href="/" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Dashboard
         </Link>
+        <Link href="/chat" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
+          Chat
+        </Link>
         <div className="pt-4 mt-4 border-t opacity-50 px-4 text-xs font-semibold uppercase tracking-wider">
           Settings
         </div>
