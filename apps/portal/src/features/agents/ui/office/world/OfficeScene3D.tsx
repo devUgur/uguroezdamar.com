@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, type RefObject } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Vector3, type PerspectiveCamera } from "three";
 import { ContactShadows, OrbitControls } from "@react-three/drei";
 import type { AgentSummary, OfficeSnapshot } from "../../../types";
@@ -24,6 +24,18 @@ interface OfficeScene3DProps {
   onSelect: (id: string) => void;
   /** Screen positions of the figures, read by the label layer above the canvas. */
   anchors: RefObject<LabelAnchors>;
+  /** Called once the first frame has been drawn, so the page can drop its loading hint. */
+  onReady: () => void;
+}
+
+function ReadySignal({ onReady }: { onReady: () => void }) {
+  const signaled = useRef(false);
+  useFrame(() => {
+    if (signaled.current) return;
+    signaled.current = true;
+    onReady();
+  });
+  return null;
 }
 
 const VIEW_DIRECTION = new Vector3(11, 8.5, 13).normalize();
@@ -45,7 +57,7 @@ function CameraRig({ halfWidth, depth, target }: { halfWidth: number; depth: num
  * The 3D office. It draws what the events say and decides nothing: busy agents sit at their desk,
  * free ones walk, waiting ones raise a hand. Colors come from the portal's design tokens.
  */
-export default function OfficeScene3D({ agents, states, presence, localPreview, serverOffsetMs, selectedId, onSelect, anchors }: OfficeScene3DProps) {
+export default function OfficeScene3D({ agents, states, presence, localPreview, serverOffsetMs, selectedId, onSelect, anchors, onReady }: OfficeScene3DProps) {
   const colors = useThemeColors();
   const reducedMotion = useMemo(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches, []);
   const { placements, halfWidth, depth } = useMemo(() => buildOffice(agents.map((agent) => agent.desk)), [agents]);
@@ -76,6 +88,7 @@ export default function OfficeScene3D({ agents, states, presence, localPreview, 
 
       <Room3D colors={colors} halfWidth={halfWidth} depth={depth} />
       <CameraRig halfWidth={halfWidth} depth={depth} target={target} />
+      <ReadySignal onReady={onReady} />
       <LabelProjector figures={figures} anchors={anchors} />
       {agents.map((agent, index) => {
         const placement = placements[index];

@@ -61,6 +61,7 @@ function storedView(): View | null {
 export function OfficeStage({ agents, states, presence, serverOffsetMs, selectedId, onSelect }: OfficeStageProps) {
   const [view, setView] = useState<View | null>(null);
   const [webgl, setWebgl] = useState(false);
+  const [sceneReady, setSceneReady] = useState(false);
   const [fallbackTime, setFallbackTime] = useState(() => Date.now());
   const anchors = useRef<LabelAnchors>({});
   const renderedPresence = presence ?? fallbackPresence(agents, states, fallbackTime);
@@ -125,15 +126,20 @@ export function OfficeStage({ agents, states, presence, serverOffsetMs, selected
 
       <div className="overflow-hidden rounded-xl border border-border">
         {view === "3d" ? (
-          <div className="relative h-[min(70dvh,42rem)] min-h-80 w-full">
+          <div className="relative h-[22rem] w-full sm:h-[min(70dvh,42rem)] sm:min-h-80">
             <SceneBoundary
               onError={() => {
                 toast.error("3D-Ansicht nicht möglich, das Büro wechselt auf 2D.");
                 setView("2d");
               }}
             >
-              <OfficeScene3D agents={agents} states={states} presence={renderedPresence} localPreview={!presence} serverOffsetMs={serverOffsetMs} selectedId={selectedId} onSelect={onSelect} anchors={anchors} />
+              <OfficeScene3D agents={agents} states={states} presence={renderedPresence} localPreview={!presence} serverOffsetMs={serverOffsetMs} selectedId={selectedId} onSelect={onSelect} anchors={anchors} onReady={() => setSceneReady(true)} />
             </SceneBoundary>
+            {sceneReady ? null : (
+              <div role="status" className="absolute inset-0 flex items-center justify-center bg-muted text-sm text-muted-foreground">
+                Büro wird geladen …
+              </div>
+            )}
             <FigureLabels agents={agents} states={states} anchors={anchors} />
           </div>
         ) : view === "2d" ? (
