@@ -8,7 +8,8 @@ export interface ModelChoice {
 export interface Thread {
   id: string;
   agentId: string;
-  projectId: string;
+  /** null: the conversation is on the company level, without a repository; a project is an inner scope. */
+  projectId: string | null;
   taskId: string | null;
   title: string | null;
   model: ModelChoice | null;
@@ -186,4 +187,30 @@ export interface AgentSettingsForm {
   settings: AgentSettings;
   catalog: ModelCatalog;
   canManage: boolean;
+}
+
+/** Office scope from the navigation: null is the whole company, otherwise one registered project. */
+export type OfficeScope = string | null;
+
+/** A work item as the office's task widget shows it (agent API: GET /api/tasks). */
+export interface OfficeTask {
+  id: string;
+  projectId: string | null;
+  title: string;
+  status: "backlog" | "ready" | "in_progress" | "review" | "qa" | "blocked" | "done";
+  priority: string;
+  agent: { id: string; name: string } | null;
+}
+
+/** Everything the fullscreen office shows for one scope, loaded together on the server. */
+export interface OfficeWorkspace {
+  agents: AgentSummary[];
+  presence: OfficeSnapshot | null;
+  presenceError: string | null;
+  projects: ThreadProject[];
+  scope: OfficeScope;
+  tasks: OfficeTask[];
+  approvals: Approval[];
+  /** Today (UTC) in this scope; null when the usage ledger could not be read. */
+  today: { costUsd: number; calls: number; runs: number; running: number } | null;
 }

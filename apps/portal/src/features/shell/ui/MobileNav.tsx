@@ -3,7 +3,7 @@ import { ThemeToggle } from "@ugur/ui";
 
 const LINKS = [
   { href: "/", label: "Dashboard" },
-  { href: "/agents", label: "Agenten" },
+  { href: "/office", label: "Office" },
   { href: "/work", label: "Aufgaben" },
   { href: "/usage", label: "Verbrauch & Kosten" },
   { href: "/organization", label: "Organisation" },

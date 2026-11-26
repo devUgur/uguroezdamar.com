@@ -46,6 +46,8 @@ interface OfficeStageProps {
   serverOffsetMs: number;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /** Fill the parent (fullscreen office) instead of a fixed height inside a page. */
+  fill?: boolean;
 }
 
 function storedView(): View | null {
@@ -58,7 +60,7 @@ function storedView(): View | null {
 }
 
 /** The office as 3D scene or flat 2D room, with the agents also as buttons below for keyboard and touch. */
-export function OfficeStage({ agents, states, presence, serverOffsetMs, selectedId, onSelect }: OfficeStageProps) {
+export function OfficeStage({ agents, states, presence, serverOffsetMs, selectedId, onSelect, fill = false }: OfficeStageProps) {
   const [view, setView] = useState<View | null>(null);
   const [webgl, setWebgl] = useState(false);
   const [sceneReady, setSceneReady] = useState(false);
@@ -88,7 +90,7 @@ export function OfficeStage({ agents, states, presence, serverOffsetMs, selected
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className={cn("flex flex-col gap-3", fill && "h-full min-h-0")}>
       <div className="flex items-center justify-between gap-3">
         <ul className="flex flex-wrap gap-2" aria-label="Agenten">
           {agents.map((agent) => (
@@ -124,9 +126,9 @@ export function OfficeStage({ agents, states, presence, serverOffsetMs, selected
         ) : null}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-border">
+      <div className={cn("overflow-hidden rounded-xl border border-border", fill && "min-h-80 flex-1")}>
         {view === "3d" ? (
-          <div className="relative h-[22rem] w-full sm:h-[min(70dvh,42rem)] sm:min-h-80">
+          <div className={cn("relative w-full", fill ? "h-full" : "h-[22rem] sm:h-[min(70dvh,42rem)] sm:min-h-80")}>
             <SceneBoundary
               onError={() => {
                 toast.error("3D-Ansicht nicht möglich, das Büro wechselt auf 2D.");

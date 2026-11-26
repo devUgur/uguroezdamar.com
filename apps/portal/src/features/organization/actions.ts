@@ -12,7 +12,7 @@ function list(formData: FormData, name: string): string[] {
 function back(kind: "notice" | "error", message: string): never {
   revalidatePath("/organization");
   revalidatePath("/organization/manage");
-  revalidatePath("/agents");
+  revalidatePath("/office");
   redirect(`/organization/manage?${kind}=${encodeURIComponent(message)}`);
 }
 

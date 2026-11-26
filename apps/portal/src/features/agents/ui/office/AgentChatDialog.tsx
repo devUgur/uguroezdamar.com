@@ -10,11 +10,13 @@ interface AgentChatDialogProps {
   agent: AgentSummary | null;
   /** Start a new thread instead of continuing the agent's newest one. */
   fresh: boolean;
+  /** Scope from the office navigation: null is the company level. */
+  projectId: string | null;
   onClose: () => void;
 }
 
 /** Chat with one agent without leaving the office; the same chat as on /chat, in a dialog. */
-export function AgentChatDialog({ agent, fresh, onClose }: AgentChatDialogProps) {
+export function AgentChatDialog({ agent, fresh, projectId, onClose }: AgentChatDialogProps) {
   const [view, setView] = useState<ChatView | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
 
@@ -23,13 +25,13 @@ export function AgentChatDialog({ agent, fresh, onClose }: AgentChatDialogProps)
     setFailed(null);
     if (!agent) return;
     let cancelled = false;
-    openAgentChat(agent.id, fresh)
+    openAgentChat(agent.id, fresh, projectId)
       .then((loaded) => !cancelled && setView(loaded))
       .catch((error: unknown) => !cancelled && setFailed(error instanceof Error ? error.message : "Chat konnte nicht geöffnet werden."));
     return () => {
       cancelled = true;
     };
-  }, [agent, fresh]);
+  }, [agent, fresh, projectId]);
 
   const threadId = view?.detail.thread.id;
   const refresh = useCallback(() => {
@@ -50,6 +52,7 @@ export function AgentChatDialog({ agent, fresh, onClose }: AgentChatDialogProps)
             catalog={view.catalog}
             liveOrigin={view.liveOrigin}
             onRefresh={refresh}
+            scopeLocked
             headerActions={
               <DialogClose className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 Schließen

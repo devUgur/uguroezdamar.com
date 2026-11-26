@@ -3,7 +3,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { AgentsApiError, agentsApi, agentsApiOrigin, isAgentsApiId } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/auth";
-import type { AgentSummary, ModelCatalog, OfficeSnapshot, Thread, ThreadDetail } from "./types";
+import type { AgentSummary, Approval, ModelCatalog, OfficeScope, OfficeSnapshot, OfficeTask, OfficeWorkspace, Thread, ThreadDetail, ThreadProject } from "./types";
 
 /** Every chat read runs as the signed-in admin; without a session the portal login takes over. */
 export async function requireActor(): Promise<string> {
@@ -50,6 +50,46 @@ export async function loadAgentOffice(): Promise<{
     ),
   ]);
   return { agents, presence: officeResult.snapshot, presenceError: officeResult.error };
+}
+
+/** A widget source that failed shows as empty with its cause logged; the office itself stays usable. */
+async function orFallback<T>(what: string, load: Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await load;
+  } catch (error) {
+    console.error(`office ${what} load failed`, error instanceof Error ? error.message : error);
+    return fallback;
+  }
+}
+
+/**
+ * The fullscreen office for one scope: the company (no project) or one registered project. Unknown projects fall back
+ * to the company level, so a stale link never opens a scope that does not exist.
+ */
+export async function loadOfficeWorkspace(requestedScope: string | null): Promise<OfficeWorkspace> {
+  const actor = await requireActor();
+  const [office, projects] = await Promise.all([
+    loadAgentOffice(),
+    orFallback("projects", agentsApi<ThreadProject[]>("/api/projects", actor), []),
+  ]);
+  const scope: OfficeScope = requestedScope && projects.some((project) => project.id === requestedScope) ? requestedScope : null;
+  const project = scope ? `project=${encodeURIComponent(scope)}` : "";
+  const today = new Date().toISOString().slice(0, 10);
+  const [tasks, approvals, usage] = await Promise.all([
+    orFallback("tasks", agentsApi<OfficeTask[]>(`/api/tasks${project ? `?${project}` : ""}`, actor), []),
+    orFallback("approvals", agentsApi<Approval[]>("/api/approvals", actor), []),
+    orFallback(
+      "usage",
+      agentsApi<{ totals: { costUsd: number; calls: number } | null; runs: { runs: number; running: number | null } | null }>(`/api/usage/summary?from=${today}${project ? `&${project}` : ""}`, actor).then((summary) => ({
+        costUsd: summary.totals?.costUsd ?? 0,
+        calls: summary.totals?.calls ?? 0,
+        runs: summary.runs?.runs ?? 0,
+        running: summary.runs?.running ?? 0,
+      })),
+      null,
+    ),
+  ]);
+  return { ...office, projects, scope, tasks, approvals, today: usage };
 }
 
 function officeError(error: unknown): string {

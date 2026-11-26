@@ -37,7 +37,7 @@ function TaskCard({ task, next }: { task: WorkTask; next: WorkStatus[] }) {
     <article className="space-y-3 rounded-lg border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>{PRIORITIES[task.priority]}{task.storyPoints ? ` · ${task.storyPoints} SP` : ""}</span>
-        {task.agent ? <Link href={`/agents?agent=${encodeURIComponent(task.agent.id)}`} className="underline underline-offset-4" title="Im Agentenbüro zeigen">{task.agent.name}</Link> : <span>Nicht zugewiesen</span>}
+        {task.agent ? <Link href={`/office?agent=${encodeURIComponent(task.agent.id)}`} className="underline underline-offset-4" title="Im Office zeigen">{task.agent.name}</Link> : <span>Nicht zugewiesen</span>}
       </div>
       <h3 className="font-medium leading-snug">{task.title}</h3>
       {task.githubIssue ? <a className="text-sm underline underline-offset-4" href={task.githubIssue.url ?? "/work"} target="_blank" rel="noreferrer">GitHub Issue #{task.githubIssue.number} · {task.githubIssue.state ?? "verknüpft"}</a> : null}

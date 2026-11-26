@@ -9,6 +9,7 @@ import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
 import { ModelPicker } from "./ModelPicker";
 import { ProjectPicker } from "./ProjectPicker";
+import { ScopeChip } from "./ScopeChip";
 import { RunActivity } from "./RunActivity";
 import { RunFailureNotice } from "./RunFailureNotice";
 import { latestRunFailure } from "./runFailure";
@@ -22,11 +23,14 @@ interface ChatRoomProps {
   onRefresh: () => void;
   /** Extra controls in the header, e.g. archiving on the chat page. */
   headerActions?: ReactNode;
+  /** The office sets the scope by navigation: the chat shows it instead of offering a picker. */
+  scopeLocked?: boolean;
 }
 
 /** One thread: stored history, the run in progress, open approvals and the composer. */
-export function ChatRoom({ detail, catalog, liveOrigin, onRefresh, headerActions }: ChatRoomProps) {
+export function ChatRoom({ detail, catalog, liveOrigin, onRefresh, headerActions, scopeLocked = false }: ChatRoomProps) {
   const { thread, messages, status, approvals, events, projects } = detail;
+  const project = (projects ?? []).find((entry) => entry.id === thread.projectId) ?? null;
   const [pending, setPending] = useState<string[]>([]);
   const bottom = useRef<HTMLDivElement>(null);
   const failure = latestRunFailure(events);
@@ -75,14 +79,16 @@ export function ChatRoom({ detail, catalog, liveOrigin, onRefresh, headerActions
         <span className="text-xs text-muted-foreground" title="Live-Verbindung zur Agenten-API">
           {liveOrigin ? (connected ? "live" : "verbindet …") : "API nicht konfiguriert"}
         </span>
-        {(projects ?? []).length > 1 ? (
-          <ProjectPicker threadId={thread.id} value={thread.projectId} projects={projects} disabled={run.running} onChanged={onRefresh} />
-        ) : null}
+        {scopeLocked ? (
+          <ScopeChip project={project} />
+        ) : (
+          <ProjectPicker threadId={thread.id} value={thread.projectId} projects={projects ?? []} disabled={run.running} onChanged={onRefresh} />
+        )}
         <ModelPicker
           threadId={thread.id}
           value={thread.model}
           catalog={catalog}
-          privateContent={status.private === true || (projects ?? []).find((project) => project.id === thread.projectId)?.modelPolicy === "strict"}
+          privateContent={status.private === true || project?.modelPolicy === "strict"}
           defaultAlias={catalog.agentAliases[thread.agentId] ?? "Standard"}
           onChanged={onRefresh}
         />
@@ -93,7 +99,9 @@ export function ChatRoom({ detail, catalog, liveOrigin, onRefresh, headerActions
         <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8">
           {messages.length === 0 && !pending.length ? (
             <p className="text-sm text-muted-foreground">
-              Schreib dem Agenten einen Auftrag. Er liest das Repository, schlägt Änderungen vor und führt Commits oder Pull Requests erst nach deiner Freigabe aus.
+              {project
+                ? `Schreib dem Agenten einen Auftrag im Projekt ${project.name}. Er liest das Repository, schlägt Änderungen vor und führt Commits oder Pull Requests erst nach deiner Freigabe aus.`
+                : "Firmenebene: der Agent plant, recherchiert und liest Repositories mit Angabe des Namens. Geschrieben wird erst, wenn du das Gespräch in einem Projekt öffnest."}
             </p>
           ) : null}
           <MessageList messages={messages} />

@@ -24,6 +24,10 @@ function failure(error: unknown): ActionResult {
   return { ok: false, error: error instanceof Error ? error.message : "Unbekannter Fehler" };
 }
 
+function isProjectId(value: string): boolean {
+  return /^[a-z0-9-]{1,60}$/.test(value);
+}
+
 function assertThread(threadId: string): void {
   if (!isAgentsApiId(threadId)) throw new Error("Ungültiger Thread.");
 }
@@ -72,10 +76,11 @@ export async function chooseModel(threadId: string, model: ModelChoice | null): 
   }
 }
 
-export async function chooseProject(threadId: string, projectId: string): Promise<ActionResult> {
+/** null moves the chat to the company level (no repository). */
+export async function chooseProject(threadId: string, projectId: string | null): Promise<ActionResult> {
   try {
     assertThread(threadId);
-    if (!/^[a-z0-9-]{1,60}$/.test(projectId)) return { ok: false, error: "Ungültiges Projekt." };
+    if (projectId !== null && !isProjectId(projectId)) return { ok: false, error: "Ungültiges Projekt." };
     const thread = await agentsApi<{ notice?: string }>(`/api/threads/${threadId}`, await actor(), { method: "PATCH", body: { projectId } });
     revalidatePath(`/chat/${threadId}`);
     return { ok: true, message: thread.notice };
@@ -119,15 +124,20 @@ export async function loadAgentConfig(agentId: string): Promise<AgentConfig> {
   return agentsApi<AgentConfig>(`/api/agents/${agentId}/config`, who);
 }
 
-/** The agent's newest open thread, or a new one: what the office's chat dialog shows. */
-export async function openAgentChat(agentId: string, fresh = false): Promise<ChatView> {
+/**
+ * The agent's newest open thread in the office's current scope, or a new one there: what the office's chat dialog shows.
+ * The scope comes from the office navigation (company or one project), never from a picker in the chat.
+ */
+export async function openAgentChat(agentId: string, fresh = false, projectId: string | null = null): Promise<ChatView> {
   const who = await actor();
   if (!/^[a-z0-9-]{1,40}$/.test(agentId)) throw new Error("Unbekannter Agent.");
+  if (projectId !== null && !isProjectId(projectId)) throw new Error("Ungültiges Projekt.");
   const agents = await agentsApi<AgentSummary[]>("/api/agents", who);
-  const agent = agents.find((entry) => entry.id === agentId);
-  if (!agent) throw new Error("Unbekannter Agent.");
-  const threadId =
-    !fresh && agent.lastThreadId ? agent.lastThreadId : (await agentsApi<Thread>("/api/threads", who, { method: "POST", body: { agentId } })).id;
+  if (!agents.some((entry) => entry.id === agentId)) throw new Error("Unbekannter Agent.");
+  const existing = fresh
+    ? undefined
+    : (await agentsApi<Thread[]>("/api/threads", who)).find((thread) => thread.agentId === agentId && thread.projectId === projectId && !thread.taskId);
+  const threadId = existing?.id ?? (await agentsApi<Thread>("/api/threads", who, { method: "POST", body: { agentId, projectId } })).id;
   return chatView(threadId, who);
 }
 
@@ -190,7 +200,7 @@ export async function saveAgentSettings(
     if (!access.canManage) return { ok: false, error: "Nur der Owner darf Mitarbeiter einstellen." };
     if (!/^[a-z0-9-]{1,40}$/.test(agentId)) return { ok: false, error: "Unbekannter Agent." };
     const settings = await agentsApi<AgentSettings>(`/api/agents/${agentId}/settings`, access.actor, { method: "PUT", body: input, scopes: ["organization:write"] });
-    revalidatePath("/agents");
+    revalidatePath("/office");
     return { ok: true, settings };
   } catch (error) {
     return failure(error);

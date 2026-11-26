@@ -243,6 +243,7 @@ Danach folgen Kundenanmeldung mit GitHub, Rollen je Mandant, Grenzen und Budgets
 - Mitarbeiter-Einstellungen und schlanker Kontext (Stufe 2).
 - Gedächtnis und Wissensindex (Stufe 3, ADR 0037).
 - Sprints je Projekt.
+- Office als eigene Vollbild-App (`/office`, Subdomain `office.`), Gespräche standardmäßig auf Firmenebene, Projekt als innere Schicht; `code_verify` prüft kostenlos über die CI oder in der Workstation (ADR 0038).
 
 **Offen, nach Dringlichkeit:**
 
@@ -260,6 +261,8 @@ Danach folgen Kundenanmeldung mit GitHub, Rollen je Mandant, Grenzen und Budgets
 | 10 | GitHub-Verbinden-Fluss (ADR 0032, Stufe 2) nur mit dem eigenen Konto getestet | Owner | Zweites GitHub-Konto als Testmandant |
 | 11 | Wrangler war lokal mit dem ViralSync-Konto angemeldet; zwei Indizes landeten im falschen Konto (gelöscht) | erledigt | `pnpm ugur cf login` bindet jetzt ein eigenes Profil an diesen Checkout, `pnpm ugur cf whoami` prüft das Konto |
 | 12 | Leere Prüf-Worktree-Ordner `C:\v1`–`C:\v6` | Owner | Löschen (für Agenten gesperrt) |
+| 13 | Subdomain `office.uguroezdamar.com` nicht eingerichtet | Owner | Domain im Vercel-Projekt des Portals hinzufügen, CNAME `office` in Cloudflare „DNS only“ (ADR 0038) |
+| 14 | GitHub App ohne „Actions: Read“: `code_verify` sieht nur Annotationen statt Job-Logs | Owner | Recht in der GitHub App ergänzen und Installation bestätigen |
 
 ## 7. Entscheidungen des Owners
 
