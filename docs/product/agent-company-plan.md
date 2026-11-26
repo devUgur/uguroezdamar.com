@@ -1,6 +1,6 @@
 # Plan: Von zwei Agenten zur KI-Entwicklungsfirma
 
-- Stand: 26.11.2026
+- Stand: 26.11.2026 (abends überarbeitet: Workflows, DevOps, Lagebild)
 - Gilt für: `apps/api`, `apps/portal`
 - Ergänzt: [Office-Brain-Roadmap](../architecture/office-brain/roadmap.md), ADR 0024–0035
 
@@ -135,31 +135,44 @@ Jede Stufe ist einzeln auslieferbar, hat Tests gegen echtes SQLite und wird auf 
 - **Test (höchstens zwei Tage):** `@mastra/memory` mit `D1Store` und Vectorize statt Eigenbau. Entscheidung in einer ADR.
 - **Abnahme:** Ein neuer Chat beantwortet Fragen zu früheren Entscheidungen des Projekts aus dem Gedächtnis, mit Quelle und ohne die alten Threads zu laden.
 
-### Stufe 4: Team und Orchestrierung
+### Stufe 4: Team und Orchestrierung mit Cloudflare Workflows
 
-- **Rollen der ersten Welle:**
+**Grundentscheidung (26.11.2026):**
 
-  | Rolle | Aufgabe | Werkzeuge |
-  | --- | --- | --- |
-  | Product Owner | Anliegen → Aufgaben mit Abnahmekriterien | Lesen, Aufgaben anlegen |
-  | Tech Lead | Plan und Zerlegung, Review der Architektur | Lesen, Wissen |
-  | Entwickler (1–n) | Umsetzung auf `agent/…`-Branch, PR | Schreiben nach Freigabe, Sandbox |
-  | QA-Reviewer | Prüfung gegen Kriterien, Diff, CI | Nur lesen (wie heute) |
-  | Release Manager | PR nach `main` vorbereiten, Release-Notizen | PR erstellen; mergen nie |
-  | Tech Writer | Doku und ADRs nachziehen | Doku-Pfade schreiben |
+- **Den Ablauf einer Aufgabe steuert ein Cloudflare Workflow.** Die Agenten-Durable-Objects bleiben die „Mitarbeiter“: Sie halten Gespräch, Kontext und Gedächtnis und führen jeweils einen Lauf aus. Der Workflow ist der dauerhafte Arbeitsauftrag, der sie nacheinander einsetzt.
+- **Gründe für Workflows:**
+  - Schritte mit Wiederholung und gespeichertem Zustand (`step.do`).
+  - Warten auf Ereignisse bis zu einem Jahr (`step.waitForEvent`) für Freigaben des Owners.
+  - Pausieren, Fortsetzen und Abbrechen von außen.
+  - Auf Free und Paid verfügbar (Free: 3.000 Schritte am Tag, 10 ms CPU je Schritt, 100 gleichzeitige Instanzen).
+- **Mastra-Workflows sind damit nicht nötig.** Die Funktionen sind dieselben, laufen bei Cloudflare aber ohne zusätzliche Bibliothek und ohne eigene Speicherschicht.
 
-- **Chef wird Supervisor:** Werkzeug `delegate(task, role, auftrag)` startet einen Unterlauf (`runs.parent_run_id`) und wartet auf dessen Bericht (`agent_messages`). Höchstens zwei Ebenen; parallel höchstens so viele Läufe, wie die Sandbox erlaubt.
-- **Standardablauf als Workflow:**
-  1. Intake (PO)
-  2. Plan (Tech Lead)
-  3. Umsetzung (Entwickler)
-  4. Prüfung (QA)
-  5. Doku (Writer)
-  6. Release-Vorschlag (Release Manager)
-  7. Abnahme durch den Owner
+**Ablauf `DeliveryWorkflow`** (eine Instanz je Aufgabe, ID = Task-ID):
 
-  Jeder Übergang ist persistiert. Wartet ein Schritt auf eine Freigabe, pausiert der Workflow (suspend/resume) und läuft nach der Entscheidung weiter. Projektregeln (AGENTS.md, Schreibmodus, Datenrichtlinie) gelten in jedem Schritt.
-- **Abnahme:** Ein kleiner Auftrag in einem Testrepository läuft auf Dev von Intake bis PR. Jeder Schritt erscheint in `runs` und `agent_messages`, und der Owner gibt nur Commit und PR frei.
+1. **Intake:** Product Owner schärft die Aufgabe, schreibt Abnahmekriterien.
+2. **Plan:** Tech Lead zerlegt, nennt Dateien und Risiken. Bei großen Aufgaben folgt `waitForEvent("plan-approved")` (Owner).
+3. **Umsetzung:** Entwickler arbeitet auf `agent/<task>` in der Workstation (Stufe 6), committet nach Freigabe.
+4. **Tests:** `pnpm check` in der Workstation. Scheitert es, geht die Aufgabe mit Befund zurück an 3, höchstens zweimal.
+5. **Pull Request** mit Beschreibung, `task_links` erhält PR und Preview.
+6. **QA:** QA-Reviewer prüft unabhängig (wie heute, read-only).
+7. **Doku:** Tech Writer zieht README, ADRs und Plan nach.
+8. **Abnahme:** `waitForEvent("owner-approval")`. Erst danach bereitet der Release Manager den PR `dev → main` vor; Mergen bleibt beim Owner.
+
+Jeder Schritt ist ein `step.do` mit eigenem Lauf in `runs` (`parent_run_id` = Workflow-Lauf) und Nachrichten in `agent_messages`. Die Freigaben aus dem Chat und dem Portal senden das passende Ereignis an die Workflow-Instanz.
+
+**Rollen der ersten Welle:**
+
+| Rolle | Aufgabe | Werkzeuge |
+| --- | --- | --- |
+| Product Owner | Anliegen → Aufgaben mit Abnahmekriterien | Lesen, Wissen, Aufgaben anlegen |
+| Tech Lead | Plan und Zerlegung, Architektur-Review | Lesen, Wissen |
+| Entwickler (1–n) | Umsetzung auf `agent/…`, Tests in der Workstation | Schreiben nach Freigabe, `sandbox_run` |
+| QA-Reviewer | Prüfung gegen Kriterien, Diff, CI | Nur lesen |
+| Release Manager | PR nach `main`, Release-Notizen | PR erstellen; mergen nie |
+| Tech Writer | Doku und ADRs | Doku-Pfade schreiben |
+| DevOps (Stufe 6b) | Umgebungen, Previews, Provisionierung | Cloudflare- und Vercel-Werkzeuge mit Freigabe |
+
+**Abnahme:** Ein kleiner Auftrag in einem Testrepository läuft auf Dev von Intake bis PR mit grünen Tests. Jeder Schritt steht in `runs`, `agent_messages` und unter `/usage`; der Owner gibt nur Plan (optional), Commit, PR und Abnahme frei.
 
 ### Stufe 5: Büro 2.0
 
@@ -168,34 +181,96 @@ Jede Stufe ist einzeln auslieferbar, hat Tests gegen echtes SQLite und wird auf 
   - Besprechungsraum
   - Projektwand mit Sprint, Backlog und laufenden Aufgaben des gewählten Projekts
   - Release-Ecke
-- **Besprechungen:** Bei Delegation oder Rückfrage gehen die beteiligten Figuren in den Besprechungsraum. Eine Sprechblase zeigt die Zusammenfassung aus `agent_messages`; danach kehren sie an ihre Plätze zurück. Die Daten kommen aus `meetings`, das Büro erfindet nichts.
-- **Projektfilter:** Wird ein Projekt gewählt, sind seine Mitarbeiter hervorgehoben und die anderen gedimmt; die Wand zeigt dessen Sprint. Ein Klick auf eine Aufgabe öffnet den Lauf (`/runs/[id]`).
-- **Agentenblatt:** aktuelle Aufgabe, letzte Läufe, Kosten heute, Modell und Denkaufwand (bearbeitbar aus Stufe 2).
+- **Besprechungen:** Jeder Übergang im `DeliveryWorkflow` mit Nachricht ist eine Besprechung. Die beteiligten Figuren gehen in den Besprechungsraum; eine Sprechblase zeigt die Zusammenfassung aus `agent_messages`, danach kehren sie an ihre Plätze zurück. Die Daten kommen aus `meetings`, das Büro erfindet nichts.
+- **Projektfilter:** Wird ein Projekt gewählt, sind seine Mitarbeiter hervorgehoben, die anderen gedimmt, und die Wand zeigt dessen Sprint. Ein Klick auf eine Aufgabe öffnet den Workflow mit seinen Läufen.
+- **Agentenblatt:** aktuelle Aufgabe, letzte Läufe, Kosten heute, Modell und Denkaufwand (bearbeitbar seit Stufe 2).
 - **Abnahme:** Zwei Browser sehen dieselbe Besprechung zur selben Zeit; jede Szene lässt sich auf ein Protokoll-Ereignis zurückführen.
 
-### Stufe 6: Ausführung und Previews
+### Stufe 6: Ausführung (Workstations) und Previews
 
-- **Sandbox-Branch:** `claude/modest-stonebraker-2e8223` prüfen, ADR-Nummer auf 0036 ändern (0035 ist schon Codex' Issue-Sync) und nach `dev` mergen.
-- **Voraussetzungen:** Workers Paid (5 $/Monat), Container-Bindung, Egress-Regeln, Aufräumen.
-- **Entwickler-Agenten bauen und testen in der Sandbox.** Jeder PR bekommt eine Preview-URL in `task_links`; das Projektcockpit und die Projektwand im Büro zeigen sie.
-- **Abnahme:** Ein PR aus Stufe 4 hat grüne Checks aus der Sandbox und eine erreichbare Preview.
+- **Stand:** Fertig gebaut auf `refs/heads/claude/modest-stonebraker-2e8223` (3 Commits, 231 Tests laut Session-Bericht), nicht gemergt.
+  - **Workstation:** Ein Durable Object mit Container je Lauf, ohne Internet. Nur `github.com` (nur Lesen des einen Repositories) und `registry.npmjs.org` sind über Gateways im Worker erreichbar.
+  - **Kein Token im Container:** Der Worker setzt es erst unterwegs ein.
+  - **Feste Befehle:** Nur `install`, `check`, `test`, `lint`, `typecheck`, `build`.
+  - **Werkzeuge:** `sandbox_run` und `preview_deploy` (mit Freigabe).
+  - **Previews:** Je Projekt gibt es einen Worker `pv-<projekt>` mit einem Preview-Alias je Branch oder PR.
+- **Vor dem Merge:**
+  1. ADR auf **0036** umnummerieren (0035 ist Codex' Issue-Sync).
+  2. Auf den aktuellen `dev` bringen (Migrationen fortlaufend ab 0020).
+  3. Gegen Stufen 1–3 prüfen: Werkzeugaufrufe ins Verbrauchsprotokoll, Grenzen im Prompt-Budget-Test.
+- **Voraussetzungen des Owners:**
+  - **Workers Paid (5 $/Monat).** Nötig für Containers, mehr Workflow-Kapazität (10.000 statt 50 Subrequests je Aufruf, 30 s CPU je Schritt) und ein Workers-AI-Kontingent über die 10.000 Neurons am Tag hinaus.
+  - **Container-Bindung** in `apps/api/wrangler.jsonc`.
+  - **Token `AGENT_CF_PREVIEW_TOKEN`** (nur „Workers Scripts: Edit“).
+- **Erkenntnis aus der Recherche:** Version-URLs gibt es nicht für Worker mit Durable Objects. Für solche Projekte gilt `wrangler preview` (Wrangler ≥ 4.135): eigene Durable-Object-Namensräume je Preview, auf Free 100 und auf Paid 500 Previews je Worker. Die Regel aus der Sandbox-ADR wird beim Merge darum ergänzt.
+- **Abnahme:** Ein PR aus Stufe 4 hat grüne Checks aus der Workstation und eine erreichbare Preview.
+
+### Stufe 6b: DevOps und Provisionierung je Projekt
+
+Ziel: Was der Owner heute am Desktop mit `wrangler`, `vercel`, `gh`, Infisical und MCP-Servern einrichtet, machen Agenten nach festen Regeln in der Cloud.
+
+**Ein Projekt-Blueprint, gleich für jedes neue Repository.** `repo_create` legt nicht nur das Repository an, sondern danach mit Freigabe des Owners auch:
+
+1. Grundgerüst: `AGENTS.md` mit den Firmenregeln, `README.md`, CI-Workflow (`pnpm check` auf jedem Push und PR), Branches `dev` und `main`, Branchschutz für `main`.
+2. **Hosting nach Projektart:**
+   - **Cloudflare (Workers mit statischen Assets oder Worker-API):** `wrangler.jsonc`, ein Dev-Worker und ein Produktions-Worker, Previews je Branch über die Workstation. Workers Builds bleibt außen vor; es lässt sich laut Doku nur im Dashboard verbinden.
+   - **Vercel (Next.js):** `POST /v11/projects` mit `gitRepository` legt das Projekt an, `POST /v10/projects/{id}/env` setzt die Variablen. Vercel baut Previews je Branch selbst.
+3. Eintrag in `project_environments` (neu): Anbieter, Art (`dev`, `preview`, `production`), URL, Status, letzter Deploy. Die Projektseite zeigt alle Umgebungen an einer Stelle.
+
+**Zugänge der Agenten, nur über die API und mit Freigabe:**
+
+| Zugang | Weg | Warum so |
+| --- | --- | --- |
+| GitHub | GitHub App (ADR 0031), Installations-Token je Konto | Kurzlebig, je Repository begrenzt |
+| Cloudflare | Cloudflare-API-MCP (`https://mcp.cloudflare.com/mcp`, Code Mode, rund 2.500 Endpunkte) mit **API-Token des Mandanten** | Das Token gilt nur für das Konto des Mandanten, also keine Verwechslung wie mit ViralSync. Jede ändernde Aktion braucht eine Freigabe. |
+| Vercel | REST-API mit Token des Mandanten | Der offizielle Vercel-MCP verlangt eine Browser-Zustimmung je Verbindung und taugt nicht für unbeaufsichtigte Agenten |
+| Neon, weitere | API-Token je Mandant | Nach demselben Muster |
+
+Alle Tokens liegen wie die Modellschlüssel verschlüsselt je Mandant in D1. Aus `provider_credentials` wird dafür eine allgemeine Ablage für Integrationen. Sie sind im Portal einzutragen, nie wieder lesbar und an Mandant und Integration gebunden. Infisical bleibt die Quelle der Betriebs-Secrets der Plattform selbst (ADR 0033).
+
+**Was sicher bleibt:** Kein Agent mergt nach `main`, deployt Produktion oder löscht Ressourcen ohne Freigabe. Produktions-Deploys laufen nur über den Merge `dev → main` (für uguroezdamar.com) oder den Promote-Knopf des Owners.
+
+**Abnahme:** Ein neues Testrepository entsteht aus dem Chat mit Blueprint, CI, Dev- und Preview-Umgebung. Die Projektseite zeigt alle Umgebungen, und ein PR des Entwickler-Agenten erzeugt eine erreichbare Preview.
 
 ### Stufe 7: Mandanten (ADR 0032, Stufe 3)
 
 Danach folgen Kundenanmeldung mit GitHub, Rollen je Mandant, Grenzen und Budgets je Mandant sowie ein eigener Live-Hub je Mandant.
 
-## 6. Abstimmung mit der parallelen Arbeit
+## 6. Lagebild und offene Punkte (Stand 26.11.2026, abends)
 
-- **Codex arbeitet im selben Checkout**, uncommittet: Portfolio-Produkte, GitHub-Issue-Sync, `/costs`, `agent_handoff`. Diese Arbeit erst committen, dann Stufe 1 darauf aufsetzen.
-- **Tenancy-Wächter:** Er scheitert heute an den neuen Portfolio-Tabellen (`TENANT_TABLES`) und an zwei Abfragen ohne `tenant_id` (`github/issues.ts`, `github/webhook.ts`). Das muss vor dem Commit der Codex-Arbeit behoben sein.
-- **Nummern:** Codex hat ADR 0035 vergeben; der Sandbox-Branch nutzt ebenfalls 0035 und wird auf 0036 umbenannt. Migrationen bitte fortlaufend ab 0017.
+**Fertig und auf Dev abgenommen:**
+- Fehleranzeige im Chat.
+- 13 Modellanbieter mit Schlüsseln je Mandant (ADR 0033).
+- Datenrichtlinie je Projekt.
+- Verbrauchsprotokoll `/usage` (Stufe 1).
+- Mitarbeiter-Einstellungen und schlanker Kontext (Stufe 2).
+- Gedächtnis und Wissensindex (Stufe 3, ADR 0037).
+- Sprints je Projekt.
+
+**Offen, nach Dringlichkeit:**
+
+| # | Punkt | Wer | Nächster Schritt |
+| --- | --- | --- | --- |
+| 1 | Codex-Arbeit liegt uncommittet im Checkout: Portfolio (ADR 0034), GitHub-Issue-Sync (ADR 0035), `/costs`, `agent_handoff` | Owner/Codex | Tenancy-Wächter reparieren (Portfolio-Tabellen haben `tenant_id` erst ab Migration 0014; zwei `UPDATE tasks` ohne `tenant_id` in `github/issues.ts` und `github/webhook.ts`), Lint-Fehler in `github/issues.ts`, dann committen |
+| 2 | `/costs` (Codex, rechnet aus Events) und `/usage` (Protokoll) zeigen dasselbe doppelt | Agent | `/costs` auf `model_calls` umstellen oder in `/usage` aufgehen lassen |
+| 3 | Sandbox-Branch ungemergt, ADR-Nummer doppelt (0035) | Agent | Siehe Stufe 6 |
+| 4 | Workers Paid nicht gebucht | Owner | Entscheidung, siehe Abschnitt 7 |
+| 5 | Workers-AI-Kontingent (10.000 Neurons am Tag) ist täglich schnell leer: Vektoren des Wissensindex fehlen, Workers AI als Modell fällt aus | Owner | Workers Paid oder Embeddings über einen anderen Anbieter |
+| 6 | Kein Anbieter ohne Datenauswertung mit Schlüssel (Claude oder OpenAI); strenge Projekte haben nur Workers AI | Owner | Claude-Schlüssel mit Guthaben unter `/models` |
+| 7 | Kosten rechnen Cache-Treffer zum vollen Preis | Agent | Cache-Preise je Anbieter im Katalog |
+| 8 | Budgets nur je Mitarbeiter, nicht je Projekt und Mandant | Agent | Mit Stufe 4 |
+| 9 | Produktion: `api.uguroezdamar.com` löst nicht auf; Stufen 1–3 sind nur auf Dev | Owner | Release-PR `dev → main` nach Abnahme, DNS und Custom Domain prüfen |
+| 10 | GitHub-Verbinden-Fluss (ADR 0032, Stufe 2) nur mit dem eigenen Konto getestet | Owner | Zweites GitHub-Konto als Testmandant |
+| 11 | Wrangler war lokal mit dem ViralSync-Konto angemeldet; zwei Indizes landeten im falschen Konto (gelöscht) | erledigt | `pnpm ugur cf login` bindet jetzt ein eigenes Profil an diesen Checkout, `pnpm ugur cf whoami` prüft das Konto |
+| 12 | Leere Prüf-Worktree-Ordner `C:\v1`–`C:\v6` | Owner | Löschen (für Agenten gesperrt) |
 
 ## 7. Entscheidungen des Owners
 
-1. **Mastra:** Konzepte übernehmen und nur den Speicher als Bibliothek testen (empfohlen) oder die Laufzeit auf Mastra umbauen.
-2. **Workers Paid (5 $/Monat):** jetzt buchen. Nötig für Sandbox und Container, Queues für die Indexierung und höhere Grenzen je Aufruf.
+1. **Workers Paid (5 $/Monat):** jetzt buchen. Damit werden Workstations, Workflow-Kapazität und Workers AI über das Gratis-Kontingent hinaus möglich. Ohne ihn bleiben Stufe 6 und die Vektorsuche blockiert.
+2. **Reihenfolge:** Erst Punkt 1–3 aus dem Lagebild (Codex-Arbeit und Sandbox zusammenführen), dann Stufe 4. Oder Stufe 4 sofort, ohne Ausführung in der Workstation.
 3. **Rollen der ersten Welle:** wie in Stufe 4 oder anders gewichtet.
-4. **Budget je Tag:** für Dev-Tests, z. B. 5 $ je Mitarbeiter und 20 $ je Mandant.
+4. **Hosting-Standard für neue Projekte:** Cloudflare (Workers mit statischen Assets) als Standard und Vercel nur für Next.js, oder umgekehrt.
+5. **Budget je Tag:** für Dev-Tests, z. B. 5 $ je Mitarbeiter und 20 $ je Mandant.
 
 ## 8. Was nicht passiert
 
@@ -203,3 +278,16 @@ Danach folgen Kundenanmeldung mit GitHub, Rollen je Mandant, Grenzen und Budgets
 - Kein Agent mergt nach `main` oder deployt Produktion.
 - Keine Szene im Büro ohne zugrunde liegendes Protokoll-Ereignis.
 - Keine Kosten ohne Preis-Version; unbekannte Preise zählen hoch (ADR 0033).
+
+## Anhang: Vom Desktop in die Cloud
+
+| Heute am Desktop | Morgen bei den Agenten |
+| --- | --- |
+| Claude Code / Codex im Checkout | Entwickler-Agent mit Workstation (Container) und `DeliveryWorkflow` |
+| `wrangler` mit Owner-Anmeldung | Cloudflare-API-MCP mit Token des Mandanten, Freigabe je Änderung; Deploys über die CI des Repositories |
+| `vercel` CLI | Vercel-REST-API mit Token des Mandanten |
+| `gh` CLI | GitHub App (Installations-Token) |
+| Infisical CLI | Betriebs-Secrets der Plattform bleiben in Infisical; Zugänge der Mandanten verschlüsselt in D1 |
+| Neon-MCP | Neon-API mit Token des Mandanten |
+| Lokale Tests (`pnpm check`) | `sandbox_run` in der Workstation, Ergebnis im Lauf-Trace |
+| Eigene Notizen, Pläne | Wissensindex und Arbeitsgedächtnis je Projekt |

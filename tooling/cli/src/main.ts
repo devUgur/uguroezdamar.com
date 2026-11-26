@@ -14,6 +14,7 @@ import {
 } from "./commands/secrets.ts";
 import { hostingEnv, hostingSetup, hostingStatus } from "./commands/hosting.ts";
 import { apiSecrets } from "./commands/api.ts";
+import { cloudflare } from "./commands/cloudflare.ts";
 import { setup } from "./commands/setup.ts";
 import { smoke } from "./commands/smoke.ts";
 import { run } from "./lib/exec.ts";
@@ -26,6 +27,8 @@ const HELP = `uguroezdamar.com CLI — pnpm ugur <command>
   setup [--relink]           One-time: sign in to Infisical, Neon and read-only Cloudflare in browser
                              (--relink chooses a different Infisical project)
   doctor                     Check tools, logins and required secrets
+  cf login | whoami          Cloudflare: Wrangler profile bound to this checkout, checked against the account
+                             in apps/api/wrangler.jsonc (the global Wrangler login stays untouched)
   dev [--filter site|portal] Run the site with dev secrets injected and localhost addresses
       [--all]                (--filter portal for the portal, --all for both)
   kill:ports [ports…] [--all] [-p <port>]  Stop processes listening on local app ports (3100, 3101, 3102, 3103, 4983 by default)
@@ -123,6 +126,9 @@ async function main(): Promise<number> {
       return inspectProject(positionals[2] ?? "");
     case "projects draft":
       return draftProject(positionals[2] ?? "", values.slug ?? "", values.apply);
+    case "cf login":
+    case "cf whoami":
+      return cloudflare(sub);
     case "api secrets":
       return apiSecrets(values.apply, values.rotate);
     case "secrets audit":

@@ -70,6 +70,8 @@ Organisationsänderungen prüfen zusätzlich `organization:write`, die Portal-Ow
 
 **Portal lokal, Backend in Dev (Standard):** `pnpm dev:portal` startet das Portal auf `http://localhost:3101` mit den Infisical-Werten der Stage `dev`. `API_URL` zeigt auf `https://api-dev.uguroezdamar.com`, `API_SERVICE_TOKEN` ist das Dev-Token. Der Chat und das Agenten-Büro sprechen also lokal mit dem deployten Dev-Backend; Cloudflare-Login oder Modell-Schlüssel braucht es lokal nicht. Nach einer Änderung an Infisical-Werten den Dev-Server neu starten, Werte werden nur beim Start gelesen.
 
+**Cloudflare-Anmeldung:** `pnpm ugur cf login` bindet ein eigenes Wrangler-Profil (`uguroezdamar`) an diesen Checkout und prüft, dass es das Konto aus `CF_ACCOUNT_ID` ist; `pnpm ugur cf whoami` prüft erneut. Die globale Wrangler-Anmeldung auf dem Rechner (z. B. ViralSync) bleibt davon unberührt. Ressourcen der API (z. B. der Vectorize-Index) legt der Deploy-Workflow an, nicht ein lokaler Befehl.
+
 **Backend lokal (optional):** Lokal läuft das Backend mit `pnpm dev` (Wrangler). Werte nur per `--var`, nie als Datei im Repository. Die `ai`-Bindung braucht immer eine Remote-Verbindung zu Cloudflare (`wrangler login` mit dem Konto der Zone). Ohne sie: eine Testkonfiguration ohne `ai` verwenden und das Alias `chef-smart` per KV-Schlüssel `models` (`--local`) auf einen OpenAI-kompatiblen Mock zeigen lassen.
 
 ## Modal
