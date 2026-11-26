@@ -59,7 +59,7 @@
         "MODEL_VIA_GATEWAY": "false",
         "API_ENV": "dev",
         "STORAGE": { "d1": "uguroezdamar-dev", "d1Region": "WEUR", "kv": "uguroezdamar-config-dev", "r2": "uguroezdamar" },
-        "MODAL_ENABLED": "false"
+        "MODAL_ENABLED": "true"
       },
       "d1_databases": [
         {

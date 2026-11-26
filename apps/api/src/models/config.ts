@@ -93,7 +93,7 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
         {
           id: "mistralai/Ministral-3-8B-Instruct-2512",
           label: "Ministral 3 8B",
-          baseUrl: "https://ugur44ist--uguroezdamar-llm-ministral.modal.run/v1",
+          baseUrl: "https://ugur44ist--uguroezdamar-llm-ministral.us-east.modal.run/v1",
           note: "L40S, ca. 1,95 $/h, Kaltstart 1–2 min",
           inputUsdPerM: 0,
           outputUsdPerM: 0,
@@ -101,7 +101,7 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
         {
           id: "google/gemma-4-26B-A4B-it",
           label: "Gemma 4 26B-A4B",
-          baseUrl: "https://ugur44ist--uguroezdamar-llm-gemma.modal.run/v1",
+          baseUrl: "https://ugur44ist--uguroezdamar-llm-gemma.us-east.modal.run/v1",
           note: "H100, ca. 3,95 $/h, Kaltstart 1–3 min",
           inputUsdPerM: 0,
           outputUsdPerM: 0,

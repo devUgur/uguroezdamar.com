@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ModelRouter } from "../apps/api/src/models/router.ts";
 import { listRepositories, ProjectError, registerProject, unregisterProject } from "../apps/api/src/projects/repositories.ts";
+import { workspaceTools } from "../apps/api/src/tools/workspace.ts";
 import { githubTools } from "../apps/api/src/tools/github.ts";
 import { SubrequestBudget } from "../apps/api/src/runtime/budget.ts";
 import type { Env } from "../apps/api/src/env.ts";
@@ -29,6 +30,7 @@ function fakeDb(projects: ProjectRow[]) {
         all: async () => ({ results: sql.includes("SELECT id, repo FROM projects") ? projects.filter((row) => row.status === "active") : [] }),
         first: async () => {
           if (sql.includes("WHERE lower(repo)")) return projects.find((row) => row.repo.toLowerCase() === String(args[0]).toLowerCase()) ?? null;
+          if (sql.includes("SELECT visibility FROM projects WHERE id")) return projects.find((row) => row.id === args[0]) ?? null;
           if (sql.includes("SELECT 1 FROM projects WHERE id")) return projects.find((row) => row.id === args[0]) ?? null;
           if (sql.includes("SELECT default_branch, write_mode")) {
             const row = projects.find((entry) => entry.repo === args[0] && entry.status === "active");
@@ -205,5 +207,44 @@ describe("write rules per project", () => {
     const { env } = envWith();
     const context: ToolContext = { env, agentId: "chef", projectId: "x", repo: "devUgur/unknown", budget: new SubrequestBudget() };
     await expect(commit?.run(args("dev"), context)).rejects.toThrow(/agent\//);
+  });
+});
+
+describe("answering questions about repositories", () => {
+  const tool = (name: string) => workspaceTools.find((entry) => entry.spec.name === name);
+  const rows = (visibility: string): ProjectRow[] => [
+    { id: "p", repo: "devUgur/open", status: "active", visibility, default_branch: "main", write_mode: "pr-only" },
+  ];
+  const stubRepos = () =>
+    stubGithub(() => [
+      repoJson({ full_name: "devUgur/open", name: "open", private: false }),
+      repoJson({ full_name: "devUgur/secret-client", name: "secret-client" }),
+      repoJson({ full_name: "devUgur/old", name: "old", archived: true }),
+    ]);
+
+  it("counts every repository of the account, not only the registered projects, and leaves private names out in a public project", async () => {
+    stubRepos();
+    const { env } = envWith(rows("public"));
+    const context: ToolContext = { env, agentId: "chef", projectId: "p", repo: "devUgur/open", budget: new SubrequestBudget() };
+    const result = (await tool("github_repositories_list")?.run({}, context)) as { total: number; private: number; registered: number; repositories: { fullName: string }[] };
+    expect(result).toMatchObject({ total: 2, private: 1, registered: 1 });
+    expect(result.repositories.map((repo) => repo.fullName)).toEqual(["devUgur/open"]);
+    expect(JSON.stringify(result)).not.toContain("secret-client");
+  });
+
+  it("names private repositories in a private project, where only models without training run", async () => {
+    stubRepos();
+    const { env } = envWith(rows("private"));
+    const context: ToolContext = { env, agentId: "chef", projectId: "p", repo: "devUgur/open", budget: new SubrequestBudget() };
+    const result = (await tool("github_repositories_list")?.run({}, context)) as { repositories: { fullName: string }[] };
+    expect(result.repositories.map((repo) => repo.fullName)).toContain("devUgur/secret-client");
+  });
+
+  it("counts the GitHub call against the subrequest budget", async () => {
+    stubRepos();
+    const { env } = envWith(rows("public"));
+    const budget = new SubrequestBudget();
+    await tool("github_repositories_list")?.run({}, { env, agentId: "chef", projectId: "p", repo: "devUgur/open", budget });
+    expect(budget.spent).toBe(1);
   });
 });

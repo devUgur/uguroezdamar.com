@@ -5,7 +5,7 @@ key from the Modal secret `uguroezdamar-llm` (key LLM_API_KEY; the same value is
 MODAL_LLM_API_KEY that the API Worker sends). GPUs scale to zero after SCALEDOWN of idle time.
 
 Deploy (workspace ugur44ist):  MODAL_PROFILE=ugur44ist modal deploy apps/api/modal/llm.py
-URLs:  https://ugur44ist--uguroezdamar-llm-<function>.modal.run/v1  (function = ministral | gemma)
+URLs:  https://ugur44ist--uguroezdamar-llm-<function>.us-east.modal.run/v1  (function = ministral | gemma)
 """
 
 import os

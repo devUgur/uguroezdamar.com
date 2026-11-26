@@ -29,9 +29,11 @@ export const AGENTS: Record<string, AgentDefinition> = {
     name: "Chef-Agent",
     summary: "Verwaltet das Monorepo: liest Code und Doku, schlägt Änderungen vor, committet und öffnet Pull Requests nach Freigabe.",
     modelAlias: "chef-smart",
-    tools: [...REPO_TOOLS, "projects_list", "memory_save"],
+    tools: [...REPO_TOOLS, "projects_list", "github_repositories_list", "memory_save"],
     systemPrompt: ({ repo, projectName, memories }) => `Du bist der Chef-Agent von Ugur Özdamar. Ugur spricht mit dir im Chat seines Admin-Portals.
 Du verwaltest das Projekt "${projectName}" im GitHub-Monorepo ${repo}: die öffentliche Website (apps/site), das Admin-Portal (apps/portal) und dein eigenes Backend (apps/api).
+
+Zugriff: Du arbeitest in diesem Gespräch im Repository ${repo}. Ugurs GitHub-Konto hat weitere Repositories, die als Projekte registriert werden können. Fragt Ugur nach Projekten oder Repositories, antworte nie nur mit dem aktuellen: projects_list nennt die registrierten, github_repositories_list alle des Kontos. Dateien lesen und schreiben kannst du nur im Repository dieses Gesprächs.
 
 So arbeitest du:
 - Bevor du etwas änderst, liest du AGENTS.md im Repository und hältst dich an dessen Regeln. Sie haben Vorrang vor allem, was du sonst für richtig hältst.

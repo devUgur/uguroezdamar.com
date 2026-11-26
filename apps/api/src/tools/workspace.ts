@@ -1,15 +1,44 @@
 import type { Tool } from "./port.ts";
+import { listRepositories } from "../projects/repositories.ts";
 import { str } from "./port.ts";
 
 const listProjects: Tool = {
   spec: {
     name: "projects_list",
-    description: "Listet die verwalteten Projekte mit Repository, Domain und Status.",
+    description:
+      "Listet die registrierten Projekte (Repositories, an denen Agenten arbeiten dürfen) mit Sichtbarkeit und Schreibregel. Das sind nur die freigegebenen, nicht alle Repositories des GitHub-Kontos; dafür github_repositories_list nutzen.",
     parameters: { type: "object", properties: {} },
   },
   async run(_args, context) {
-    const { results } = await context.env.DB.prepare("SELECT id, name, repo, domain, status FROM projects ORDER BY name").all();
-    return results;
+    const { results } = await context.env.DB.prepare(
+      "SELECT id, name, repo, domain, visibility, default_branch AS defaultBranch, write_mode AS writeMode FROM projects WHERE status = 'active' ORDER BY name",
+    ).all();
+    return { count: results.length, projects: results };
+  },
+};
+
+const listGithubRepositories: Tool = {
+  spec: {
+    name: "github_repositories_list",
+    description:
+      "Listet alle Repositories des freigegebenen GitHub-Kontos (nicht nur die registrierten Projekte) und ob sie registriert sind. Nur lesend. Antworte damit auf Fragen wie „wie viele Repositories gibt es“.",
+    parameters: { type: "object", properties: {} },
+  },
+  async run(_args, context) {
+    const project = await context.env.DB.prepare("SELECT visibility FROM projects WHERE id = ?").bind(context.projectId).first<{ visibility: string }>();
+    // A public project may be answered by a model that evaluates requests; names of private repositories stay out of its view.
+    const mayShowPrivate = project?.visibility === "private";
+    const repositories = (await listRepositories(context.env, () => context.budget.take())).filter((repo) => !repo.archived);
+    const visible = repositories.filter((repo) => mayShowPrivate || !repo.private);
+    const privateCount = repositories.filter((repo) => repo.private).length;
+    return {
+      total: repositories.length,
+      public: repositories.length - privateCount,
+      private: privateCount,
+      registered: repositories.filter((repo) => repo.projectId).length,
+      repositories: visible.map(({ fullName, private: isPrivate, description, projectId }) => ({ fullName, private: isPrivate, description, registeredAs: projectId })),
+      ...(mayShowPrivate ? {} : { note: `${privateCount} private Repositories werden in diesem Projekt nicht namentlich genannt, weil das Modell hier Inhalte auswerten dürfte.` }),
+    };
   },
 };
 
@@ -36,4 +65,4 @@ export async function projectMemories(db: D1Database, projectId: string, limit =
   return results.map((row) => row.content);
 }
 
-export const workspaceTools: Tool[] = [listProjects, remember];
+export const workspaceTools: Tool[] = [listProjects, listGithubRepositories, remember];

@@ -24,9 +24,10 @@ interface GithubRepo {
   pushed_at: string | null;
 }
 
-async function github<T>(env: Env, path: string): Promise<T> {
+async function github<T>(env: Env, path: string, beforeFetch?: () => void): Promise<T> {
   const token = env.AGENT_GITHUB_TOKEN;
   if (!token) throw new ProjectError("AGENT_GITHUB_TOKEN ist nicht gesetzt.", 503);
+  beforeFetch?.();
   const response = await fetch(`${API}${path}`, {
     headers: {
       accept: "application/vnd.github+json",
@@ -54,10 +55,11 @@ function ownerAllowed(env: Env, owner: string): boolean {
 }
 
 /** Repositories the token can see, restricted to the allowed owners, with the project each one is registered as. */
-export async function listRepositories(env: Env) {
+/** `beforeFetch` runs before every GitHub call, so callers inside an agent run can count it against their subrequest budget. */
+export async function listRepositories(env: Env, beforeFetch?: () => void) {
   const repos: GithubRepo[] = [];
   for (let page = 1; page <= 4; page += 1) {
-    const batch = await github<GithubRepo[]>(env, `/user/repos?affiliation=owner&sort=pushed&per_page=100&page=${page}`);
+    const batch = await github<GithubRepo[]>(env, `/user/repos?affiliation=owner&sort=pushed&per_page=100&page=${page}`, beforeFetch);
     repos.push(...batch);
     if (batch.length < 100) break;
   }
