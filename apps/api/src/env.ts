@@ -7,7 +7,6 @@ export interface Env {
   CONFIG: KVNamespace;
   FILES: R2Bucket;
   AI: Ai;
-  ASSETS: Fetcher;
   AGENTS: DurableObjectNamespace<AgentRuntime>;
   HUB: DurableObjectNamespace<LiveHub>;
 
@@ -15,15 +14,13 @@ export interface Env {
   CF_ACCOUNT_ID: string;
   AI_GATEWAY_ID: string;
   MODEL_VIA_GATEWAY: string;
-  ACCESS_TEAM_DOMAIN: string;
-  ACCESS_AUD: string;
   /** "production" (branch main) or "dev" (branch dev). */
-  PLATFORM_ENV: string;
+  API_ENV: string;
 
-  /** Long random value; the browser sends it as a bearer token until Cloudflare Access is in front. */
-  PLATFORM_ADMIN_TOKEN?: string;
+  /** Shared with the portal server, one value per environment; the browser never sees it. */
+  API_SERVICE_TOKEN?: string;
   GEMINI_API_KEY?: string;
-  /** Fine-grained GitHub token: contents, pull requests and actions on the managed repositories. */
+  /** Fine-grained GitHub token: contents, pull requests and checks on the managed repositories. */
   AGENT_GITHUB_TOKEN?: string;
   OPENROUTER_API_KEY?: string;
 }

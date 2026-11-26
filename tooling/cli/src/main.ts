@@ -13,7 +13,7 @@ import {
   secretsSet,
 } from "./commands/secrets.ts";
 import { hostingEnv, hostingSetup, hostingStatus } from "./commands/hosting.ts";
-import { platformSecrets } from "./commands/platform.ts";
+import { apiSecrets } from "./commands/api.ts";
 import { setup } from "./commands/setup.ts";
 import { smoke } from "./commands/smoke.ts";
 import { run } from "./lib/exec.ts";
@@ -46,8 +46,8 @@ const HELP = `uguroezdamar.com CLI — pnpm ugur <command>
   secrets import <file>      Move declared keys from a .env file into Infisical [--apply] [--overwrite]
   secrets prune [--apply]    Remove retired keys
   secrets run -- <cmd>       Run a command with the stage's secrets exactly as stored
-  platform secrets [--apply] GitHub secrets of the agent platform (names only); --apply generates the
-                             admin token (clipboard), asks for optional keys, starts the dev deploy
+  api secrets [--apply]      Secrets of the agent API (names only); --apply creates one service token per
+      [--rotate]             stage in GitHub and Infisical, sets API_URL, asks for optional keys, deploys dev
   db provision [--apply]     Neon project, a branch per stage, connection strings → Infisical
   db generate | check        Create a migration / verify none is missing (offline)
   db migrate | studio        Apply migrations / open Drizzle Studio on --stage
@@ -123,8 +123,8 @@ async function main(): Promise<number> {
       return inspectProject(positionals[2] ?? "");
     case "projects draft":
       return draftProject(positionals[2] ?? "", values.slug ?? "", values.apply);
-    case "platform secrets":
-      return platformSecrets(values.apply, values.rotate);
+    case "api secrets":
+      return apiSecrets(values.apply, values.rotate);
     case "secrets audit":
       return secretsAudit(stage);
     case "secrets prune":

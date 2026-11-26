@@ -4,7 +4,7 @@ import type { Env } from "./env.ts";
 const TICKET_TTL_MS = 60_000;
 
 /**
- * One instance ("main") fans every platform event out to open browsers. Uses the WebSocket
+ * One instance ("main") fans every event out to the open portal chats. Uses the WebSocket
  * hibernation API, so idle connections cost nothing.
  *
  * Browsers cannot send headers on a WebSocket, so they first fetch a one-time ticket with their

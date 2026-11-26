@@ -4,7 +4,7 @@ import { str, ToolInputError } from "./port.ts";
 const API = "https://api.github.com";
 const MAX_FILE_CHARS = 60_000;
 /**
- * Everyone works on dev (it deploys to platform-dev); main changes only through a pull request
+ * Everyone works on dev (it deploys to the dev environment); main changes only through a pull request
  * from dev. Agents may commit to dev or to their own agent/... branches, always after approval.
  */
 const WORK_BRANCH = "dev";
@@ -25,7 +25,7 @@ async function gh<T>(context: ToolContext, path: string, init: RequestInit = {})
     headers: {
       accept: "application/vnd.github+json",
       authorization: `Bearer ${token}`,
-      "user-agent": "uguroezdamar-platform",
+      "user-agent": "uguroezdamar-api",
       "x-github-api-version": "2022-11-28",
       ...(init.body ? { "content-type": "application/json" } : {}),
       ...init.headers,
@@ -138,7 +138,7 @@ const commitFiles: Tool = {
   spec: {
     name: "repo_commit_files",
     description:
-      "Schreibt einen Commit mit einer oder mehreren Dateien auf dev (Standard, wird danach automatisch nach platform-dev deployt) oder auf einen Branch agent/... (wird bei Bedarf von dev angelegt). Nie main. Jede Datei bekommt ihren VOLLSTÄNDIGEN neuen Inhalt. Braucht Ugurs Freigabe.",
+      "Schreibt einen Commit mit einer oder mehreren Dateien auf dev (Standard, wird danach automatisch in die Dev-Umgebung ausgeliefert) oder auf einen Branch agent/... (wird bei Bedarf von dev angelegt). Nie main. Jede Datei bekommt ihren VOLLSTÄNDIGEN neuen Inhalt. Braucht Ugurs Freigabe.",
     parameters: {
       type: "object",
       properties: {

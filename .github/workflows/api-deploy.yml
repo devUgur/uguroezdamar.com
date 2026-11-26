@@ -1,28 +1,30 @@
-name: Platform deploy
+name: API deploy
 
-# Deploys apps/platform to Cloudflare Workers (ADR 0024).
-#   branch dev  -> uguroezdamar-platform-dev, platform-dev.uguroezdamar.com (wrangler env "dev")
-#   branch main -> uguroezdamar-platform, platform.uguroezdamar.com (production; main changes only by PR)
+# Deploys apps/api, the agent backend of the portal, to Cloudflare Workers (ADR 0024).
+#   branch dev  -> uguroezdamar-api-dev, api-dev.uguroezdamar.com (wrangler env "dev", GitHub environment api-dev)
+#   branch main -> uguroezdamar-api, api.uguroezdamar.com (production; main changes only by PR)
+# API_SERVICE_TOKEN is an environment secret (one value per environment, shared with the portal
+# through Infisical); `pnpm ugur api secrets --apply` sets both sides.
 on:
   push:
     branches: [main, dev]
     paths:
-      - "apps/platform/**"
-      - ".github/workflows/platform-deploy.yml"
+      - "apps/api/**"
+      - ".github/workflows/api-deploy.yml"
   workflow_dispatch:
 
 concurrency:
-  group: platform-deploy-${{ github.ref_name }}
+  group: api-deploy-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Add a required reviewer to platform-production in the repository settings to gate production.
-    environment: ${{ github.ref_name == 'main' && 'platform-production' || 'platform-dev' }}
+    # Add a required reviewer to api-production in the repository settings to gate production.
+    environment: ${{ github.ref_name == 'main' && 'api-production' || 'api-dev' }}
     env:
       WRANGLER_ENV_FLAG: ${{ github.ref_name != 'main' && '--env dev' || '' }}
-      PLATFORM_URL: ${{ github.ref_name == 'main' && 'https://platform.uguroezdamar.com' || 'https://platform-dev.uguroezdamar.com' }}
+      API_URL: ${{ github.ref_name == 'main' && 'https://api.uguroezdamar.com' || 'https://api-dev.uguroezdamar.com' }}
     steps:
       - uses: actions/checkout@v5
       - name: Setup Node
@@ -33,9 +35,9 @@ jobs:
       - name: Enable corepack
         run: corepack enable
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --filter @ugur/platform...
+        run: pnpm install --frozen-lockfile --filter @ugur/api...
       - name: Typecheck
-        run: pnpm --filter @ugur/platform typecheck
+        run: pnpm --filter @ugur/api typecheck
       # Plain wrangler instead of wrangler-action: the action uploads secrets before `deploy`,
       # which fails while the Worker does not exist yet. --secrets-file ships code and secrets
       # as one version. The file lives in RUNNER_TEMP and is never printed.
@@ -45,7 +47,7 @@ jobs:
         run: |
           api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain"
           auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
-          for name in uguroezdamar uguroezdamar-platform; do
+          for name in uguroezdamar uguroezdamar-api; do
             # 200: created; 409: the account already has one (or the name is taken) — check below.
             code=$(curl -s -o /dev/null -w '%{http_code}' -X PUT -H "$auth" -H "content-type: application/json" --data "{\"subdomain\":\"$name\"}" "$api")
             echo "PUT $name: $code"
@@ -58,23 +60,23 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Apply D1 migrations
-        working-directory: apps/platform
+        working-directory: apps/api
         run: pnpm exec wrangler d1 migrations apply DB --remote $WRANGLER_ENV_FLAG
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Deploy with secrets
-        working-directory: apps/platform
+        working-directory: apps/api
         run: |
-          secrets_file="$RUNNER_TEMP/platform-secrets.json"
+          secrets_file="$RUNNER_TEMP/api-secrets.json"
           trap 'rm -f "$secrets_file"' EXIT
           # Only the Cloudflare secrets are required. The others are uploaded when set; a missing
           # one keeps its previous Worker value (secrets files are additive):
-          #   PLATFORM_ADMIN_TOKEN  login until Cloudflare Access is in front; without it nobody gets in
+          #   API_SERVICE_TOKEN     the portal's key to this API; without it every call gets 401
           #   GEMINI_API_KEY        optional; without it the router falls back to Workers AI
           #   AGENT_GITHUB_TOKEN    optional; without it the repo tools report a missing token
           node -e '
-            const names = ["PLATFORM_ADMIN_TOKEN", "GEMINI_API_KEY", "AGENT_GITHUB_TOKEN"];
+            const names = ["API_SERVICE_TOKEN", "GEMINI_API_KEY", "AGENT_GITHUB_TOKEN"];
             const set = names.filter((name) => process.env[name]);
             const missing = names.filter((name) => !process.env[name]);
             if (missing.length) console.log("::warning::Not set, skipped: " + missing.join(", "));
@@ -84,14 +86,14 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          PLATFORM_ADMIN_TOKEN: ${{ secrets.PLATFORM_ADMIN_TOKEN }}
+          API_SERVICE_TOKEN: ${{ secrets.API_SERVICE_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           AGENT_GITHUB_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN }}
       - name: Smoke
         run: |
           for i in 1 2 3 4 5 6; do
-            if curl -fsS "$PLATFORM_URL/api/health"; then exit 0; fi
+            if curl -fsS "$API_URL/api/health"; then exit 0; fi
             sleep 10
           done
-          echo "$PLATFORM_URL/api/health is not answering" >&2
+          echo "$API_URL/api/health is not answering" >&2
           exit 1

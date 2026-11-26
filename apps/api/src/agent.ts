@@ -4,11 +4,11 @@ import { APPROVAL_TTL_SECONDS, describeApproval } from "./approvals.ts";
 import type { Env } from "./env.ts";
 import { emit, spentToday } from "./events.ts";
 import type { ChatMessage, ToolCall } from "./models/port.ts";
-import { ModelRouter } from "./models/router.ts";
+import { ModelRouter, type PinnedModel } from "./models/router.ts";
 import { SubrequestBudget } from "./runtime/budget.ts";
 import { runAgentLoop, type LoopEvent } from "./runtime/loop.ts";
 import type { Accepted, AgentRuntimePort, AgentStatus, ChatInput, ResumeInput } from "./runtime/port.ts";
-import { projectMemories } from "./tools/platform.ts";
+import { projectMemories } from "./tools/workspace.ts";
 import type { ToolContext } from "./tools/port.ts";
 import { toolsByName } from "./tools/registry.ts";
 
@@ -37,6 +37,7 @@ interface ProjectRow {
 }
 
 interface RunState {
+  threadId: string;
   agentId: string;
   projectId: string;
   steps: number;
@@ -49,10 +50,10 @@ const RUN = "run";
 const INBOX = "inbox";
 
 /**
- * One Durable Object per agent (idFromName(agentId)), implementing AgentRuntimePort. It keeps
- * the conversation in its own SQLite and runs the loop in stages: every stage is an alarm with
+ * One Durable Object per chat thread (idFromName("thread:<id>")), implementing AgentRuntimePort.
+ * It keeps the thread's conversation in its own SQLite and runs the loop in stages: every stage is an alarm with
  * a fresh subrequest budget (Workers Free: 50 external calls per invocation). chat() and
- * resume() only queue work; results reach the browser as events through the live hub.
+ * resume() only queue work; results reach the portal as events through the live hub.
  */
 export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort {
   constructor(ctx: DurableObjectState, env: Env) {
@@ -68,23 +69,31 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
   }
 
   async chat(input: ChatInput): Promise<Accepted> {
-    await emit(this.env, { agentId: input.agentId, projectId: input.projectId, type: "user_message", data: { text: input.text } });
-    return this.enqueue(input.agentId, input.projectId, input.text);
+    await emit(this.env, {
+      threadId: input.threadId,
+      agentId: input.agentId,
+      projectId: input.projectId,
+      type: "user_message",
+      data: { text: input.text },
+    });
+    return this.enqueue(input.threadId, input.agentId, input.projectId, input.text);
   }
 
   /** Called after Ugur decided on an approval: the agent learns the outcome and carries on. */
   async resume(input: ResumeInput): Promise<Accepted> {
-    const note = `[Plattform] Freigabe ${input.approvalId} für ${input.tool} wurde ${
+    const note = `[System] Freigabe ${input.approvalId} für ${input.tool} wurde ${
       input.approved ? "erteilt und ausgeführt" : "abgelehnt"
     }. Ergebnis: ${input.outcome}`;
-    return this.enqueue(input.agentId, input.projectId, note);
+    return this.enqueue(input.threadId, input.agentId, input.projectId, note);
   }
 
   async stop(): Promise<void> {
     const run = await this.ctx.storage.get<RunState>(RUN);
     await this.ctx.storage.delete([RUN, INBOX]);
     await this.ctx.storage.deleteAlarm();
-    if (run) await emit(this.env, { agentId: run.agentId, projectId: run.projectId, type: "stopped", data: { steps: run.steps } });
+    if (run) {
+      await emit(this.env, { threadId: run.threadId, agentId: run.agentId, projectId: run.projectId, type: "stopped", data: { steps: run.steps } });
+    }
   }
 
   async status(): Promise<AgentStatus> {
@@ -102,7 +111,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
   }
 
   /** Messages wait in the inbox until a stage boundary, so tool-call sequences stay intact. */
-  private async enqueue(agentId: string, projectId: string, text: string): Promise<Accepted> {
+  private async enqueue(threadId: string, agentId: string, projectId: string, text: string): Promise<Accepted> {
     const inbox = (await this.ctx.storage.get<string[]>(INBOX)) ?? [];
     inbox.push(text);
     await this.ctx.storage.put(INBOX, inbox);
@@ -110,7 +119,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       return { accepted: true, busy: true, message: "Ich arbeite gerade; dein Hinweis fließt in den nächsten Schritt ein." };
     }
     const now = Date.now();
-    await this.ctx.storage.put<RunState>(RUN, { agentId, projectId, steps: 0, stages: 0, startedAt: now, touchedAt: now });
+    await this.ctx.storage.put<RunState>(RUN, { threadId, agentId, projectId, steps: 0, stages: 0, startedAt: now, touchedAt: now });
     await this.ctx.storage.setAlarm(now);
     return { accepted: true };
   }
@@ -127,7 +136,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
   override async alarm(): Promise<void> {
     const run = await this.ctx.storage.get<RunState>(RUN);
     if (!run) return;
-    const base = { agentId: run.agentId, projectId: run.projectId };
+    const base = { threadId: run.threadId, agentId: run.agentId, projectId: run.projectId };
     try {
       const inbox = (await this.ctx.storage.get<string[]>(INBOX)) ?? [];
       if (inbox.length) {
@@ -159,15 +168,16 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
 
   /** One stage of the loop; updates run.steps in place. */
   private async stage(run: RunState): Promise<"paused" | "ended"> {
-    const { agentId, projectId } = run;
-    const base = { agentId, projectId };
+    const { threadId, agentId, projectId } = run;
+    const base = { threadId, agentId, projectId };
     const definition = AGENTS[agentId];
     if (!definition) throw new Error(`Unbekannter Agent "${agentId}"`);
 
-    const [project, budgetRow, spent] = await Promise.all([
+    const [project, budgetRow, spent, thread] = await Promise.all([
       this.env.DB.prepare("SELECT id, name, repo FROM projects WHERE id = ?").bind(projectId).first<ProjectRow>(),
       this.env.DB.prepare("SELECT daily_budget_usd FROM agents WHERE id = ?").bind(agentId).first<{ daily_budget_usd: number }>(),
       spentToday(this.env, agentId),
+      this.env.DB.prepare("SELECT model FROM threads WHERE id = ?").bind(threadId).first<{ model: string | null }>(),
     ]);
     const dailyBudget = budgetRow?.daily_budget_usd ?? 0.5;
     if (spent >= dailyBudget) {
@@ -181,7 +191,8 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     const budget = new SubrequestBudget();
     const context: ToolContext = { env: this.env, agentId, projectId, repo, budget };
     const router = await ModelRouter.load(this.env);
-    const deltas = new DeltaBuffer(this.env, agentId);
+    const pinned = parsePinned(thread?.model);
+    const deltas = new DeltaBuffer(this.env, agentId, threadId);
 
     const outcome = await runAgentLoop({
       system: {
@@ -197,7 +208,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
         const result = await router.chat(
           definition.modelAlias,
           { ...request, temperature: 0.3, maxTokens: 8192 },
-          { budget, onDelta },
+          { budget, onDelta, pinned: pinned && router.offers(pinned) ? pinned : undefined },
         );
         await deltas.flush();
         return {
@@ -215,12 +226,13 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
         const approvalId = crypto.randomUUID();
         const description = describeApproval(tool, args);
         await this.env.DB.prepare(
-          `INSERT INTO approvals (id, agent_id, action, details, summary, risk, warnings, expires_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch() + ?)`,
+          `INSERT INTO approvals (id, agent_id, thread_id, action, details, summary, risk, warnings, expires_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch() + ?)`,
         )
           .bind(
             approvalId,
             agentId,
+            threadId,
             tool,
             JSON.stringify({ args, projectId, repo }),
             description.summary,
@@ -269,6 +281,16 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
   }
 }
 
+function parsePinned(value: string | null | undefined): PinnedModel | undefined {
+  if (!value) return undefined;
+  try {
+    const parsed = JSON.parse(value) as Partial<PinnedModel>;
+    return typeof parsed.provider === "string" && typeof parsed.model === "string" ? { provider: parsed.provider, model: parsed.model } : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Collects streamed answer text and sends it to the live hub every DELTA_FLUSH_MS. */
 class DeltaBuffer {
   private text = "";
@@ -279,6 +301,7 @@ class DeltaBuffer {
   constructor(
     private readonly env: Env,
     private readonly agentId: string,
+    private readonly threadId: string,
   ) {}
 
   push(step: number, text: string): void {
@@ -292,7 +315,7 @@ class DeltaBuffer {
     if (this.timer !== undefined) clearTimeout(this.timer);
     this.timer = undefined;
     if (this.text) {
-      const message = JSON.stringify({ type: "delta", agentId: this.agentId, step: this.step, text: this.text });
+      const message = JSON.stringify({ type: "delta", agentId: this.agentId, threadId: this.threadId, step: this.step, text: this.text });
       this.text = "";
       this.sending = this.sending
         .then(() => this.env.HUB.get(this.env.HUB.idFromName("main")).broadcast(message))

@@ -1,6 +1,6 @@
 import type { Env } from "./env.ts";
 
-/** Everything an agent does becomes an event: chat, office view and cost reports read these. */
+/** Everything an agent does becomes an event: the portal chat, the office view and cost reports read these. */
 export type EventType =
   | "user_message"
   | "thinking"
@@ -15,8 +15,9 @@ export type EventType =
   | "stage_paused"
   | "stopped";
 
-export interface PlatformEvent {
+export interface AgentEvent {
   agentId?: string;
+  threadId?: string;
   taskId?: string;
   projectId?: string;
   type: EventType;
@@ -26,7 +27,7 @@ export interface PlatformEvent {
   costUsd?: number;
 }
 
-export interface StoredEvent extends PlatformEvent {
+export interface StoredEvent extends AgentEvent {
   id: number;
   ts: number;
 }
@@ -35,6 +36,7 @@ interface EventRow {
   id: number;
   ts: number;
   agent_id: string | null;
+  thread_id: string | null;
   task_id: string | null;
   project_id: string | null;
   type: EventType;
@@ -44,14 +46,15 @@ interface EventRow {
   cost_usd: number;
 }
 
-/** Writes the event to D1, then pushes it to every open browser. */
-export async function emit(env: Env, event: PlatformEvent): Promise<StoredEvent> {
+/** Writes the event to D1, then pushes it to every open portal chat. */
+export async function emit(env: Env, event: AgentEvent): Promise<StoredEvent> {
   const row = await env.DB.prepare(
-    `INSERT INTO events (agent_id, task_id, project_id, type, data, tokens_in, tokens_out, cost_usd)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, ts`,
+    `INSERT INTO events (agent_id, thread_id, task_id, project_id, type, data, tokens_in, tokens_out, cost_usd)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, ts`,
   )
     .bind(
       event.agentId ?? null,
+      event.threadId ?? null,
       event.taskId ?? null,
       event.projectId ?? null,
       event.type,
@@ -71,7 +74,10 @@ export async function emit(env: Env, event: PlatformEvent): Promise<StoredEvent>
   return stored;
 }
 
-export async function recentEvents(env: Env, options: { sinceId?: number; agentId?: string; limit?: number }): Promise<StoredEvent[]> {
+export async function recentEvents(
+  env: Env,
+  options: { sinceId?: number; agentId?: string; threadId?: string; limit?: number },
+): Promise<StoredEvent[]> {
   const limit = Math.min(Math.max(options.limit ?? 100, 1), 500);
   const conditions: string[] = [];
   const params: (string | number)[] = [];
@@ -83,6 +89,10 @@ export async function recentEvents(env: Env, options: { sinceId?: number; agentI
     conditions.push("agent_id = ?");
     params.push(options.agentId);
   }
+  if (options.threadId) {
+    conditions.push("thread_id = ?");
+    params.push(options.threadId);
+  }
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const { results } = await env.DB.prepare(`SELECT * FROM events ${where} ORDER BY id DESC LIMIT ?`)
     .bind(...params, limit)
@@ -91,6 +101,7 @@ export async function recentEvents(env: Env, options: { sinceId?: number; agentI
     id: row.id,
     ts: row.ts,
     agentId: row.agent_id ?? undefined,
+    threadId: row.thread_id ?? undefined,
     taskId: row.task_id ?? undefined,
     projectId: row.project_id ?? undefined,
     type: row.type,

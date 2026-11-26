@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { describeApproval } from "../apps/platform/src/approvals.ts";
-import type { ChatMessage } from "../apps/platform/src/models/port.ts";
-import { SubrequestBudget } from "../apps/platform/src/runtime/budget.ts";
-import { type LoopDeps, type LoopEvent, type ModelTurn, runAgentLoop } from "../apps/platform/src/runtime/loop.ts";
-import type { Tool, ToolContext } from "../apps/platform/src/tools/port.ts";
+import { describeApproval } from "../apps/api/src/approvals.ts";
+import type { ChatMessage } from "../apps/api/src/models/port.ts";
+import { SubrequestBudget } from "../apps/api/src/runtime/budget.ts";
+import { type LoopDeps, type LoopEvent, type ModelTurn, runAgentLoop } from "../apps/api/src/runtime/loop.ts";
+import type { Tool, ToolContext } from "../apps/api/src/tools/port.ts";
 
 /** Smoke test of the agent core: user → tool call → result → answer, with every step as an event. */
 function harness(turns: ModelTurn[], overrides: Partial<LoopDeps> = {}) {

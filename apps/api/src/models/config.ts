@@ -13,8 +13,20 @@ export interface ModelTarget {
   outputUsdPerM: number;
 }
 
+/** A model the portal offers in its picker. */
+export interface CatalogModel {
+  id: string;
+  label: string;
+  inputUsdPerM: number;
+  outputUsdPerM: number;
+}
+
 export interface ProviderConfig {
   kind: "openai-compatible" | "workers-ai";
+  /** Name shown in the portal. */
+  label: string;
+  /** Models offered for manual choice; aliases may use others. */
+  models: CatalogModel[];
   /** Base URL without /chat/completions. `{gateway}` is replaced when MODEL_VIA_GATEWAY is on. */
   baseUrl?: string;
   /** Provider path behind the Cloudflare AI Gateway, used instead of baseUrl when it is on. */
@@ -32,17 +44,31 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
   providers: {
     gemini: {
       kind: "openai-compatible",
+      label: "Google Gemini",
+      models: [
+        { id: "gemini-flash-latest", label: "Gemini Flash (aktuell)", inputUsdPerM: 0, outputUsdPerM: 0 },
+        { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite", inputUsdPerM: 0, outputUsdPerM: 0 },
+      ],
       baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
       gatewayPath: "google-ai-studio/v1beta/openai",
       apiKeySecret: "GEMINI_API_KEY",
     },
     openrouter: {
       kind: "openai-compatible",
+      label: "OpenRouter",
+      models: [],
       baseUrl: "https://openrouter.ai/api/v1",
       gatewayPath: "openrouter",
       apiKeySecret: "OPENROUTER_API_KEY",
     },
-    "workers-ai": { kind: "workers-ai" },
+    "workers-ai": {
+      kind: "workers-ai",
+      label: "Cloudflare Workers AI",
+      models: [
+        { id: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", label: "Llama 3.3 70B", inputUsdPerM: 0, outputUsdPerM: 0 },
+        { id: "@cf/meta/llama-3.1-8b-instruct-fast", label: "Llama 3.1 8B (schnell)", inputUsdPerM: 0, outputUsdPerM: 0 },
+      ],
+    },
   },
   // Free tier as of 2026-11 (aistudio.google.com/docs/pricing). gemini-flash-latest is Google's
   // rolling alias; gemini-2.5-flash is deprecated and must not be used.

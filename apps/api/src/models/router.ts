@@ -12,6 +12,21 @@ export interface RouteOptions {
   /** Each external attempt takes one subrequest; without a budget nothing is counted. */
   budget?: SubrequestBudget;
   onDelta?: (text: string) => void;
+  /** A model chosen in the portal for this thread; tried first, the alias chain stays as fallback. */
+  pinned?: PinnedModel;
+}
+
+export interface PinnedModel {
+  provider: string;
+  model: string;
+}
+
+export interface CatalogEntry {
+  id: string;
+  label: string;
+  /** False while the provider's key is missing; the portal shows it greyed out. */
+  available: boolean;
+  models: { id: string; label: string; inputUsdPerM: number; outputUsdPerM: number }[];
 }
 
 export interface RoutedResult extends ChatResult {
@@ -36,9 +51,26 @@ export class ModelRouter {
     return new ModelRouter(env, config);
   }
 
+  /** Providers and their offered models, for the portal's picker. */
+  catalog(): { providers: CatalogEntry[]; aliases: Record<string, ModelTarget[]> } {
+    const providers = Object.entries(this.config.providers).map(([id, provider]) => ({
+      id,
+      label: provider.label ?? id,
+      available: Boolean(this.port(id)?.available()),
+      models: (provider.models ?? []).map(({ id: model, label, inputUsdPerM, outputUsdPerM }) => ({ id: model, label, inputUsdPerM, outputUsdPerM })),
+    }));
+    return { providers, aliases: this.config.aliases };
+  }
+
+  /** True when the provider exists and offers this model in the catalog. */
+  offers(pinned: PinnedModel): boolean {
+    return Boolean(this.config.providers[pinned.provider]?.models?.some((model) => model.id === pinned.model));
+  }
+
   async chat(alias: string, request: Omit<ChatRequest, "model">, options: RouteOptions = {}): Promise<RoutedResult> {
-    const targets = this.config.aliases[alias];
-    if (!targets?.length) throw new ModelError(`Unknown model alias "${alias}"`, "router", 400);
+    const chain = this.config.aliases[alias] ?? [];
+    const targets = options.pinned ? [this.pinnedTarget(options.pinned), ...chain.filter((target) => !(target.provider === options.pinned?.provider && target.model === options.pinned?.model))] : chain;
+    if (!targets.length) throw new ModelError(`Unknown model alias "${alias}"`, "router", 400);
 
     const attempts: string[] = [];
     let lastError: unknown;
@@ -62,6 +94,11 @@ export class ModelRouter {
       }
     }
     throw new ModelError(`All models for "${alias}" failed. ${attempts.join(" | ")}`, "router", lastError instanceof ModelError ? lastError.status : undefined);
+  }
+
+  private pinnedTarget(pinned: PinnedModel): ModelTarget {
+    const entry = this.config.providers[pinned.provider]?.models?.find((model) => model.id === pinned.model);
+    return { ...pinned, inputUsdPerM: entry?.inputUsdPerM ?? 0, outputUsdPerM: entry?.outputUsdPerM ?? 0 };
   }
 
   private port(providerId: string): ModelPort | undefined {

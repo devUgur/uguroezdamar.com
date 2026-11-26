@@ -14,7 +14,7 @@ export interface ToolContext {
 
 /**
  * ToolPort: what an agent can do in the world. Tools that change something outside the
- * platform set `requiresApproval`; the agent then only proposes the call and Ugur decides.
+ * system set `requiresApproval`; the agent then only proposes the call and Ugur decides.
  */
 export interface Tool {
   spec: ToolSpec;

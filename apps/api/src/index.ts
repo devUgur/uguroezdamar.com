@@ -1,0 +1,297 @@
+import { AGENTS } from "./agents/registry.ts";
+import { authorize, type Caller } from "./auth.ts";
+import type { Env } from "./env.ts";
+import { emit, recentEvents } from "./events.ts";
+import { ModelRouter } from "./models/router.ts";
+import { SubrequestBudget } from "./runtime/budget.ts";
+import { toolByName } from "./tools/registry.ts";
+
+export { AgentRuntime } from "./agent.ts";
+export { LiveHub } from "./hub.ts";
+
+const DEFAULT_PROJECT = "uguroezdamar";
+const DEFAULT_AGENT = "chef";
+const ID = "[0-9a-f-]{36}";
+
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+  });
+}
+
+async function body<T>(request: Request): Promise<Partial<T>> {
+  try {
+    return (await request.json()) as Partial<T>;
+  } catch {
+    return {};
+  }
+}
+
+function threadStub(env: Env, threadId: string) {
+  return env.AGENTS.get(env.AGENTS.idFromName(`thread:${threadId}`));
+}
+
+interface ThreadRow {
+  id: string;
+  agent_id: string;
+  project_id: string | null;
+  title: string | null;
+  model: string | null;
+  created_by: string | null;
+  created_at: number;
+  updated_at: number;
+  last_event?: string | null;
+}
+
+function toThread(row: ThreadRow) {
+  return {
+    id: row.id,
+    agentId: row.agent_id,
+    projectId: row.project_id ?? DEFAULT_PROJECT,
+    title: row.title,
+    model: row.model ? (JSON.parse(row.model) as { provider: string; model: string }) : null,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    lastEvent: row.last_event ?? null,
+  };
+}
+
+async function loadThread(env: Env, id: string): Promise<ThreadRow | null> {
+  return env.DB.prepare("SELECT * FROM threads WHERE id = ? AND archived = 0").bind(id).first<ThreadRow>();
+}
+
+interface ApprovalRow {
+  id: string;
+  agent_id: string;
+  thread_id: string | null;
+  action: string;
+  details: string;
+  status: string;
+  expires_at: number | null;
+  created_at: number;
+}
+
+async function pendingApprovals(env: Env, threadId?: string) {
+  const { results } = await env.DB.prepare(
+    `SELECT id, agent_id, thread_id, action, summary, risk, warnings, expires_at, created_at FROM approvals
+      WHERE status = 'pending' AND (expires_at IS NULL OR expires_at > unixepoch()) AND (? IS NULL OR thread_id = ?)
+      ORDER BY created_at DESC LIMIT 50`,
+  )
+    .bind(threadId ?? null, threadId ?? null)
+    .all<Record<string, unknown>>();
+  return results.map((row) => ({
+    id: String(row.id),
+    agentId: String(row.agent_id),
+    threadId: row.thread_id ? String(row.thread_id) : null,
+    action: String(row.action),
+    summary: row.summary ? String(row.summary) : null,
+    risk: row.risk ? String(row.risk) : null,
+    warnings: row.warnings ? (JSON.parse(String(row.warnings)) as string[]) : [],
+    expiresAt: row.expires_at === null ? null : Number(row.expires_at),
+  }));
+}
+
+async function decideApproval(env: Env, caller: Caller, id: string, approve: boolean): Promise<Response> {
+  const row = await env.DB.prepare("SELECT * FROM approvals WHERE id = ?").bind(id).first<ApprovalRow>();
+  if (!row) return json({ error: "Freigabe nicht gefunden" }, 404);
+  if (row.status !== "pending") return json({ error: `Bereits entschieden: ${row.status}` }, 409);
+  if (row.expires_at && row.expires_at * 1000 < Date.now()) {
+    await env.DB.prepare("UPDATE approvals SET status = 'expired' WHERE id = ? AND status = 'pending'").bind(id).run();
+    return json({ error: "Freigabe abgelaufen; der Agent muss sie neu vorschlagen." }, 410);
+  }
+
+  // Claim it first so a double click cannot run the action twice.
+  const claimed = await env.DB.prepare("UPDATE approvals SET status = ?, decided_at = unixepoch() WHERE id = ? AND status = 'pending'")
+    .bind(approve ? "approved" : "rejected", id)
+    .run();
+  if (!claimed.meta.changes) return json({ error: "Bereits entschieden" }, 409);
+
+  const details = JSON.parse(row.details) as { args: Record<string, unknown>; projectId: string; repo: string };
+  let outcome = `Abgelehnt von ${caller.actor}.`;
+  let ok = false;
+  if (approve) {
+    const tool = toolByName(row.action);
+    try {
+      if (!tool) throw new Error(`Werkzeug ${row.action} existiert nicht mehr.`);
+      const budget = new SubrequestBudget();
+      const result = await tool.run(details.args, { env, agentId: row.agent_id, projectId: details.projectId, repo: details.repo, budget });
+      outcome = JSON.stringify(result);
+      ok = true;
+    } catch (error) {
+      outcome = `Fehler: ${error instanceof Error ? error.message : String(error)}`;
+      await env.DB.prepare("UPDATE approvals SET status = 'failed' WHERE id = ?").bind(id).run();
+    }
+  }
+
+  await emit(env, {
+    agentId: row.agent_id,
+    threadId: row.thread_id ?? undefined,
+    projectId: details.projectId,
+    type: "approval_decided",
+    data: { approvalId: id, tool: row.action, approved: approve, ok, by: caller.actor, outcome: outcome.slice(0, 600) },
+  });
+
+  if (row.thread_id) {
+    await threadStub(env, row.thread_id).resume({
+      threadId: row.thread_id,
+      agentId: row.agent_id,
+      projectId: details.projectId,
+      approvalId: id,
+      tool: row.action,
+      approved: approve,
+      outcome: outcome.slice(0, 4000),
+    });
+  }
+  return json({ approved: approve, ok, outcome });
+}
+
+async function handleThreads(request: Request, env: Env, caller: Caller, path: string): Promise<Response | null> {
+  const method = request.method;
+
+  if (path === "/api/threads" && method === "GET") {
+    const { results } = await env.DB.prepare(
+      `SELECT t.*, (SELECT type FROM events e WHERE e.thread_id = t.id ORDER BY e.id DESC LIMIT 1) AS last_event
+         FROM threads t WHERE t.archived = 0 ORDER BY t.updated_at DESC LIMIT 100`,
+    ).all<ThreadRow>();
+    return json(results.map(toThread));
+  }
+
+  if (path === "/api/threads" && method === "POST") {
+    const input = await body<{ agentId: string; projectId: string; title: string; model: { provider: string; model: string } | null }>(request);
+    const agentId = input.agentId && AGENTS[input.agentId] ? input.agentId : DEFAULT_AGENT;
+    const id = crypto.randomUUID();
+    await env.DB.prepare("INSERT INTO threads (id, agent_id, project_id, title, model, created_by) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(id, agentId, input.projectId ?? DEFAULT_PROJECT, input.title?.slice(0, 120) ?? null, input.model ? JSON.stringify(input.model) : null, caller.actor)
+      .run();
+    const row = await loadThread(env, id);
+    return json(row ? toThread(row) : { id }, 201);
+  }
+
+  const match = path.match(new RegExp(`^/api/threads/(${ID})(?:/(chat|stop))?$`));
+  if (!match) return null;
+  const threadId = match[1] ?? "";
+  const action = match[2];
+  const thread = await loadThread(env, threadId);
+  if (!thread) return json({ error: "Thread nicht gefunden" }, 404);
+  const stub = threadStub(env, threadId);
+
+  if (!action && method === "GET") {
+    const [messages, status, approvals] = await Promise.all([stub.history(), stub.status(), pendingApprovals(env, threadId)]);
+    const events = await recentEvents(env, { threadId, limit: 200 });
+    return json({ thread: toThread(thread), messages, status, approvals, events });
+  }
+
+  if (!action && method === "PATCH") {
+    const input = await body<{ title: string; model: { provider: string; model: string } | null }>(request);
+    if (input.model) {
+      const router = await ModelRouter.load(env);
+      if (!router.offers(input.model)) return json({ error: "Unbekanntes Modell" }, 400);
+    }
+    await env.DB.prepare(
+      `UPDATE threads SET title = COALESCE(?, title), model = CASE WHEN ? THEN ? ELSE model END, updated_at = unixepoch() WHERE id = ?`,
+    )
+      .bind(input.title?.slice(0, 120) ?? null, input.model !== undefined ? 1 : 0, input.model ? JSON.stringify(input.model) : null, threadId)
+      .run();
+    return json(toThread((await loadThread(env, threadId)) ?? thread));
+  }
+
+  if (!action && method === "DELETE") {
+    await stub.stop();
+    await env.DB.prepare("UPDATE threads SET archived = 1, updated_at = unixepoch() WHERE id = ?").bind(threadId).run();
+    return json({ ok: true });
+  }
+
+  if (action === "chat" && method === "POST") {
+    const input = await body<{ text: string }>(request);
+    const text = input.text?.trim();
+    if (!text) return json({ error: "Leere Nachricht" }, 400);
+    // The first message names the thread.
+    await env.DB.prepare("UPDATE threads SET title = COALESCE(title, ?), updated_at = unixepoch() WHERE id = ?")
+      .bind(text.replace(/\s+/g, " ").slice(0, 80), threadId)
+      .run();
+    return json(
+      await stub.chat({ threadId, agentId: thread.agent_id, projectId: thread.project_id ?? DEFAULT_PROJECT, text: text.slice(0, 20_000) }),
+    );
+  }
+
+  if (action === "stop" && method === "POST") {
+    await stub.stop();
+    return json({ ok: true });
+  }
+
+  return null;
+}
+
+async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
+  const path = url.pathname.replace(/\/+$/, "");
+  const method = request.method;
+
+  if (path === "/api/health") return json({ ok: true, env: env.API_ENV || "production" });
+  // The hub checks the one-time ticket itself; browsers cannot send headers on a WebSocket.
+  if (path === "/api/live") return env.HUB.get(env.HUB.idFromName("main")).fetch(request);
+
+  const caller = await authorize(request, env);
+  if (!caller) return json({ error: "Nicht angemeldet" }, 401);
+
+  if (path === "/api/live-ticket" && method === "POST") {
+    return json({ ticket: await env.HUB.get(env.HUB.idFromName("main")).issueTicket() });
+  }
+
+  const threads = await handleThreads(request, env, caller, path);
+  if (threads) return threads;
+
+  if (path === "/api/agents" && method === "GET") {
+    const { results } = await env.DB.prepare(
+      "SELECT id, name, role, model_alias, daily_budget_usd, desk_x, desk_y FROM agents WHERE active = 1 ORDER BY created_at",
+    ).all();
+    return json(results.map((row) => ({ ...row, configured: Boolean(AGENTS[String(row.id)]) })));
+  }
+
+  if (path === "/api/models" && method === "GET") {
+    const router = await ModelRouter.load(env);
+    return json({ ...router.catalog(), agentAliases: Object.fromEntries(Object.values(AGENTS).map((agent) => [agent.id, agent.modelAlias])) });
+  }
+
+  if (path === "/api/events" && method === "GET") {
+    return json(
+      await recentEvents(env, {
+        sinceId: Number(url.searchParams.get("since") ?? 0) || undefined,
+        threadId: url.searchParams.get("thread") ?? undefined,
+        limit: Number(url.searchParams.get("limit") ?? 150),
+      }),
+    );
+  }
+
+  if (path === "/api/approvals" && method === "GET") {
+    return json(await pendingApprovals(env, url.searchParams.get("thread") ?? undefined));
+  }
+
+  const approvalMatch = path.match(new RegExp(`^/api/approvals/(${ID})$`));
+  if (approvalMatch && method === "POST") {
+    const { decision } = await body<{ decision: "approve" | "reject" }>(request);
+    if (decision !== "approve" && decision !== "reject") return json({ error: "decision: approve | reject" }, 400);
+    return decideApproval(env, caller, approvalMatch[1] ?? "", decision === "approve");
+  }
+
+  if (path === "/api/projects" && method === "GET") {
+    const { results } = await env.DB.prepare("SELECT * FROM projects ORDER BY name").all();
+    return json(results);
+  }
+
+  return json({ error: "Nicht gefunden" }, 404);
+}
+
+export default {
+  async fetch(request, env): Promise<Response> {
+    const url = new URL(request.url);
+    if (!url.pathname.startsWith("/api/")) return json({ service: "uguroezdamar-api", env: env.API_ENV || "production" });
+    try {
+      return await handleApi(request, env, url);
+    } catch (error) {
+      console.error("api error", error);
+      return json({ error: error instanceof Error ? error.message : "Interner Fehler" }, 500);
+    }
+  },
+} satisfies ExportedHandler<Env>;

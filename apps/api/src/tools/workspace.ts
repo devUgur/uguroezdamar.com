@@ -4,7 +4,7 @@ import { str } from "./port.ts";
 const listProjects: Tool = {
   spec: {
     name: "projects_list",
-    description: "Listet die Projekte der Plattform mit Repository, Domain und Status.",
+    description: "Listet die verwalteten Projekte mit Repository, Domain und Status.",
     parameters: { type: "object", properties: {} },
   },
   async run(_args, context) {
@@ -36,4 +36,4 @@ export async function projectMemories(db: D1Database, projectId: string, limit =
   return results.map((row) => row.content);
 }
 
-export const platformTools: Tool[] = [listProjects, remember];
+export const workspaceTools: Tool[] = [listProjects, remember];

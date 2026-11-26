@@ -1,20 +1,17 @@
-// Agent platform for uguroezdamar.com (ADR 0024). Deployed by .github/workflows/platform-deploy.yml:
-// top level = production (branch main), env.dev = dev environment (branch dev, own D1 and KV).
+// Agent backend of uguroezdamar.com (ADR 0024). The admin portal is its only client.
+// Deployed by .github/workflows/api-deploy.yml:
+//   top level = production (branch main, api.uguroezdamar.com)
+//   env.dev   = dev environment (branch dev, api-dev.uguroezdamar.com, own D1 and KV)
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "uguroezdamar-platform",
+  "name": "uguroezdamar-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat"],
-  // Only the custom domains serve the platform; no *.workers.dev address that would bypass Access.
+  // Only the custom domains serve the API; no *.workers.dev address.
   "workers_dev": false,
   "preview_urls": false,
-  "routes": [{ "pattern": "platform.uguroezdamar.com", "custom_domain": true }],
-  "assets": {
-    "directory": "./public",
-    "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
-  },
+  "routes": [{ "pattern": "api.uguroezdamar.com", "custom_domain": true }],
   "observability": { "enabled": true },
   "vars": {
     "DEFAULT_REPO": "devUgur/uguroezdamar.com",
@@ -22,9 +19,7 @@
     "AI_GATEWAY_ID": "uguroezdamar",
     // "true" routes Gemini and OpenRouter through the AI Gateway (logs, caching). Off until the gateway exists.
     "MODEL_VIA_GATEWAY": "false",
-    "ACCESS_TEAM_DOMAIN": "",
-    "ACCESS_AUD": "",
-    "PLATFORM_ENV": "production"
+    "API_ENV": "production"
   },
   "d1_databases": [
     {
@@ -46,16 +41,14 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AgentRuntime", "LiveHub"] }],
   "env": {
     "dev": {
-      "name": "uguroezdamar-platform-dev",
-      "routes": [{ "pattern": "platform-dev.uguroezdamar.com", "custom_domain": true }],
+      "name": "uguroezdamar-api-dev",
+      "routes": [{ "pattern": "api-dev.uguroezdamar.com", "custom_domain": true }],
       "vars": {
         "DEFAULT_REPO": "devUgur/uguroezdamar.com",
         "CF_ACCOUNT_ID": "4a35dadb67f662616fe6911bfbeecc0b",
         "AI_GATEWAY_ID": "uguroezdamar",
         "MODEL_VIA_GATEWAY": "false",
-        "ACCESS_TEAM_DOMAIN": "",
-        "ACCESS_AUD": "",
-        "PLATFORM_ENV": "dev"
+        "API_ENV": "dev"
       },
       "d1_databases": [
         {
@@ -66,7 +59,7 @@
         }
       ],
       "kv_namespaces": [{ "binding": "CONFIG", "id": "2baae316bfb7430dae22f403a518528a" }],
-      // Shared bucket; dev files go under platform-dev/ once something writes files.
+      // Shared bucket; dev files go under api-dev/ once something writes files.
       "r2_buckets": [{ "binding": "FILES", "bucket_name": "uguroezdamar" }],
       "ai": { "binding": "AI" },
       "durable_objects": {

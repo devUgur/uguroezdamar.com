@@ -16,9 +16,9 @@ export const APPROVAL_TTL_SECONDS = 24 * 60 * 60;
 
 const PROTECTED_PATHS: { pattern: RegExp; reason: string }[] = [
   { pattern: /^\.github\/workflows\//, reason: "CI/Deploy-Workflow" },
-  { pattern: /^apps\/platform\/wrangler\.jsonc$/, reason: "Plattform-Konfiguration (Bindings, Domains)" },
-  { pattern: /^apps\/platform\/src\/auth\.ts$/, reason: "Anmeldung der Plattform" },
-  { pattern: /^apps\/platform\/src\/approvals\.ts$/, reason: "Regeln für Freigaben" },
+  { pattern: /^apps\/api\/wrangler\.jsonc$/, reason: "API-Konfiguration (Bindings, Domains)" },
+  { pattern: /^apps\/api\/src\/auth\.ts$/, reason: "Anmeldung der API" },
+  { pattern: /^apps\/api\/src\/approvals\.ts$/, reason: "Regeln für Freigaben" },
   { pattern: /^tooling\/cli\/src\/secrets-manifest\.ts$/, reason: "Secret-Manifest" },
 ];
 
@@ -45,7 +45,7 @@ export function describeApproval(tool: string, args: Record<string, unknown>): A
       .map((file, index) => `${file.delete === true ? "löschen" : "schreiben"} ${paths[index]}`)
       .join(", ");
     const warnings = protectedReasons(paths).map((reason) => `Sicherheitsrelevant – ${reason}`);
-    if (branch === "dev") warnings.push("Commit auf dev wird automatisch nach platform-dev ausgeliefert.");
+    if (branch === "dev") warnings.push("Commit auf dev wird automatisch in die Dev-Umgebung ausgeliefert (api-dev, Portal-Preview).");
     return {
       summary: `Commit auf ${branch}: „${String(args.message ?? "")}“ – ${list || "keine Dateien"}`,
       risk: protectedReasons(paths).length ? "security" : null,
