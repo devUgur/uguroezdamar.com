@@ -33,6 +33,10 @@ Die Agenten hatten nur kostenlose Modelle: Gemini Free Tier (auf Dev ohne Schlü
 - `tenant_model_defaults`: Der Mandant legt je Rollen-Alias (`chef-smart`, `coder`, `worker-cheap`) ein Modell fest. Es wird vor der eingebauten Kette versucht. Die eingebauten Ketten beginnen mit Claude: Ohne Schlüssel wird es übersprungen und kostet nichts.
 - Die Modellwahl im Chat zeigt nur Anbieter mit Schlüssel.
 - Die Datenschutzregel bleibt hart: In privaten Repositories antworten nur Anbieter mit `trainsOnData: false` (Claude, OpenAI, Workers AI, Modal, eigene Anbieter mit ausdrücklicher Angabe).
+- Die Regel wirkt sichtbar, nicht still:
+  - Ein Chat in einem privaten Projekt lässt auswertende Anbieter (DeepSeek, Kimi, Gemini …) nicht wählen; die API lehnt die Wahl mit einer Begründung ab.
+  - Wechselt ein Chat mit solchem Modell in ein privates Projekt, fällt er auf die automatische Wahl zurück und meldet das.
+  - Der Router nennt jedes ausgelassene Modell im Fehler („gesperrt (privates Repository …)“), und das Portal erklärt es.
 - **Budget:** Ein kostenpflichtiges Modell ohne bekannten Preis zählt mit 5 $ / 25 $ je Million Tokens (Eingabe/Ausgabe), damit das Tagesbudget auch bei unbekannten Modellen greift.
 
 ### 4. Sprints je Projekt

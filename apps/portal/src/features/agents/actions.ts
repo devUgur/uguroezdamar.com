@@ -75,9 +75,9 @@ export async function chooseProject(threadId: string, projectId: string): Promis
   try {
     assertThread(threadId);
     if (!/^[a-z0-9-]{1,60}$/.test(projectId)) return { ok: false, error: "Ungültiges Projekt." };
-    await agentsApi(`/api/threads/${threadId}`, await actor(), { method: "PATCH", body: { projectId } });
+    const thread = await agentsApi<{ notice?: string }>(`/api/threads/${threadId}`, await actor(), { method: "PATCH", body: { projectId } });
     revalidatePath(`/chat/${threadId}`);
-    return { ok: true };
+    return { ok: true, message: thread.notice };
   } catch (error) {
     return failure(error);
   }

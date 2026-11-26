@@ -27,6 +27,13 @@ function describe(event: AgentEvent): RunFailure {
   const raw = event.data?.message;
   const detail = typeof raw === "string" ? raw : JSON.stringify(event.data ?? {});
   if (event.type === "budget_blocked") return { title: "Das Tagesbudget dieses Agenten ist aufgebraucht.", detail };
+  const blocked = [...detail.matchAll(/([\w.-]+)\/[^:|]+: gesperrt \(privates Repository/g)].map((match) => match[1]);
+  if (blocked.length && !/: ok\b/.test(detail)) {
+    return {
+      title: `Dieses Repository ist privat. ${[...new Set(blocked)].join(", ")} darf Eingaben auswerten und ist dafür gesperrt; ein Modell ohne Datenauswertung (z. B. Claude oder OpenAI) hat keinen Schlüssel oder ist ausgefallen.`,
+      detail,
+    };
+  }
   if (/4006|daily free allocation|neurons/i.test(detail)) {
     return {
       title: "Workers AI hat das kostenlose Tageskontingent aufgebraucht, und kein anderes Modell ist eingerichtet.",

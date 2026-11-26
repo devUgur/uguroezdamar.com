@@ -177,8 +177,9 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
   }
 
   async status(): Promise<AgentStatus> {
-    const run = await this.activeRun();
-    return run ? { running: true, step: run.steps, startedAt: run.startedAt } : { running: false, step: 0 };
+    const [run, isPrivate] = await Promise.all([this.activeRun(), this.ctx.storage.get<boolean>(PRIVATE_THREAD)]);
+    const base = run ? { running: true, step: run.steps, startedAt: run.startedAt } : { running: false, step: 0 };
+    return { ...base, private: isPrivate === true };
   }
 
   async history(): Promise<ChatMessage[]> {

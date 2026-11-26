@@ -67,7 +67,8 @@ export interface ThreadDetail {
   /** Active projects, for switching the chat's repository. */
   projects: ThreadProject[];
   messages: ChatMessage[];
-  status: { running: boolean; step: number; startedAt?: number };
+  /** private: the thread has read a private repository, so only providers without data evaluation may answer. */
+  status: { running: boolean; step: number; startedAt?: number; private?: boolean };
   approvals: Approval[];
   events: AgentEvent[];
 }

@@ -223,3 +223,40 @@ describe("Anthropic adapter over the SDK", () => {
     expect(result.usage).toEqual({ inputTokens: 12, outputTokens: 7 });
   });
 });
+
+describe("private repositories and evaluating providers", () => {
+  function withThreads() {
+    const status = { running: false, step: 0, private: false };
+    const context = setup({
+      AGENTS: { idFromName: (name: string) => name, get: () => ({ status: async () => status, history: async () => [] }) },
+    } as unknown as Partial<Env>);
+    context.db.raw.prepare("INSERT INTO projects (id, name, repo, visibility, status) VALUES ('video-studio', 'video-studio', 'devUgur/video-studio', 'private', 'active')").run();
+    return { ...context, status };
+  }
+
+  it("names a provider it left out for private content instead of skipping it silently", async () => {
+    stubModels(["deepseek-chat"]);
+    const { call, env: keyed } = setup();
+    await call("/api/providers/deepseek/key", { method: "PUT", body: { apiKey: KEY }, scopes: "providers:write" });
+    const router = await ModelRouter.load(keyed);
+    await expect(router.chat("worker-cheap", { messages: [] }, { privateContent: true, pinned: { provider: "deepseek", model: "deepseek-chat" } })).rejects.toThrow(
+      /deepseek\/deepseek-chat: gesperrt \(privates Repository/,
+    );
+  });
+
+  it("refuses an evaluating model for a private project and drops it when the chat moves into one", async () => {
+    const { call } = withThreads();
+    stubModels(["deepseek-chat"]);
+    await call("/api/providers/deepseek/key", { method: "PUT", body: { apiKey: KEY }, scopes: "providers:write" });
+    const thread = (await call("/api/threads", { method: "POST", body: { projectId: "video-studio" } })).body as { id: string };
+    const refused = await call(`/api/threads/${thread.id}`, { method: "PATCH", body: { model: { provider: "deepseek", model: "deepseek-chat" } } });
+    expect(refused.status).toBe(400);
+    expect((refused.body as { error: string }).error).toMatch(/DeepSeek.*gesperrt/);
+
+    const open = (await call("/api/threads", { method: "POST", body: { projectId: "uguroezdamar" } })).body as { id: string };
+    expect((await call(`/api/threads/${open.id}`, { method: "PATCH", body: { model: { provider: "deepseek", model: "deepseek-chat" } } })).status).toBe(200);
+    const moved = await call(`/api/threads/${open.id}`, { method: "PATCH", body: { projectId: "video-studio" } });
+    expect(moved.body).toMatchObject({ projectId: "video-studio", model: null });
+    expect((moved.body as { notice: string }).notice).toMatch(/gesperrt/);
+  });
+});

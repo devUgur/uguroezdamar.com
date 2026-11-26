@@ -11,6 +11,9 @@ import { ModelError } from "./port.ts";
 import { WorkersAiModel } from "./workers-ai.ts";
 import type { SubrequestBudget } from "../runtime/budget.ts";
 
+/** Marker in the attempts of a run: the target was left out because the content is private. The portal reads it. */
+export const PRIVATE_BLOCK = "gesperrt (privates Repository, Anbieter wertet Daten aus)";
+
 export interface RouteOptions {
   /** Each external attempt takes one subrequest; without a budget nothing is counted. */
   budget?: SubrequestBudget;
@@ -116,6 +119,11 @@ export class ModelRouter {
     }));
   }
 
+  /** True when the provider may evaluate prompts (or is unknown); such a provider never gets private content. */
+  trainsOnData(providerId: string): boolean {
+    return this.config.providers[providerId]?.trainsOnData !== false;
+  }
+
   /** True when the pinned model's provider does not evaluate prompts (so private content may go to it). */
   keepsContentPrivate(pinned: PinnedModel): boolean {
     return this.offers(pinned) && this.config.providers[pinned.provider]?.trainsOnData === false;
@@ -150,12 +158,17 @@ export class ModelRouter {
     const chain = this.ordered(alias);
     const ordered = options.pinned ? [this.target(options.pinned), ...chain.filter((target) => !sameTarget(target, options.pinned))] : chain;
     if (!ordered.length) throw new ModelError(`Unknown model alias "${alias}"`, "router", 400);
-    const targets = options.privateContent ? ordered.filter((target) => this.config.providers[target.provider]?.trainsOnData === false) : ordered;
+    const attempts: string[] = [];
+    // Private content never reaches a provider that may evaluate it. Blocked targets are named, so a chosen model
+    // that was left out does not look like a silent failure.
+    const targets = options.privateContent ? ordered.filter((target) => !this.trainsOnData(target.provider)) : ordered;
+    if (options.privateContent) {
+      for (const target of ordered.filter((candidate) => this.trainsOnData(candidate.provider))) attempts.push(`${target.provider}/${target.model}: ${PRIVATE_BLOCK}`);
+    }
     if (!targets.length) {
-      throw new ModelError("Dieses Projekt ist privat: Es darf nur ein Modell ohne Datenauswertung antworten (z. B. Claude, OpenAI, Workers AI oder Modal), und keines davon ist für diese Rolle eingetragen.", "router", 400);
+      throw new ModelError(`Dieses Projekt ist privat: Es darf nur ein Modell ohne Datenauswertung antworten (z. B. Claude, OpenAI, Workers AI oder Modal), und keines davon ist für diese Rolle eingetragen. ${attempts.join(" | ")}`, "router", 400);
     }
 
-    const attempts: string[] = [];
     let lastError: unknown;
     for (const target of targets) {
       const port = this.hasCredentials(target.provider) ? this.port(target.provider, target.model) : undefined;

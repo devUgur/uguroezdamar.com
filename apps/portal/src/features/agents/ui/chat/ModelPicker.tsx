@@ -11,6 +11,8 @@ interface ModelPickerProps {
   catalog: ModelCatalog;
   /** The agent's alias, shown for the default choice. */
   defaultAlias: string;
+  /** Private repository in play: providers that may evaluate prompts are shown but cannot be chosen. */
+  privateContent: boolean;
   onChanged: () => void;
 }
 
@@ -18,7 +20,7 @@ const DEFAULT = "default";
 const SEPARATOR = "::";
 
 /** Provider and model for this thread. Only providers with a key list their models; keys are set under /models. */
-export function ModelPicker({ threadId, value, catalog, defaultAlias, onChanged }: ModelPickerProps) {
+export function ModelPicker({ threadId, value, catalog, defaultAlias, privateContent, onChanged }: ModelPickerProps) {
   const [pending, startTransition] = useTransition();
   const current = value ? `${value.provider}${SEPARATOR}${value.model}` : DEFAULT;
 
@@ -46,9 +48,11 @@ export function ModelPicker({ threadId, value, catalog, defaultAlias, onChanged 
             <SelectGroup key={provider.id}>
               <SelectLabel>{provider.label}</SelectLabel>
               {provider.models.map((model) => (
-                <SelectItem key={model.id} value={`${provider.id}${SEPARATOR}${model.id}`}>
+                <SelectItem key={model.id} value={`${provider.id}${SEPARATOR}${model.id}`} disabled={privateContent && provider.trainsOnData}>
                   {provider.shortLabel} · {model.label}
-                  {provider.trainsOnData ? <span className="ml-2 text-xs text-muted-foreground">wertet Daten aus</span> : null}
+                  {provider.trainsOnData ? (
+                    <span className="ml-2 text-xs text-muted-foreground">{privateContent ? "gesperrt: privates Repository" : "wertet Daten aus"}</span>
+                  ) : null}
                   {model.note ? <span className="ml-2 text-xs text-muted-foreground">{model.note}</span> : null}
                 </SelectItem>
               ))}

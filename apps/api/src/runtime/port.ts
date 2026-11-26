@@ -39,6 +39,8 @@ export interface AgentStatus {
   running: boolean;
   step: number;
   startedAt?: number;
+  /** The thread has seen content of a private repository: only providers without data evaluation may answer. */
+  private?: boolean;
 }
 
 export interface AgentRuntimePort {

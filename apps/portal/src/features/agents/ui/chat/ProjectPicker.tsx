@@ -22,7 +22,10 @@ export function ProjectPicker({ threadId, value, projects, disabled, onChanged }
     startTransition(async () => {
       const result = await chooseProject(threadId, projectId);
       if (!result.ok) toast.error(result.error ?? "Projekt konnte nicht gewechselt werden.");
-      else onChanged();
+      else {
+        if (result.message) toast.message(result.message);
+        onChanged();
+      }
     });
   }
 

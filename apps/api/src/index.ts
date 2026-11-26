@@ -254,17 +254,32 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
       if (!project) return json({ error: "Unbekanntes oder entferntes Projekt" }, 400);
       if ((await stub.status()).running) return json({ error: "Das Projekt lässt sich nicht wechseln, solange der Agent arbeitet." }, 409);
     }
-    if (input.model) {
-      const router = await ModelRouter.load(env, caller.tenantId);
-      if (!router.offers(input.model)) return json({ error: "Unbekanntes Modell" }, 400);
-      await router.warmUp(input.model);
+    const router = await ModelRouter.load(env, caller.tenantId);
+    if (input.model && !router.offers(input.model)) return json({ error: "Unbekanntes Modell" }, 400);
+    // A private repository never goes to a provider that may evaluate it: refuse that choice instead of skipping it later.
+    const projectId = input.projectId ?? thread.project_id ?? DEFAULT_PROJECT;
+    const target = await env.DB.prepare("SELECT name, visibility FROM projects WHERE tenant_id = ? AND id = ?").bind(caller.tenantId, projectId).first<{ name: string; visibility: string }>();
+    const isPrivate = target?.visibility === "private" || (await stub.status()).private === true;
+    const currentModel = thread.model ? (JSON.parse(thread.model) as { provider: string; model: string }) : null;
+    let model = input.model !== undefined ? input.model : currentModel;
+    let notice: string | undefined;
+    if (isPrivate && model && router.trainsOnData(model.provider)) {
+      const label = router.catalog().providers.find((provider) => provider.id === model?.provider)?.label ?? model.provider;
+      if (input.model) {
+        return json({ error: `${label} darf Eingaben auswerten und ist für private Repositories gesperrt („${target?.name ?? projectId}“). Wähle ein Modell ohne Datenauswertung, z. B. Claude oder OpenAI.` }, 400);
+      }
+      // Switched to a private project with an evaluating model chosen: back to the automatic choice.
+      model = null;
+      notice = `${label} ist für private Repositories gesperrt; der Chat nutzt wieder die automatische Modellwahl.`;
     }
+    if (model && input.model) await router.warmUp(model);
+    const modelChanged = input.model !== undefined || model !== currentModel;
     await env.DB.prepare(
       `/* tenant:parent */ UPDATE threads SET title = COALESCE(?, title), project_id = COALESCE(?, project_id), model = CASE WHEN ? THEN ? ELSE model END, updated_at = unixepoch() WHERE id = ?`,
     )
-      .bind(input.title?.slice(0, 120) ?? null, input.projectId ?? null, input.model !== undefined ? 1 : 0, input.model ? JSON.stringify(input.model) : null, threadId)
+      .bind(input.title?.slice(0, 120) ?? null, input.projectId ?? null, modelChanged ? 1 : 0, model ? JSON.stringify(model) : null, threadId)
       .run();
-    return json(toThread((await loadThread(env, caller.tenantId, threadId)) ?? thread));
+    return json({ ...toThread((await loadThread(env, caller.tenantId, threadId)) ?? thread), ...(notice ? { notice } : {}) });
   }
 
   if (!action && method === "DELETE") {
