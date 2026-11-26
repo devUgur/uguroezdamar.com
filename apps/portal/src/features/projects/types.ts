@@ -64,9 +64,27 @@ export interface ProjectTask {
   threadId: string | null;
 }
 
+/** A preview URL of a branch or pull request (GET /api/projects/:id/previews, ADR 0035). */
+export interface Preview {
+  ref: string;
+  alias: string;
+  url: string;
+  versionId: string | null;
+  status: "ready" | "failed";
+  commit: string | null;
+  updatedAt: number;
+}
+
+/** Previews of a project; `available` is false until workstations and the preview token are set up. */
+export interface ProjectPreviews {
+  available: boolean;
+  previews: Preview[];
+}
+
 export interface ProjectOverview {
   project: Project | null;
   sprints: Sprint[];
   tasks: ProjectTask[];
+  previews: ProjectPreviews;
   error: string | null;
 }
