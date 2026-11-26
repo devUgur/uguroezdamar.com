@@ -51,6 +51,7 @@ export function ModelPicker({ threadId, value, catalog, defaultAlias, onChanged 
               {provider.models.map((model) => (
                 <SelectItem key={model.id} value={`${provider.id}${SEPARATOR}${model.id}`} disabled={!provider.available}>
                   {provider.shortLabel} · {model.label}
+                  {provider.trainsOnData ? <span className="ml-2 text-xs text-muted-foreground">wertet Daten aus</span> : null}
                   {model.note ? <span className="ml-2 text-xs text-muted-foreground">{model.note}</span> : null}
                 </SelectItem>
               ))}

@@ -6,6 +6,7 @@ const LINKS = [
   { href: "/agents", label: "Agenten" },
   { href: "/work", label: "Aufgaben" },
   { href: "/organization", label: "Organisation" },
+  { href: "/projects", label: "Projekte" },
   { href: "/chat", label: "Chat" },
   { href: "/admin/team", label: "Team" },
 ];

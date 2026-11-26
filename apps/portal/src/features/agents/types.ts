@@ -66,6 +66,8 @@ export interface CatalogProvider {
   id: string;
   label: string;
   shortLabel: string;
+  /** The provider may use prompts for training; such models are never used for private repositories. */
+  trainsOnData: boolean;
   available: boolean;
   models: { id: string; label: string; note?: string; inputUsdPerM: number; outputUsdPerM: number }[];
 }

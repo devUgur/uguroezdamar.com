@@ -32,6 +32,8 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 | `GET /api/threads`, `POST /api/threads` | Threads auflisten, anlegen |
 | `GET/PATCH/DELETE /api/threads/:id` | Verlauf, Status, offene Freigaben und Events; Titel oder Modell ändern; archivieren |
 | `POST /api/threads/:id/chat`, `…/stop` | Auftrag annehmen, Lauf abbrechen |
+| `GET /api/github/repositories` | Repositories des Kontos, die der Token sieht (nur freigegebene Besitzer, `GITHUB_OWNERS`), mit ihrem Projekt |
+| `GET/POST /api/projects`, `DELETE /api/projects/:id` | Projekte auflisten; ein Repository als Projekt registrieren (`{ "repo": "owner/name" }`); entfernen. [ADR 0029](../../docs/architecture/decisions/0029-projects-as-repository-access.md) |
 | `GET /api/models` | Anbieter, Modelle, Verfügbarkeit, Aliase |
 | `GET /api/approvals`, `POST /api/approvals/:id` | offene Freigaben; `{ "decision": "approve" \| "reject" }` |
 | `GET /api/events?thread=…&since=…` | Events nachladen |
