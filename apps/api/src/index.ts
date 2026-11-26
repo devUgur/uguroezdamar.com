@@ -6,6 +6,7 @@ import { emit, recentEvents } from "./events.ts";
 import { ModelRouter } from "./models/router.ts";
 import { buildOfficeLayout } from "./office/layout.ts";
 import { officeActivityOf } from "./office/presence.ts";
+import { organizationCatalog } from "./organization/catalog.ts";
 import { SubrequestBudget } from "./runtime/budget.ts";
 import { toolByName } from "./tools/registry.ts";
 import { handleTasks } from "./work/tasks.ts";
@@ -274,6 +275,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   }
 
   if (path === "/api/office/state" && method === "GET") return json(await officeSnapshot(env));
+  if (path === "/api/organization" && method === "GET") return json(await organizationCatalog(env));
 
   const tasks = await handleTasks(request, env, caller, path);
   if (tasks) return tasks;

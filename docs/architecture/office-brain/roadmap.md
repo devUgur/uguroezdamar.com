@@ -1,6 +1,6 @@
 # Office Brain – Umsetzungsroadmap
 
-- Status: Agentenchat, Office-Präsenz und erstes persistentes Aufgabenboard umgesetzt; Organisationsverwaltung und automatische Orchestrierung folgen
+- Status: Agentenchat, Office-Präsenz, Aufgabenboard und erster Organisationskatalog umgesetzt; schreibende Organisationsverwaltung und automatische Orchestrierung folgen
 - Stand: 26.11.2026
 - Ziel: Aus dem bestehenden Portal und Agenten-Control-Plane schrittweise eine nachvollziehbare AI-Software-Organisation entwickeln
 
@@ -30,13 +30,16 @@ Die Aufgaben liegen bei Agentenarbeit gemäß [ADR 0026](../decisions/0026-agent
 
 **Ergebnis:** verwaltbare Abteilungen, Rollenprofile, Fähigkeiten und Agent-Definitionen; getrennt von konkreten Agent-Instanzen, Runs und Workstations.
 
-- Bestehende `AGENTS`-Registry und D1-Instanzen inventarisieren; keine scheinbaren Mitarbeitenden aus UI-Daten erzeugen.
-- Stabilen Vertrag für `department`, `role`, `reportsTo`, `capabilities`, Policy-Version und Agent-Definition festlegen.
+- **Umgesetzt:** D1 führt Abteilungen, versionierte Rollenprofile, versionierte Agent-Definitionen und Agent-Instanzen getrennt; `/api/organization` ist geschützt.
+- **Umgesetzt:** `/organization` zeigt read-only Rollenprofile und echte Instanzen. Nur Definitionen mit bekanntem Registry-Key werden als ausführbar ausgewiesen.
+- **Umgesetzt:** Chef ist als `chef-v1` dem stabilen Rollenprofil `chief` zugeordnet; weitere Profile erzeugen weder Instanzen noch Office-Avatare.
+- Als Nächstes: Owner-geschützte Verwaltung mit expliziten Scopes, Audit-Events und Änderungsversionen; Instanz-/Desk-Lifecycle ohne Verlust historischer Runs.
+- Stabilen Vertrag für `department`, `role`, `reportsTo`, `capabilities`, Policy-Version und Agent-Definition erweitern, sobald echte Delegation die Beziehungen benötigt.
 - Definition und Instanz unterscheiden: Definition enthält Prompt-/Tool-/Modell-Policy; Instanz ist ein aktiver Runtime-Akteur mit Limits und Desk.
 - Hierarchie nur als Delegationsregel behandeln, nie als implizite Berechtigung.
 - Owner-geschützte Verwaltung erst nach Rollen-/Scope-Modell freischalten.
 
-**Gate:** Katalog und Office zeigen dieselben aktiven Instanzen; jede Rolle hat belegte Aufgaben und Least-Privilege-Tools; Deaktivieren löscht weder historische Runs noch Events.
+**Gate:** Katalog und Office zeigen dieselben aktiven Instanzen; jede ausführbare Rolle hat belegte Aufgaben und Least-Privilege-Tools; Deaktivieren löscht weder historische Runs noch Events.
 
 ### 2. Backlog und Delivery
 
@@ -117,7 +120,7 @@ Es wird kein zusätzliches Agentenframework, Message Broker, Graph-/Vektorspeich
 ## Nächste Reihenfolge
 
 1. Task-Board und Task-zu-Thread-Ausführung im Dev-Portal auf echte Modellannahme, Statusänderungen, zwei Browser und WebSocket-Reconnect abnehmen.
-2. Agent-Definitionen und Instanzen als Organisationskatalog modellieren; nur die registrierte ausführbare Instanz bleibt aktiv.
+2. Owner-geschützte Schreibverwaltung für Profile und Instanzen mit Berechtigungsscopes und Audit-Ereignissen bauen.
 3. Reviewer-/QA-Handoff und unabhängige Abnahme ergänzen.
 4. Workstation-/Worktree-Runner isoliert evaluieren; erst nach erfolgreichem POC persistente Orchestrierung erweitern.
 5. Management- und Agent-Detailansicht sowie dynamische Abteilungen aus den bestätigten Datenverträgen bauen.

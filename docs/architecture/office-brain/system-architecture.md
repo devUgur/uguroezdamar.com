@@ -7,13 +7,13 @@
 
 Das Office erweitert das bestehende Portal, statt eine zweite Verwaltungs-App daneben zu stellen. Das Portal bleibt die Bedienoberfläche und Session-Grenze. Agentenarbeit wird über die geschützte `apps/api`-Control-Plane validiert und in D1 gespeichert (ADR 0026); bestehende Portal-Domänen nutzen weiterhin `packages/server` und Neon. Modell- und Ausführungsanbieter hängen hinter schmalen Adaptern.
 
-**Bestand heute:** Agentenchat, Aufgabenboard und Agentenbüro nutzen einen Laufzeitpfad: das Portal auf Vercel ruft `apps/api` auf Cloudflare auf; D1 hält Work-Items und Events, Durable Objects halten Thread-Verlauf und synchronisierte Office-Bewegungspläne. Neon bleibt für bestehende Portal-Daten. Weitere Domänen erhalten einen expliziten Speichervertrag, statt dieselben Aufgaben in Neon und D1 zu duplizieren.
+**Bestand heute:** Agentenchat, Aufgabenboard, read-only Organisationskatalog und Agentenbüro nutzen einen Laufzeitpfad: das Portal auf Vercel ruft `apps/api` auf Cloudflare auf; D1 hält Organisationsprofile, Instanzen, Work-Items und Events, Durable Objects halten Thread-Verlauf und synchronisierte Office-Bewegungspläne. Neon bleibt für bestehende Portal-Daten. Weitere Domänen erhalten einen expliziten Speichervertrag, statt dieselben Aufgaben in Neon und D1 zu duplizieren.
 
 ~~~mermaid
 flowchart LR
   Owner[Owner / Admin] --> Portal[apps/portal<br/>Office UI und API]
   Portal --> API[apps/api<br/>Control Plane und Agenten-Adapter]
-  API --> D1[(Cloudflare D1<br/>Tasks, Agenten, Events)]
+  API --> D1[(Cloudflare D1<br/>Organisation, Tasks, Agenten, Events)]
   API --> Runtime[Durable Objects<br/>Thread, LiveHub, OfficePresence]
   API --> ModelPort[ModelPort<br/>Profil → Provider/Modell]
   ModelPort --> LLM[Modellprovider oder Gateway]
@@ -38,7 +38,7 @@ Die Office-Oberfläche gehört unter geschützte Portalrouten. `/agents`, `/chat
 - Wissen: Quellen, Versionen, Zugriffsumfang, Freigabestatus und Zitate;
 - Kosten/Aktivität: Modellnutzung, Fehler, Laufzeiten und Kostenabschätzung.
 
-Die Next.js-Seite ruft Queries und Actions ihres eigenen Features auf. UI-Code greift weder direkt auf D1/Neon noch auf Cloudflare-Bindings zu. Jede Route und Action prüft die Portal-Session; die API prüft Service-Token, Eingaben, Statusübergänge und Scope serverseitig.
+Die Next.js-Seite ruft Queries und Actions ihres eigenen Features auf. UI-Code greift weder direkt auf D1/Neon noch auf Cloudflare-Bindings zu. Jede Route und Action prüft die Portal-Session; die API prüft Service-Token, Eingaben, Statusübergänge und Scope serverseitig. `/organization` liest den Katalog read-only. Rollenprofile verleihen keine Ausführungsrechte; nur registrierte Runtime-Definitionen können Tasks übernehmen.
 
 ### Agentenlauf
 
@@ -71,6 +71,10 @@ Eine Quelle besitzt Eigentümer, Herkunft, Zeitstempel, Version, Datenklasse, Um
 - Bei Embeddings werden Provider, Modell-ID, Version, Dimension und Chunking-Version gespeichert. Ein Modellwechsel braucht ein Reindexing-Konzept.
 - Importierte oder vom Agenten vorgeschlagene Fakten werden als ungeprüft markiert. Agenten dürfen nicht stillschweigend Richtlinien oder freigegebenes Wissen überschreiben.
 - Erinnerungen eines Threads bleiben getrennt von gemeinsamem, kuratiertem Wissen.
+
+## Persistierter Organisationskatalog
+
+ADR 0027 bildet Abteilungen, Rollenprofile, Agent-Definitionen und Agent-Instanzen als getrennte D1-Entitäten ab. Rollen beschreiben fachliche Verantwortung und Fähigkeiten, nicht Tool-Rechte. Die Definition `chef-v1` verweist auf den bestehenden Registry-Key `chef`; weitere Profile sind noch nicht ausführbar. Die Office-Ansicht rendert weiterhin nur aktive Runtime-Instanzen aus `/api/agents`, nicht jedes Rollenprofil.
 
 ## Konzeptionelle Module
 

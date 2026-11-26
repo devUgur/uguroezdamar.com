@@ -1,6 +1,6 @@
 # Office Brain – Architekturplanung
 
-- Status: Agentenchat, synchronisierte Präsenz und erstes Aufgabenboard sind umgesetzt; weitere Organisations- und Orchestrierungsphasen sind geplant
+- Status: Agentenchat, synchronisierte Präsenz, erstes Aufgabenboard und read-only Organisationskatalog sind umgesetzt; schreibende Verwaltung und Orchestrierung sind geplant
 - Stand: 26.11.2026
 - Zweck: Zielbild und gestufter Plan für ein webbasiertes Office aus menschlichem Owner, spezialisierten Agenten, Aufgaben, Werkzeugen und gemeinsamem Wissen
 
@@ -31,7 +31,7 @@ Das Admin-Portal soll später ein sicheres Kontrollzentrum erhalten, in dem der 
 
 Das heutige `/agents`-Büro und `/chat` laufen bereits auf der in [ADR 0024](../decisions/0024-agent-platform-on-cloudflare.md) beschriebenen Portal-/Cloudflare-Architektur. [ADR 0025](../decisions/0025-synchronisierte-agentenpraesenz.md) ergänzt einen gemeinsamen, persistenten Bewegungszustand im Cloudflare Durable Object. D1 hält Agentenereignisse und die ersten persistierten Work-Items; die Bürobewegung wird daraus serverautoritatv abgeleitet. Kamera, Auswahl und Darstellungsmodus bleiben lokal je Browser. [ADR 0026](../decisions/0026-agent-work-management.md) legt den Work-Control-Plane fest.
 
-Das Aufgabenboard `/work` und der Work-Control-Plane sind als erster Ausschnitt umgesetzt. Organisationsverwaltung, Zuordnung zu echten Runs, Wissensbibliothek, Graph und Kostenübersicht sind dadurch noch nicht implementiert. Ihre Daten- und Laufzeitgrenzen richten sich nach der Roadmap und werden vor jeder Erweiterung mit gültigen ADRs abgestimmt.
+Das Aufgabenboard `/work`, der Work-Control-Plane und ein read-only Organisationskatalog unter `/organization` sind umgesetzt. Der Katalog zeigt gespeicherte Abteilungen, Rollenprofile, Definitionen und echte Agenteninstanzen getrennt. Schreibende Organisationsverwaltung, unabhängige QA-Runs, Wissensbibliothek, Graph und Kostenübersicht sind dadurch noch nicht implementiert. Ihre Daten- und Laufzeitgrenzen richten sich nach der [Roadmap](roadmap.md) und werden vor jeder Erweiterung mit gültigen ADRs abgestimmt.
 
 ## Dokumente
 
