@@ -1,6 +1,6 @@
 # Office Brain – Umsetzungsroadmap
 
-- Status: Agentenchat, Office-Präsenz, Aufgabenboard, Projektkatalog und owner-geschützte Organisationsverwaltung umgesetzt; automatische Orchestrierung folgt
+- Status: Agentenchat, Office-Präsenz, Aufgabenboard, Projektkatalog und owner-geschützte Organisationsverwaltung umgesetzt; Workstations und Previews gebaut, Aktivierung offen; automatische Orchestrierung folgt
 - Stand: 26.11.2026
 - Ziel: Aus dem bestehenden Portal und Agenten-Control-Plane schrittweise eine nachvollziehbare AI-Software-Organisation entwickeln
 
@@ -75,6 +75,10 @@ Die Aufgaben liegen bei Agentenarbeit gemäß [ADR 0026](../decisions/0026-agent
 
 **Ergebnis:** parallele Coding-Läufe ohne gemeinsamen schreibenden Workspace.
 
+- **Entschieden und gebaut, noch nicht aktiviert ([ADR 0035](../decisions/0035-isolated-workstations-and-previews.md)):** Eine Workstation ist ein Durable Object mit einem Cloudflare Container, je Lauf ein neues. Der Container hat kein Internet; `github.com` (nur Klonen des einen Repositories), `registry.npmjs.org` (nur lesend) und für Previews `api.cloudflare.com` (nur der Preview-Worker des Projekts) laufen durch Gateways im Worker, die die Zugangsdaten einsetzen. Im Container liegt kein Secret.
+- **Umgesetzt:** Werkzeug `sandbox_run` (Chef und QA-Reviewer): klonen, Branch oder Commit auschecken, `pnpm install` und einen Befehl der Allowlist ausführen (`check`, `test`, `lint`, `typecheck`, `build`); gekürzte, geschwärzte Ausgabe; Event `sandbox_run` mit Dauer und Instanztyp je Lauf; 20 Läufe je Mandant und Tag.
+- **Umgesetzt:** Previews je Repository: `preview_deploy` (freigabepflichtig) lädt eine Version des Preview-Workers `pv-<projekt>` mit Alias `pr-<n>` oder Branch hoch; die URL steht im Portal unter `/projects/[id]`.
+- **Als Nächstes:** Owner-Freigabe für die Aktivierung (Container in `wrangler.jsonc`, Kosten), erster echter Lauf auf `api-dev`, Pfadliste des Preview-Gateways am echten Wrangler-Upload prüfen, Workstation-Datensatz an Task-Runs binden.
 - Ein Workstation-Datensatz bindet Agent-Run, Workspace/Worktree, Branch, Ressourcenlimits und Lifecycle.
 - Isolierung über bestehende GitHub-/Runner-Grenzen; kein Zugriff auf lokale Owner-Dateien oder beliebige Shell-Kommandos.
 - Logs und Artefakte redigieren Secrets/PII; Retention und Cleanup sind festgelegt.
@@ -124,7 +128,7 @@ Es wird kein zusätzliches Agentenframework, Message Broker, Graph-/Vektorspeich
 ## Nächste Reihenfolge
 
 1. Task/Run, QA und Organisationsverwaltung in API-Dev mit echtem Modell, PR-Diff, CI-Status, Scope-/Versionskonflikten, Fehler/Stop und Zwei-Browser-Live-Pfad abnehmen.
-2. Isolierte Workstation-/Worktree-Runner evaluieren; parallele Coding-Runs erst nach erfolgreichem Isolation-POC aktivieren.
+2. Workstations nach ADR 0035 auf `api-dev` aktivieren und mit einem echten Lauf abnehmen; parallele Coding-Runs erst danach.
 3. Work-Items um echte PR-/Commit-/CI-Referenzen und Abhängigkeiten ergänzen.
 4. Product/Planning und Tech-Lead-Rollen mit strukturierten Übergaben umsetzen; zuerst sequenziell und mit Begrenzungen.
 5. Management-/Agent-Detailansichten sowie Kosten- und Delivery-Metriken aus echten Runs ergänzen.
