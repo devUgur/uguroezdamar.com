@@ -12,7 +12,9 @@ import { AGENTS } from "./registry.ts";
 
 /** Names of the secrets an agent depends on. Only whether they are set is reported, never a value. */
 const CREDENTIALS = [
-  { name: "AGENT_GITHUB_TOKEN", purpose: "Repo lesen, Commits und Pull Requests" },
+  { name: "AGENT_GITHUB_TOKEN", purpose: "Repo lesen, Commits und Pull Requests (Rückfall zur GitHub App)" },
+  { name: "AGENT_GH_APP_ID", purpose: "GitHub App: Kennung" },
+  { name: "AGENT_GH_APP_PRIVATE_KEY", purpose: "GitHub App: privater Schlüssel" },
   { name: "GEMINI_API_KEY", purpose: "Gemini-Modelle" },
   { name: "MODAL_LLM_API_KEY", purpose: "Eigene Modelle auf Modal" },
 ] as const;

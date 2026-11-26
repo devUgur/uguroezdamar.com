@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { has, run } from "../lib/exec.ts";
 import { listSecretNames, setSecret as setInfisicalSecret } from "../lib/infisical.ts";
 import { askHidden } from "../lib/prompt.ts";
@@ -22,6 +23,8 @@ interface RepoSecret {
   required: boolean;
   purpose: string;
   howTo?: string[];
+  /** Multi-line value (a PEM key): the prompt asks for the path of a file, which is read and handed to gh without printing it. */
+  fromFile?: boolean;
 }
 
 const REPO_SECRETS: RepoSecret[] = [
@@ -43,6 +46,19 @@ const REPO_SECRETS: RepoSecret[] = [
     required: false,
     purpose: "Eigene Modelle auf Modal (apps/api/modal/llm.py); gleicher Wert wie Modal-Secret uguroezdamar-llm",
     howTo: ["Wird beim Einrichten von Modal erzeugt (apps/api/README.md, Abschnitt Modal); nicht von Hand eintippen."],
+  },
+  {
+    name: "AGENT_GH_APP_ID",
+    required: false,
+    purpose: "GitHub App der Agenten (ADR 0031): App ID",
+    howTo: ["github.com/settings/apps → die App → „About“ → App ID (nur Ziffern)"],
+  },
+  {
+    name: "AGENT_GH_APP_PRIVATE_KEY",
+    required: false,
+    fromFile: true,
+    purpose: "GitHub App der Agenten: privater Schlüssel",
+    howTo: ["Auf der App-Seite „Generate a private key“; die .pem-Datei wird heruntergeladen", "Hier den Pfad der Datei eingeben (der Inhalt wird nicht angezeigt)"],
   },
   {
     name: "AGENT_GITHUB_TOKEN",
@@ -144,12 +160,24 @@ export async function apiSecrets(apply: boolean, rotate: boolean): Promise<numbe
   for (const secret of REPO_SECRETS.filter((entry) => !entry.required && !repo.has(entry.name))) {
     console.log(`\n${secret.name} – ${secret.purpose}`);
     for (const line of secret.howTo ?? []) console.log(`  · ${line}`);
-    const value = await askHidden("Wert einfügen (leer = überspringen): ");
+    let value = await askHidden(secret.fromFile ? "Pfad der .pem-Datei (leer = überspringen): " : "Wert einfügen (leer = überspringen): ");
     if (value === null) {
       console.log("Kein interaktives Terminal; übersprungen.");
       continue;
     }
     if (!value) continue;
+    if (secret.fromFile) {
+      try {
+        value = readFileSync(value.replace(/^"|"$/g, ""), "utf8");
+      } catch {
+        console.error("Datei nicht lesbar; übersprungen.");
+        continue;
+      }
+      if (!value.includes("PRIVATE KEY")) {
+        console.error("Das ist keine PEM-Schlüsseldatei; übersprungen.");
+        continue;
+      }
+    }
     if (!setGhSecret(secret.name, value)) {
       console.error(`${secret.name} konnte nicht gesetzt werden.`);
       return 1;

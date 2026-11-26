@@ -1,4 +1,5 @@
-import type { GithubRepository, Project } from "../types";
+import type { GithubRepository, GithubStatus, Project } from "../types";
+import { GithubConnection } from "./GithubConnection";
 import { ProjectList } from "./ProjectList";
 import { RepositoryList } from "./RepositoryList";
 
@@ -7,12 +8,14 @@ interface ProjectsViewProps {
   projectsError: string | null;
   repositories: GithubRepository[];
   repositoriesError: string | null;
+  githubStatus: GithubStatus | null;
+  githubStatusError: string | null;
   notice?: string;
   error?: string;
 }
 
 /** /projects: which repositories the agents may work on, and which others exist on the GitHub account. */
-export function ProjectsView({ projects, projectsError, repositories, repositoriesError, notice, error }: ProjectsViewProps) {
+export function ProjectsView({ projects, projectsError, repositories, repositoriesError, githubStatus, githubStatusError, notice, error }: ProjectsViewProps) {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-10">
       <header className="flex flex-col gap-2">
@@ -33,6 +36,8 @@ export function ProjectsView({ projects, projectsError, repositories, repositori
           {error}
         </p>
       ) : null}
+
+      <GithubConnection status={githubStatus} error={githubStatusError} />
 
       <section className="flex flex-col gap-4" aria-labelledby="projects-title">
         <h2 id="projects-title" className="font-serif text-xl">

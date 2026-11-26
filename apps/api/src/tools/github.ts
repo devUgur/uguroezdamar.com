@@ -1,4 +1,5 @@
 import type { Tool, ToolContext } from "./port.ts";
+import { githubToken } from "../github/credentials.ts";
 import { allowedOwners } from "../projects/repositories.ts";
 import { str, ToolInputError } from "./port.ts";
 
@@ -57,9 +58,13 @@ function assertWritableBranch(branch: string, policy: RepoPolicy): void {
   );
 }
 
-async function gh<T>(context: ToolContext, path: string, init: RequestInit = {}): Promise<T> {
-  const token = context.env.AGENT_GITHUB_TOKEN;
-  if (!token) throw new Error("AGENT_GITHUB_TOKEN ist nicht gesetzt.");
+/** The account a GitHub path belongs to (/repos/owner/name/...), which selects the app installation. */
+function ownerOfPath(path: string, fallback: string): string {
+  return path.match(/^\/repos\/([^/]+)\//)?.[1] ?? fallback.split("/")[0] ?? "";
+}
+
+async function gh<T>(context: ToolContext, path: string, init: RequestInit = {}, owner?: string): Promise<T> {
+  const token = await githubToken(context.env, owner ?? ownerOfPath(path, context.repo), () => context.budget.take());
   context.budget.take();
   const response = await fetch(`${API}${path}`, {
     ...init,
@@ -205,6 +210,8 @@ const searchCode: Tool = {
     const result = await gh<{ total_count: number; items: { path: string }[] }>(
       context,
       `/search/code?per_page=30&q=${encodeURIComponent(query)}`,
+      {},
+      repo.split("/")[0],
     );
     return { total: result.total_count, paths: result.items.map((item) => item.path) };
   },

@@ -1,4 +1,6 @@
 import type { Env } from "../env.ts";
+import { appConfigured, GithubAccessError, installations } from "../github/app.ts";
+import { githubToken, personalToken } from "../github/credentials.ts";
 
 const API = "https://api.github.com";
 const REPO_NAME = /^[A-Za-z0-9._-]{1,100}\/[A-Za-z0-9._-]{1,100}$/;
@@ -24,27 +26,44 @@ interface GithubRepo {
   pushed_at: string | null;
 }
 
-async function github<T>(env: Env, path: string, beforeFetch?: () => void, init: { method: "POST"; body: unknown } | undefined = undefined): Promise<T> {
-  const token = env.AGENT_GITHUB_TOKEN;
-  if (!token) throw new ProjectError("AGENT_GITHUB_TOKEN ist nicht gesetzt.", 503);
-  beforeFetch?.();
+interface Call {
+  /** Account whose repositories the call touches; selects the GitHub App installation. */
+  owner?: string;
+  /** User-level endpoint: only the personal token can call it, an app installation cannot. */
+  personal?: boolean;
+  /** Runs before every GitHub request, to count it against a subrequest budget. */
+  beforeFetch?: () => void;
+  /** JSON body of a POST. */
+  post?: unknown;
+}
+
+async function github<T>(env: Env, path: string, call: Call = {}): Promise<T> {
+  let token: string;
+  try {
+    token = call.personal || !call.owner ? personalToken(env) : await githubToken(env, call.owner, call.beforeFetch);
+  } catch (error) {
+    if (error instanceof GithubAccessError) throw new ProjectError(error.message, error.status);
+    throw error;
+  }
+  call.beforeFetch?.();
+  const write = call.post !== undefined;
   const response = await fetch(`${API}${path}`, {
-    method: init?.method ?? "GET",
-    body: init ? JSON.stringify(init.body) : undefined,
+    method: write ? "POST" : "GET",
+    body: write ? JSON.stringify(call.post) : undefined,
     headers: {
-      ...(init ? { "content-type": "application/json" } : {}),
+      ...(write ? { "content-type": "application/json" } : {}),
       accept: "application/vnd.github+json",
       authorization: `Bearer ${token}`,
       "user-agent": "uguroezdamar-api",
       "x-github-api-version": "2022-11-28",
     },
   });
-  if (response.status === 401) throw new ProjectError("GitHub lehnt den Token ab (abgelaufen oder ungültig).", 502);
-  if (init && (response.status === 403 || response.status === 404)) {
+  if (response.status === 401) throw new ProjectError("GitHub lehnt den Zugang ab (Token abgelaufen oder ungültig).", 502);
+  if (write && (response.status === 403 || response.status === 404)) {
     throw new ProjectError("GitHub erlaubt dem Token diese Aktion nicht (zum Anlegen braucht er Administration: Read and write).", 403);
   }
-  if (init && response.status === 422) throw new ProjectError("GitHub lehnt den Namen ab (oft: gibt es schon).", 409);
-  if (response.status === 404) throw new ProjectError("Repository nicht gefunden oder für den Token nicht freigegeben.", 404);
+  if (write && response.status === 422) throw new ProjectError("GitHub lehnt den Namen ab (oft: gibt es schon).", 409);
+  if (response.status === 404) throw new ProjectError("Repository nicht gefunden oder für den Zugang nicht freigegeben.", 404);
   if (!response.ok) throw new ProjectError(`GitHub antwortet mit ${response.status}.`, 502);
   return (await response.json()) as T;
 }
@@ -61,15 +80,41 @@ function ownerAllowed(env: Env, owner: string): boolean {
   return allowedOwners(env).includes(owner.toLowerCase());
 }
 
-/** Repositories the token can see, restricted to the allowed owners, with the project each one is registered as. */
-/** `beforeFetch` runs before every GitHub call, so callers inside an agent run can count it against their subrequest budget. */
+/**
+ * Repositories GitHub shows to the app installations and to the personal token, restricted to the allowed
+ * owners, with the project each one is registered as. `beforeFetch` runs before every GitHub call, so callers
+ * inside an agent run can count it against their subrequest budget.
+ */
 export async function listRepositories(env: Env, beforeFetch?: () => void) {
-  const repos: GithubRepo[] = [];
-  for (let page = 1; page <= 4; page += 1) {
-    const batch = await github<GithubRepo[]>(env, `/user/repos?affiliation=owner&sort=pushed&per_page=100&page=${page}`, beforeFetch);
-    repos.push(...batch);
-    if (batch.length < 100) break;
+  const found = new Map<string, GithubRepo>();
+  const add = (batch: GithubRepo[]) => batch.forEach((repo) => found.has(repo.full_name.toLowerCase()) || found.set(repo.full_name.toLowerCase(), repo));
+  if (!appConfigured(env) && !env.AGENT_GITHUB_TOKEN) personalToken(env);
+  try {
+    if (appConfigured(env)) {
+      for (const installation of await installations(env, beforeFetch)) {
+        if (!ownerAllowed(env, installation.account)) continue;
+        for (let page = 1; page <= 4; page += 1) {
+          const batch = await github<{ repositories: GithubRepo[] }>(env, `/installation/repositories?per_page=100&page=${page}`, {
+            owner: installation.account,
+            beforeFetch,
+          });
+          add(batch.repositories);
+          if (batch.repositories.length < 100) break;
+        }
+      }
+    }
+  } catch (error) {
+    if (error instanceof GithubAccessError) throw new ProjectError(error.message, error.status);
+    throw error;
   }
+  if (env.AGENT_GITHUB_TOKEN) {
+    for (let page = 1; page <= 4; page += 1) {
+      const batch = await github<GithubRepo[]>(env, `/user/repos?affiliation=owner&sort=pushed&per_page=100&page=${page}`, { personal: true, beforeFetch });
+      add(batch);
+      if (batch.length < 100) break;
+    }
+  }
+  const repos = [...found.values()];
   const { results } = await env.DB.prepare("SELECT id, repo FROM projects WHERE repo IS NOT NULL AND status = 'active'").all<{ id: string; repo: string }>();
   const registered = new Map(results.map((row) => [row.repo.toLowerCase(), row.id]));
   return repos
@@ -98,7 +143,7 @@ export async function registerProject(env: Env, fullName: string): Promise<{ id:
   const owner = fullName.split("/")[0] ?? "";
   if (!ownerAllowed(env, owner)) throw new ProjectError(`Der Besitzer „${owner}“ ist nicht freigegeben.`, 403);
 
-  const repo = await github<GithubRepo>(env, `/repos/${fullName}`);
+  const repo = await github<GithubRepo>(env, `/repos/${fullName}`, { owner });
   if (repo.archived) throw new ProjectError("Das Repository ist archiviert; dort kann nicht geschrieben werden.", 409);
 
   const visibility = repo.private ? "private" : "public";
@@ -136,11 +181,11 @@ export async function createRepository(
   if (!NEW_REPO_NAME.test(input.name) || input.name.endsWith(".git")) {
     throw new ProjectError("Ungültiger Repository-Name (Buchstaben, Ziffern, Punkt, Bindestrich, Unterstrich).", 400);
   }
-  const me = await github<{ login: string }>(env, "/user");
+  const me = await github<{ login: string }>(env, "/user", { personal: true });
   if (!ownerAllowed(env, me.login)) throw new ProjectError(`Das Konto „${me.login}“ ist nicht freigegeben.`, 403);
-  const created = await github<GithubRepo>(env, "/user/repos", undefined, {
-    method: "POST",
-    body: { name: input.name, description: input.description?.slice(0, 300), private: input.private !== false, auto_init: true },
+  const created = await github<GithubRepo>(env, "/user/repos", {
+    personal: true,
+    post: { name: input.name, description: input.description?.slice(0, 300), private: input.private !== false, auto_init: true },
   });
   const { id } = await registerProject(env, created.full_name);
   return { fullName: created.full_name, private: created.private, projectId: id };

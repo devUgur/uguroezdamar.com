@@ -3,7 +3,7 @@
 - Status: accepted
 - Datum: 2026-11-26
 - Beteiligte: Projektverantwortlicher
-- Ergänzt: [ADR 0024](0024-agent-platform-on-cloudflare.md), [ADR 0027](0027-agent-organization-catalog.md)
+- Ergänzt: [ADR 0024](0024-agent-platform-on-cloudflare.md), [ADR 0027](0027-agent-organization-catalog.md); Zugang zu GitHub: [ADR 0031](0031-github-app-access.md)
 
 ## Kontext
 

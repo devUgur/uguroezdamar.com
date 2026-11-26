@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getProjects, getRepositories, ProjectsView } from "@/src/features/projects";
+import { getGithubStatus, getProjects, getRepositories, ProjectsView } from "@/src/features/projects";
 
 export const metadata: Metadata = { title: "Projekte" };
 
@@ -8,13 +8,19 @@ const first = (value: Param): string | undefined => (Array.isArray(value) ? valu
 
 export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ notice?: Param; error?: Param }> }) {
   const params = await searchParams;
-  const [{ projects, error: projectsError }, { repositories, error: repositoriesError }] = await Promise.all([getProjects(), getRepositories()]);
+  const [{ projects, error: projectsError }, { repositories, error: repositoriesError }, { status, error: statusError }] = await Promise.all([
+    getProjects(),
+    getRepositories(),
+    getGithubStatus(),
+  ]);
   return (
     <ProjectsView
       projects={projects}
       projectsError={projectsError}
       repositories={repositories}
       repositoriesError={repositoriesError}
+      githubStatus={status}
+      githubStatusError={statusError}
       notice={first(params.notice)}
       error={first(params.error)}
     />

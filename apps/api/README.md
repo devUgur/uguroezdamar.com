@@ -91,7 +91,8 @@ Jeder Push auf `dev`, der `apps/api/**` ändert, deployt nach Dev; der Merge `de
 | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | Repository | ja | Deploy und Migrationen |
 | `API_SERVICE_TOKEN` | Environment `api-dev` bzw. `api-production`, gleicher Wert in Infisical dev bzw. prod | ja | Zugang des Portals |
 | `GEMINI_API_KEY` | Repository | nein | Gemini; ohne Schlüssel antwortet Workers AI |
-| `AGENT_GITHUB_TOKEN` | Repository | nein | Repo-Werkzeuge des Agenten |
+| `AGENT_GH_APP_ID`, `AGENT_GH_APP_PRIVATE_KEY` | Repository | nein | GitHub App der Agenten ([ADR 0031](../../docs/architecture/decisions/0031-github-app-access.md)); ersetzt den Token, wo sie installiert ist |
+| `AGENT_GITHUB_TOKEN` | Repository | nein | Rückfall zur App und Anlegen von Repositories |
 | `MODAL_LLM_API_KEY` | Repository, gleicher Wert im Modal-Secret `uguroezdamar-llm` | nein | eigene Modelle auf Modal |
 
 `pnpm ugur api secrets` zeigt, was gesetzt ist (nur Namen). Mit `--apply` erzeugt der Befehl je Stage ein Service-Token und setzt es in GitHub und Infisical, setzt `API_URL` in Infisical, fragt die optionalen Schlüssel verdeckt ab und startet den Dev-Deploy. Danach übernimmt `pnpm ugur hosting env --stage dev --apply` die Portal-Werte in Vercel (Preview).

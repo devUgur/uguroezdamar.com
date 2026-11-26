@@ -4,7 +4,9 @@ import { authorize, type Caller } from "./auth.ts";
 import type { Env } from "./env.ts";
 import { emit, recentEvents } from "./events.ts";
 import { ModelRouter } from "./models/router.ts";
-import { listRepositories, ProjectError, registerProject, unregisterProject } from "./projects/repositories.ts";
+import { GithubAccessError } from "./github/app.ts";
+import { githubStatus } from "./github/credentials.ts";
+import { allowedOwners, listRepositories, ProjectError, registerProject, unregisterProject } from "./projects/repositories.ts";
 import { buildOfficeLayout } from "./office/layout.ts";
 import { officeActivityOf } from "./office/presence.ts";
 import { organizationCatalog } from "./organization/catalog.ts";
@@ -379,7 +381,17 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     return json(results);
   }
 
-  // Repositories the token can see, so the owner can pick which ones become projects.
+  // How the API reaches GitHub: GitHub App installations or the personal token (ADR 0031).
+  if (path === "/api/github/status" && method === "GET") {
+    try {
+      return json(await githubStatus(env, allowedOwners(env)));
+    } catch (error) {
+      if (error instanceof GithubAccessError) return json({ error: error.message }, error.status);
+      throw error;
+    }
+  }
+
+  // Repositories GitHub shows to the app and the token, so the owner can pick which ones become projects.
   if (path === "/api/github/repositories" && method === "GET") {
     try {
       return json(await listRepositories(env));

@@ -23,3 +23,10 @@ export interface GithubRepository {
   pushedAt: string | null;
   projectId: string | null;
 }
+
+/** How the API reaches GitHub (GET /api/github/status, ADR 0031). */
+export interface GithubStatus {
+  mode: "app" | "token" | "none";
+  tokenConfigured: boolean;
+  installations: { id: number; account: string; selection: string; allowed: boolean }[];
+}

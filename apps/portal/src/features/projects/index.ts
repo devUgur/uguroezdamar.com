@@ -1,2 +1,2 @@
-export { getProjects, getRepositories } from "./queries";
+export { getGithubStatus, getProjects, getRepositories } from "./queries";
 export { ProjectsView } from "./ui/ProjectsView";
