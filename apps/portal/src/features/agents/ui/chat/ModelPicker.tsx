@@ -17,7 +17,7 @@ interface ModelPickerProps {
 const DEFAULT = "default";
 const SEPARATOR = "::";
 
-/** Provider and model for this thread. Providers without a key stay visible but cannot be chosen. */
+/** Provider and model for this thread. Only providers with a key list their models; keys are set under /models. */
 export function ModelPicker({ threadId, value, catalog, defaultAlias, onChanged }: ModelPickerProps) {
   const [pending, startTransition] = useTransition();
   const current = value ? `${value.provider}${SEPARATOR}${value.model}` : DEFAULT;
@@ -41,15 +41,12 @@ export function ModelPicker({ threadId, value, catalog, defaultAlias, onChanged 
           <SelectItem value={DEFAULT}>Automatisch ({defaultAlias})</SelectItem>
         </SelectGroup>
         {catalog.providers
-          .filter((provider) => provider.models.length)
+          .filter((provider) => provider.available && provider.models.length)
           .map((provider) => (
             <SelectGroup key={provider.id}>
-              <SelectLabel>
-                {provider.label}
-                {provider.available ? "" : " – nicht verfügbar"}
-              </SelectLabel>
+              <SelectLabel>{provider.label}</SelectLabel>
               {provider.models.map((model) => (
-                <SelectItem key={model.id} value={`${provider.id}${SEPARATOR}${model.id}`} disabled={!provider.available}>
+                <SelectItem key={model.id} value={`${provider.id}${SEPARATOR}${model.id}`}>
                   {provider.shortLabel} · {model.label}
                   {provider.trainsOnData ? <span className="ml-2 text-xs text-muted-foreground">wertet Daten aus</span> : null}
                   {model.note ? <span className="ml-2 text-xs text-muted-foreground">{model.note}</span> : null}
@@ -57,6 +54,11 @@ export function ModelPicker({ threadId, value, catalog, defaultAlias, onChanged 
               ))}
             </SelectGroup>
           ))}
+        {catalog.providers.some((provider) => !provider.available) ? (
+          <SelectGroup>
+            <SelectLabel className="font-normal text-muted-foreground">Weitere Anbieter: Schlüssel unter „Modelle &amp; Schlüssel“ hinterlegen</SelectLabel>
+          </SelectGroup>
+        ) : null}
       </SelectContent>
     </Select>
   );

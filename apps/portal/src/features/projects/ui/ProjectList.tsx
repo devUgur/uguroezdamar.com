@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "@ugur/ui";
 import { startProjectChat, unregisterProject } from "../actions";
 import type { Project } from "../types";
@@ -16,7 +17,11 @@ export function ProjectList({ projects }: { projects: Project[] }) {
         <li key={project.id} className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h3 className="font-medium">{project.name}</h3>
+              <h3 className="font-medium">
+                <Link href={`/projects/${project.id}`} className="underline-offset-2 hover:underline">
+                  {project.name}
+                </Link>
+              </h3>
               <p className="truncate font-mono text-xs text-muted-foreground">{project.repo ?? "ohne Repository"}</p>
             </div>
             <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
@@ -28,6 +33,9 @@ export function ProjectList({ projects }: { projects: Project[] }) {
             {project.visibility === "private" ? " · nur Modelle ohne Datenauswertung" : ""}
           </p>
           <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="secondary">
+              <Link href={`/projects/${project.id}`}>Sprints &amp; Planung</Link>
+            </Button>
             <form action={startProjectChat}>
               <input type="hidden" name="id" value={project.id} />
               <Button type="submit">Chat starten</Button>

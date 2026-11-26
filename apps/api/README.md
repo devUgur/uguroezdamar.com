@@ -11,7 +11,8 @@ Agenten-Backend des Admin-Portals: Threads, Agentenschleife, Modelle, Werkzeuge,
 | `src/approvals.ts` | Text, Risiko und Ablauf der Freigaben; geschützte Pfade |
 | `src/hub.ts` | `LiveHub`: verteilt Events und gestreamten Text per WebSocket, Einmal-Tickets |
 | `src/events.ts` | Event-Log in D1, Tagesbudget |
-| `src/models/` | `ModelPort`, Router mit Fallback und Modellwahl je Thread, Katalog, Adapter (OpenAI-kompatibel, Workers AI) |
+| `src/models/` | `ModelPort`, Router mit Fallback, Modellwahl je Thread und je Rolle, Katalog aller Anbieter, Adapter (Anthropic über das SDK, OpenAI-kompatibel, Workers AI), verschlüsselte Schlüssel je Mandant ([ADR 0033](../../docs/architecture/decisions/0033-model-providers-and-tenant-keys.md)) |
+| `src/work/sprints.ts` | Sprints je Projekt; Aufgaben tragen `sprint_id` |
 | `src/tools/` | `ToolPort`, GitHub-Werkzeuge, Projekt- und Notiz-Werkzeuge; PR-Diff lesen ist nur dem read-only QA-Reviewer freigegeben |
 | `src/agents/registry.ts` | die Agenten: Prompt, Modell-Alias, Werkzeuge |
 | `src/agents/describe.ts` | Konfigurationsansicht eines Agenten für das Portal |
@@ -38,7 +39,11 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 | `POST /api/github/connect`, `GET /api/github/setup`, `GET /api/github/status` | „GitHub verbinden“: Link zur App-Installation, Rücksprung (Setup URL der App, ohne Dienst-Token, mit signiertem Einmal-`state`), Stand der Verbindung. [ADR 0032](../../docs/architecture/decisions/0032-multi-tenant-github-connect.md) |
 | `POST /webhooks/github` | Webhook der App: Signatur, Wiederholungsschutz, Installationsstand |
 | `GET/POST /api/projects`, `DELETE /api/projects/:id` | Projekte auflisten; ein Repository als Projekt registrieren (`{ "repo": "owner/name" }`); entfernen. [ADR 0029](../../docs/architecture/decisions/0029-projects-as-repository-access.md) |
-| `GET /api/models` | Anbieter, Modelle, Verfügbarkeit, Aliase |
+| `GET /api/models` | Anbieter, Modelle, Verfügbarkeit, Herkunft des Schlüssels, Aliase und Wahl je Rolle |
+| `GET /api/providers/credentials` | hinterlegte Schlüssel ohne Wert: Anbieter, letzte vier Zeichen, Test, Modelle |
+| `PUT/DELETE /api/providers/:id/key`, `POST /api/providers/:id/verify` | Scope `providers:write`: Schlüssel speichern (testet sofort und lädt die Modelle), löschen, erneut prüfen; `custom-…` mit `label`, `baseUrl`, `trainsOnData` |
+| `PUT/DELETE /api/models/defaults/:alias` | Scope `providers:write`: Standardmodell einer Rolle `{ provider, model }` |
+| `GET/POST /api/projects/:id/sprints`, `PATCH /api/sprints/:id` | Sprints eines Projekts; `planned → active → done`, ein aktiver Sprint je Projekt |
 | `GET /api/approvals`, `POST /api/approvals/:id` | offene Freigaben; `{ "decision": "approve" \| "reject" }` |
 | `GET /api/events?thread=…&since=…` | Events nachladen |
 | `POST /api/live-ticket`, `GET /api/live?ticket=…` | Einmal-Ticket, dann WebSocket für Events und `delta` |
@@ -71,10 +76,13 @@ Eigene Modelle laufen auf Modal (Workspace `ugur44ist`), App `uguroezdamar-llm`.
 | `ministral` | Ministral 3 8B (FP8) | L40S | 1,95 $/h |
 | `gemma` | Gemma 4 26B-A4B | H100 | 3,95 $/h |
 
+Warum Kaltstart: Modal fährt die GPU nach fünf Minuten ohne Anfrage herunter, und der nächste Start lädt die Gewichte neu in den GPU-Speicher. Eine dauerhaft warme GPU (`min_containers=1`) kostet bei der L40S rund 1.400 $ im Monat. Für Chat und Agenten sind bezahlte APIs (Claude, OpenAI, DeepSeek …) deshalb günstiger und schneller. Modal ist für Batch-Arbeit, Bild-, Audio- und Videoerzeugung und eigene Modelle gedacht ([ADR 0033](../../docs/architecture/decisions/0033-model-providers-and-tenant-keys.md)).
+
 Freigeschaltet wird Modal mit der Variable `MODAL_ENABLED` in `wrangler.jsonc` (je Umgebung), erst wenn die Modelle laufen. Abgerechnet wird pro Sekunde; nach 5 Minuten ohne Anfrage fährt die GPU herunter. Die erste Anfrage danach wartet auf einen Kaltstart von 1 bis 3 Minuten. Modal-Modelle stehen in keiner Alias-Kette, sie laufen nur auf ausdrückliche Wahl im Thread. Schlüssel: Modal-Secret `uguroezdamar-llm` (`LLM_API_KEY`), gleicher Wert als GitHub-Secret `MODAL_LLM_API_KEY`. Deploy: `MODAL_PROFILE=ugur44ist modal deploy apps/api/modal/llm.py`. Details im Skill `.claude/skills/modal-llm`.
 
 ## Erweitern
 
+- **Schlüssel eines Anbieters:** im Portal unter „Modelle & Schlüssel“ (`/models`). Dort auch eigene OpenAI-kompatible Anbieter. Kein Deploy nötig.
 - **Neues Modell oder neuer Anbieter:** in `src/models/config.ts` eintragen (Anbieter mit `label`, `models`, Secret-Name) oder ohne Deploy als JSON unter dem KV-Schlüssel `models` überschreiben. Es erscheint danach in der Modellwahl des Portals.
 - **Neues Werkzeug:** ein `Tool` in `src/tools/` und in `registry.ts` eintragen. Alles mit Außenwirkung bekommt `requiresApproval: true`.
 - **Neuer Agent:** Eintrag in `src/agents/registry.ts` plus eine Zeile in der Tabelle `agents` (Schreibtisch, Budget).
@@ -96,6 +104,7 @@ Jeder Push auf `dev`, der `apps/api/**` ändert, deployt nach Dev; der Merge `de
 | `AGENT_GH_APP_ID`, `AGENT_GH_APP_PRIVATE_KEY` | Repository | nein | GitHub App der Agenten ([ADR 0031](../../docs/architecture/decisions/0031-github-app-access.md)); ersetzt den Token, wo sie installiert ist |
 | `AGENT_GITHUB_TOKEN` | Repository | nein | Rückfall zur App und Anlegen von Repositories |
 | `MODAL_LLM_API_KEY` | Repository, gleicher Wert im Modal-Secret `uguroezdamar-llm` | nein | eigene Modelle auf Modal |
+| `PROVIDER_KEYS_SECRET` | Repository, erzeugt von `pnpm ugur api secrets --apply`, Sicherung in Infisical (prod) | für `/models` | verschlüsselt die im Portal hinterlegten Modellschlüssel; nie rotieren |
 
 `pnpm ugur api secrets` zeigt, was gesetzt ist (nur Namen). Mit `--apply` erzeugt der Befehl je Stage ein Service-Token und setzt es in GitHub und Infisical, setzt `API_URL` in Infisical, fragt die optionalen Schlüssel verdeckt ab und startet den Dev-Deploy. Danach übernimmt `pnpm ugur hosting env --stage dev --apply` die Portal-Werte in Vercel (Preview).
 

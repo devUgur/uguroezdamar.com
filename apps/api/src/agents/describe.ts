@@ -18,6 +18,7 @@ const CREDENTIALS = [
   { name: "AGENT_GH_WEBHOOK_SECRET", purpose: "GitHub App: Webhook-Signatur" },
   { name: "GEMINI_API_KEY", purpose: "Gemini-Modelle" },
   { name: "MODAL_LLM_API_KEY", purpose: "Eigene Modelle auf Modal" },
+  { name: "PROVIDER_KEYS_SECRET", purpose: "Verschlüsselt die im Portal hinterlegten Modellschlüssel" },
 ] as const;
 
 const DEFAULT_PROJECT = "uguroezdamar";
@@ -63,7 +64,7 @@ export async function describeAgent(env: Env, tenantId: string, agentId: string)
   const definition = AGENTS[agentId];
   if (!definition) return null;
 
-  const router = await ModelRouter.load(env);
+  const router = await ModelRouter.load(env, tenantId);
   const [row, project, spent, threads, pendingApprovals, memories, totals, organization, taskCounts, activeTasks] = await Promise.all([
     env.DB.prepare("SELECT role, daily_budget_usd, desk_x, desk_y FROM agents WHERE id = ?")
       .bind(agentId)

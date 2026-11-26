@@ -79,7 +79,7 @@ export interface CatalogProvider {
   /** The provider may use prompts for training; such models are never used for private repositories. */
   trainsOnData: boolean;
   available: boolean;
-  models: { id: string; label: string; note?: string; inputUsdPerM: number; outputUsdPerM: number }[];
+  models: { id: string; label: string; note?: string; inputUsdPerM: number | null; outputUsdPerM: number | null; discovered?: boolean }[];
 }
 
 export interface ModelCatalog {

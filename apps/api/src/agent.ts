@@ -23,6 +23,7 @@ interface MessageRow {
   content: string | null;
   tool_calls: string | null;
   tool_call_id: string | null;
+  raw: string | null;
 }
 
 interface ProjectRow {
@@ -139,6 +140,9 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       tool_call_id TEXT,
       ts INTEGER NOT NULL
     )`);
+    // Added with native provider adapters (ADR 0033); older threads get the column on first start.
+    const columns = ctx.storage.sql.exec<{ name: string }>("SELECT name FROM pragma_table_info('messages')").toArray();
+    if (!columns.some((column) => column.name === "raw")) ctx.storage.sql.exec("ALTER TABLE messages ADD COLUMN raw TEXT");
   }
 
   async chat(input: ChatInput): Promise<Accepted> {
@@ -278,7 +282,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
 
     const repo = project?.repo ?? this.env.DEFAULT_REPO;
     const budget = new SubrequestBudget();
-    const router = await ModelRouter.load(this.env);
+    const router = await ModelRouter.load(this.env, tenantId);
     const pinned = parsePinned(thread?.model);
     // Private content stays on models that do not evaluate it: always in a private project, in a chat pinned to
     // such a model (a failing model then never falls back to an evaluating provider), and in a thread that has
@@ -446,18 +450,19 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
 
   private append(message: ChatMessage): void {
     this.ctx.storage.sql.exec(
-      "INSERT INTO messages (role, content, tool_calls, tool_call_id, ts) VALUES (?, ?, ?, ?, ?)",
+      "INSERT INTO messages (role, content, tool_calls, tool_call_id, raw, ts) VALUES (?, ?, ?, ?, ?, ?)",
       message.role,
       message.content,
       message.toolCalls ? JSON.stringify(message.toolCalls) : null,
       message.toolCallId ?? null,
+      message.raw ? JSON.stringify(message.raw) : null,
       Date.now(),
     );
   }
 
   private recent(limit: number): ChatMessage[] {
     const rows = this.ctx.storage.sql
-      .exec<MessageRow>("SELECT role, content, tool_calls, tool_call_id FROM messages ORDER BY id DESC LIMIT ?", limit)
+      .exec<MessageRow>("SELECT role, content, tool_calls, tool_call_id, raw FROM messages ORDER BY id DESC LIMIT ?", limit)
       .toArray()
       .reverse();
     const messages: ChatMessage[] = rows.map((row) => ({
@@ -465,6 +470,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       content: row.content,
       toolCalls: row.tool_calls ? (JSON.parse(row.tool_calls) as ToolCall[]) : undefined,
       toolCallId: row.tool_call_id ?? undefined,
+      raw: row.raw ? (JSON.parse(row.raw) as ChatMessage["raw"]) : undefined,
     }));
     // A window must not open with tool results whose call fell outside it.
     while (messages.length && messages[0]?.role === "tool") messages.shift();

@@ -3,7 +3,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { agentsApi } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/auth";
-import type { GithubRepository, GithubStatus, Project } from "./types";
+import type { GithubRepository, GithubStatus, Project, ProjectOverview, ProjectTask, Sprint } from "./types";
 
 async function actor(): Promise<string> {
   const session = await getCurrentSession();
@@ -42,5 +42,20 @@ export async function getGithubStatus(): Promise<{ status: GithubStatus | null; 
     return { status: { ...status, installations, configuredOnly: status.configuredOnly ?? [] }, error: null };
   } catch (error) {
     return { status: null, error: describe(error) };
+  }
+}
+
+/** One project with its sprints and tasks. Missing project: project is null and the page shows a 404. */
+export async function getProjectOverview(id: string): Promise<ProjectOverview> {
+  const who = await actor();
+  try {
+    const [projects, sprints, tasks] = await Promise.all([
+      agentsApi<Project[]>("/api/projects", who),
+      agentsApi<Sprint[]>(`/api/projects/${encodeURIComponent(id)}/sprints`, who).catch(() => [] as Sprint[]),
+      agentsApi<ProjectTask[]>(`/api/tasks?project=${encodeURIComponent(id)}`, who),
+    ]);
+    return { project: projects.find((project) => project.id === id) ?? null, sprints, tasks: tasks.map((task) => ({ ...task, sprintId: task.sprintId ?? null })), error: null };
+  } catch (error) {
+    return { project: null, sprints: [], tasks: [], error: describe(error) };
   }
 }

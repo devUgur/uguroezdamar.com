@@ -16,6 +16,11 @@ export interface ChatMessage {
   content: string | null;
   toolCalls?: ToolCall[];
   toolCallId?: string;
+  /**
+   * The answer exactly as one provider returned it (Anthropic: all content blocks, thinking included).
+   * The same provider gets it back unchanged on the next turn; every other provider uses content and toolCalls.
+   */
+  raw?: { provider: string; content: unknown };
 }
 
 export interface ToolSpec {

@@ -3,6 +3,7 @@ import type { Caller } from "../auth.ts";
 import type { Env } from "../env.ts";
 import { emit } from "../events.ts";
 import { AGENTS } from "../agents/registry.ts";
+import { sprintBelongsTo } from "./sprints.ts";
 
 export const TASK_STATUSES = ["backlog", "ready", "in_progress", "review", "qa", "blocked", "done"] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
@@ -22,6 +23,7 @@ const TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
 interface TaskRow {
   id: string;
   project_id: string | null;
+  sprint_id?: string | null;
   agent_id: string | null;
   parent_id: string | null;
   title: string;
@@ -69,6 +71,7 @@ function asTask(row: TaskRow) {
   return {
     id: row.id,
     projectId: row.project_id,
+    sprintId: row.sprint_id ?? null,
     agent: row.agent_id ? { id: row.agent_id, name: row.agent_name ?? row.agent_id, role: row.agent_role ?? "" } : null,
     threadId: row.thread_id ?? null,
     parentId: row.parent_id,
@@ -175,12 +178,14 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
     const projectId = typeof input.projectId === "string" && input.projectId ? input.projectId : "uguroezdamar";
     const project = await env.DB.prepare("SELECT 1 FROM projects WHERE tenant_id = ? AND id = ? AND status = 'active'").bind(caller.tenantId, projectId).first();
     if (!project) return json({ error: "Projekt nicht gefunden oder nicht aktiv." }, 400);
+    const sprintId = typeof input.sprintId === "string" && input.sprintId ? input.sprintId : null;
+    if (sprintId && !(await sprintBelongsTo(env, caller.tenantId, sprintId, projectId))) return json({ error: "Sprint gehört nicht zu diesem Projekt oder ist abgeschlossen." }, 400);
     const id = crypto.randomUUID();
     await env.DB.prepare(
-      `INSERT INTO tasks (id, tenant_id, project_id, title, input, description, acceptance_criteria, priority, story_points, created_by, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'backlog')`,
+      `INSERT INTO tasks (id, tenant_id, project_id, sprint_id, title, input, description, acceptance_criteria, priority, story_points, created_by, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'backlog')`,
     ).bind(
-      id, caller.tenantId, projectId, title,
+      id, caller.tenantId, projectId, sprintId, title,
       // `input` is the legacy copy of the description; the column list needs a value for it.
       description.slice(0, 10_000) || null, description.slice(0, 10_000) || null,
       acceptanceCriteria.slice(0, 5_000) || null, priority ?? "normal", storyPoints, caller.actor,
@@ -241,6 +246,12 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
   const points = input.storyPoints === undefined ? existing.story_points : input.storyPoints === null || input.storyPoints === "" ? null : Number(input.storyPoints);
   if (points !== null && (!Number.isFinite(points) || points < 0.5 || points > 100)) return json({ error: "Story Points müssen zwischen 0,5 und 100 liegen." }, 400);
   const agentId = input.agentId === undefined ? existing.agent_id : input.agentId as string | null;
+  if (input.sprintId !== undefined) {
+    if (input.sprintId !== null && (typeof input.sprintId !== "string" || !(await sprintBelongsTo(env, caller.tenantId, input.sprintId, existing.project_id)))) {
+      return json({ error: "Sprint gehört nicht zu diesem Projekt oder ist abgeschlossen." }, 400);
+    }
+    await env.DB.prepare("UPDATE tasks SET sprint_id = ?, updated_at = unixepoch() WHERE tenant_id = ? AND id = ?").bind(input.sprintId, caller.tenantId, id).run();
+  }
 
   const updated = await env.DB.prepare(
     `/* tenant:parent */ UPDATE tasks SET title = ?, description = ?, acceptance_criteria = ?, status = ?, priority = ?, story_points = ?, agent_id = ?,

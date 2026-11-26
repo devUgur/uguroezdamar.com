@@ -23,7 +23,10 @@ export function Sidebar() {
           Organisation
         </Link>
         <Link href="/projects" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
-          Projekte
+          Repositorys
+        </Link>
+        <Link href="/portfolio" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
+          Portfolio
         </Link>
         <Link href="/chat" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Chat
@@ -31,6 +34,9 @@ export function Sidebar() {
         <div className="pt-4 mt-4 border-t opacity-50 px-4 text-xs font-semibold uppercase tracking-wider">
           Settings
         </div>
+        <Link href="/models" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
+          Modelle &amp; Schlüssel
+        </Link>
         <Link href="/admin/team" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Team
         </Link>

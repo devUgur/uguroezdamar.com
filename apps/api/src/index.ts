@@ -4,11 +4,13 @@ import { authorize, type Caller } from "./auth.ts";
 import type { Env } from "./env.ts";
 import { emit, recentEvents } from "./events.ts";
 import { ModelRouter } from "./models/router.ts";
+import { handleModels } from "./models/routes.ts";
 import { GithubAccessError } from "./github/app.ts";
 import { completeConnect, startConnect } from "./github/connect.ts";
 import { githubStatus } from "./github/credentials.ts";
 import { handleGithubWebhook } from "./github/webhook.ts";
 import { listRepositories, ProjectError, registerProject, unregisterProject } from "./projects/repositories.ts";
+import { handlePortfolioProjects } from "./projects/portfolio.ts";
 import { buildOfficeLayout } from "./office/layout.ts";
 import { officeActivityOf } from "./office/presence.ts";
 import { organizationCatalog } from "./organization/catalog.ts";
@@ -16,6 +18,7 @@ import { handleOrganizationManagement } from "./organization/manage.ts";
 import { SubrequestBudget } from "./runtime/budget.ts";
 import { officeObjectName, threadObjectName } from "./tenancy.ts";
 import { toolByName } from "./tools/registry.ts";
+import { handleSprints } from "./work/sprints.ts";
 import { handleTasks } from "./work/tasks.ts";
 
 export { AgentRuntime } from "./agent.ts";
@@ -253,7 +256,7 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
       if ((await stub.status()).running) return json({ error: "Das Projekt lässt sich nicht wechseln, solange der Agent arbeitet." }, 409);
     }
     if (input.model) {
-      const router = await ModelRouter.load(env);
+      const router = await ModelRouter.load(env, caller.tenantId);
       if (!router.offers(input.model)) return json({ error: "Unbekanntes Modell" }, 400);
       await router.warmUp(input.model);
     }
@@ -326,6 +329,9 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     if (path === "/api/organization" && method === "GET") return json(await organizationCatalog(env));
   }
 
+  const sprints = await handleSprints(request, env, caller, path);
+  if (sprints) return sprints;
+
   const tasks = await handleTasks(request, env, caller, path);
   if (tasks) return tasks;
 
@@ -370,10 +376,11 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     );
   }
 
-  if (path === "/api/models" && method === "GET") {
-    const router = await ModelRouter.load(env);
-    return json({ ...router.catalog(), agentAliases: Object.fromEntries(Object.values(AGENTS).map((agent) => [agent.id, agent.modelAlias])) });
-  }
+  const models = await handleModels(request, env, caller, path);
+  if (models) return models;
+
+  const portfolio = await handlePortfolioProjects(request, env, caller, path);
+  if (portfolio) return portfolio;
 
   if (path === "/api/events" && method === "GET") {
     return json(

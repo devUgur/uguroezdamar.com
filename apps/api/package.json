@@ -17,5 +17,8 @@
     "rimraf": "catalog:",
     "typescript": "catalog:",
     "wrangler": "^4.45.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.14.0"
   }
 }

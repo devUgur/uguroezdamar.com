@@ -35,7 +35,7 @@ export function agentsApiOrigin(): string | null {
 export async function agentsApi<T>(
   path: string,
   actor: string,
-  init: { method?: "GET" | "POST" | "PATCH" | "DELETE"; body?: unknown; scopes?: readonly string[] } = {},
+  init: { method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown; scopes?: readonly string[] } = {},
 ): Promise<T> {
   const { origin, token } = config();
   let response: Response;

@@ -67,6 +67,12 @@ const REPO_SECRETS: RepoSecret[] = [
     purpose: "GitHub App der Agenten: Webhook-Signatur (wird von diesem Befehl erzeugt)",
   },
   {
+    name: "PROVIDER_KEYS_SECRET",
+    required: false,
+    fromInfisical: true,
+    purpose: "Verschlüsselt die im Portal hinterlegten Modellschlüssel (wird von diesem Befehl erzeugt, ADR 0033)",
+  },
+  {
     name: "AGENT_GITHUB_TOKEN",
     required: false,
     purpose: "Repo lesen, Commits und Pull Requests des Agenten",
@@ -202,6 +208,29 @@ export async function apiSecrets(apply: boolean, rotate: boolean): Promise<numbe
     }
     changedDev = true;
     console.log(`\n${hook}: aus Infisical (prod) nach GitHub kopiert.`);
+  }
+
+  // The key that encrypts model keys entered in the portal (ADR 0033): made once, kept in Infisical (prod), copied to
+  // GitHub. Like the webhook secret it is never regenerated: a new value would make every stored key unreadable.
+  const keysSecret = "PROVIDER_KEYS_SECRET";
+  const storedKeysSecret = secretValues("prod", [keysSecret]);
+  if (!storedKeysSecret) {
+    const created = randomBytes(32).toString("hex");
+    if (!setInfisicalSecret("prod", keysSecret, created).ok || !setGhSecret(keysSecret, created)) {
+      console.error(`${keysSecret} konnte nicht erzeugt und gesetzt werden.`);
+      return 1;
+    }
+    changedDev = true;
+    console.log(`
+${keysSecret} neu erzeugt (Infisical prod und GitHub). Im Portal lassen sich jetzt Modellschlüssel hinterlegen.`);
+  } else if (!repo.has(keysSecret)) {
+    if (!setGhSecret(keysSecret, storedKeysSecret[keysSecret] ?? "")) {
+      console.error(`${keysSecret} konnte nicht von Infisical nach GitHub kopiert werden.`);
+      return 1;
+    }
+    changedDev = true;
+    console.log(`
+${keysSecret}: aus Infisical (prod) nach GitHub kopiert.`);
   }
 
   for (const secret of REPO_SECRETS.filter((entry) => !entry.required && !entry.fromInfisical && !repo.has(entry.name))) {

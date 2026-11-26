@@ -86,3 +86,77 @@ export async function connectGithub(): Promise<void> {
   if (!url.startsWith("https://github.com/apps/")) back("error", "Unerwartete Antwort der API.");
   redirect(url);
 }
+
+const UUID = /^[0-9a-f-]{36}$/;
+
+/** Ends an action on the project page with a message. */
+function backTo(projectId: string, kind: "notice" | "error", message: string): never {
+  revalidatePath(`/projects/${projectId}`);
+  redirect(`/projects/${projectId}?${kind}=${encodeURIComponent(message)}`);
+}
+
+export async function createSprint(formData: FormData): Promise<void> {
+  const projectId = String(formData.get("projectId") ?? "");
+  const who = await actor();
+  if (!PROJECT_ID.test(projectId)) back("error", "Ungültiges Projekt.");
+  try {
+    await agentsApi(`/api/projects/${projectId}/sprints`, who, {
+      method: "POST",
+      body: { name: formData.get("name"), goal: formData.get("goal"), startsAt: formData.get("startsAt"), endsAt: formData.get("endsAt") },
+    });
+  } catch (error) {
+    backTo(projectId, "error", failure(error));
+  }
+  backTo(projectId, "notice", "Sprint angelegt.");
+}
+
+export async function changeSprintStatus(formData: FormData): Promise<void> {
+  const projectId = String(formData.get("projectId") ?? "");
+  const sprintId = String(formData.get("sprintId") ?? "");
+  const status = String(formData.get("status") ?? "");
+  const who = await actor();
+  if (!PROJECT_ID.test(projectId) || !UUID.test(sprintId)) back("error", "Ungültiger Sprint.");
+  try {
+    await agentsApi(`/api/sprints/${sprintId}`, who, { method: "PATCH", body: { status } });
+  } catch (error) {
+    backTo(projectId, "error", failure(error));
+  }
+  backTo(projectId, "notice", status === "active" ? "Sprint gestartet." : status === "done" ? "Sprint abgeschlossen; offene Aufgaben sind zurück im Backlog." : "Sprint aktualisiert.");
+}
+
+export async function moveTaskToSprint(formData: FormData): Promise<void> {
+  const projectId = String(formData.get("projectId") ?? "");
+  const taskId = String(formData.get("taskId") ?? "");
+  const sprintId = String(formData.get("sprintId") ?? "");
+  const who = await actor();
+  if (!PROJECT_ID.test(projectId) || !UUID.test(taskId) || (sprintId && !UUID.test(sprintId))) back("error", "Ungültige Aufgabe.");
+  try {
+    await agentsApi(`/api/tasks/${taskId}`, who, { method: "PATCH", body: { sprintId: sprintId || null } });
+  } catch (error) {
+    backTo(projectId, "error", failure(error));
+  }
+  backTo(projectId, "notice", sprintId ? "Aufgabe eingeplant." : "Aufgabe zurück im Backlog.");
+}
+
+export async function createProjectTask(formData: FormData): Promise<void> {
+  const projectId = String(formData.get("projectId") ?? "");
+  const sprintId = String(formData.get("sprintId") ?? "");
+  const who = await actor();
+  if (!PROJECT_ID.test(projectId) || (sprintId && !UUID.test(sprintId))) back("error", "Ungültiges Projekt.");
+  try {
+    await agentsApi("/api/tasks", who, {
+      method: "POST",
+      body: {
+        projectId,
+        sprintId: sprintId || undefined,
+        title: formData.get("title"),
+        description: formData.get("description") || undefined,
+        acceptanceCriteria: formData.get("acceptanceCriteria") || undefined,
+        priority: formData.get("priority") || undefined,
+      },
+    });
+  } catch (error) {
+    backTo(projectId, "error", failure(error));
+  }
+  backTo(projectId, "notice", "Aufgabe angelegt.");
+}
