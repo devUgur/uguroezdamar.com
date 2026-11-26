@@ -10,11 +10,11 @@ const PRIORITIES = ["low", "normal", "high", "urgent"] as const;
 type Priority = (typeof PRIORITIES)[number];
 const TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
   backlog: ["ready", "blocked"],
-  ready: ["backlog", "in_progress", "blocked"],
+  ready: ["backlog", "blocked"],
   in_progress: ["ready", "review", "blocked"],
   review: ["in_progress", "qa", "blocked"],
   qa: ["in_progress", "done", "blocked"],
-  blocked: ["backlog", "ready", "in_progress", "review", "qa"],
+  blocked: ["backlog", "ready", "review", "qa"],
   done: ["backlog"],
 };
 
@@ -36,6 +36,7 @@ interface TaskRow {
   updated_at: number;
   agent_name?: string | null;
   agent_role?: string | null;
+  thread_id?: string | null;
 }
 
 function json(data: unknown, status = 200): Response {
@@ -47,6 +48,7 @@ function asTask(row: TaskRow) {
     id: row.id,
     projectId: row.project_id,
     agent: row.agent_id ? { id: row.agent_id, name: row.agent_name ?? row.agent_id, role: row.agent_role ?? "" } : null,
+    threadId: row.thread_id ?? null,
     parentId: row.parent_id,
     title: row.title,
     description: row.description,
@@ -73,8 +75,9 @@ async function parseBody(request: Request): Promise<Record<string, unknown> | nu
 
 async function loadTask(env: Env, id: string): Promise<TaskRow | null> {
   return env.DB.prepare(
-    `SELECT t.*, a.name AS agent_name, a.role AS agent_role FROM tasks t
-     LEFT JOIN agents a ON a.id = t.agent_id WHERE t.id = ?`,
+    `SELECT t.*, a.name AS agent_name, a.role AS agent_role,
+       (SELECT id FROM threads WHERE task_id = t.id AND archived = 0 ORDER BY updated_at DESC LIMIT 1) AS thread_id
+       FROM tasks t LEFT JOIN agents a ON a.id = t.agent_id WHERE t.id = ?`,
   ).bind(id).first<TaskRow>();
 }
 
@@ -91,7 +94,9 @@ async function publish(env: Env, caller: Caller, task: TaskRow, type: "task_crea
 export async function handleTasks(request: Request, env: Env, caller: Caller, path: string): Promise<Response | null> {
   if (path === "/api/tasks" && request.method === "GET") {
     const projectId = new URL(request.url).searchParams.get("project");
-    const query = `SELECT t.*, a.name AS agent_name, a.role AS agent_role FROM tasks t
+    const query = `SELECT t.*, a.name AS agent_name, a.role AS agent_role,
+      (SELECT id FROM threads WHERE task_id = t.id AND archived = 0 ORDER BY updated_at DESC LIMIT 1) AS thread_id
+      FROM tasks t
       LEFT JOIN agents a ON a.id = t.agent_id ${projectId ? "WHERE t.project_id = ?" : ""}
       ORDER BY CASE t.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END,
       t.updated_at DESC LIMIT 300`;
@@ -126,11 +131,12 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
     return json(asTask(task), 201);
   }
 
-  const match = path.match(/^\/api\/tasks\/([0-9a-f-]{36})$/);
-  if (!match || request.method !== "PATCH") return null;
+  const match = path.match(/^\/api\/tasks\/([0-9a-f-]{36})(?:\/(run))?$/);
+  if (!match || (request.method !== "PATCH" && !(match[2] === "run" && request.method === "POST"))) return null;
   const id = match[1] ?? "";
   const existing = await loadTask(env, id);
   if (!existing) return json({ error: "Aufgabe nicht gefunden." }, 404);
+  if (match[2] === "run") return startTaskRun(env, caller, existing);
   const input = await parseBody(request);
   if (!input) return json({ error: "Ungültiger JSON-Body." }, 400);
 
@@ -158,8 +164,8 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
   if (points !== null && (!Number.isFinite(points) || points < 0.5 || points > 100)) return json({ error: "Story Points müssen zwischen 0,5 und 100 liegen." }, 400);
   const agentId = input.agentId === undefined ? existing.agent_id : input.agentId as string | null;
 
-  await env.DB.prepare(
-    `UPDATE tasks SET title = ?, description = ?, acceptance_criteria = ?, status = ?, priority = ?, story_points = ?, agent_id = ?, updated_at = unixepoch() WHERE id = ?`,
+  const updated = await env.DB.prepare(
+    `UPDATE tasks SET title = ?, description = ?, acceptance_criteria = ?, status = ?, priority = ?, story_points = ?, agent_id = ?, updated_at = unixepoch() WHERE id = ? AND status = ?`,
   ).bind(
     input.title === undefined ? existing.title : (input.title as string).trim(),
     input.description === undefined ? existing.description : (input.description as string).trim() || null,
@@ -169,9 +175,61 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
     points,
     agentId,
     id,
+    existing.status,
   ).run();
+  if (!updated.meta.changes) return json({ error: "Aufgabe wurde gleichzeitig geändert. Bitte neu laden." }, 409);
   const task = await loadTask(env, id);
   if (!task) return json({ error: "Aufgabe konnte nicht geladen werden." }, 500);
   await publish(env, caller, task, "task_updated");
   return json(asTask(task));
+}
+
+async function startTaskRun(env: Env, caller: Caller, task: TaskRow): Promise<Response> {
+  if (task.status !== "ready") return json({ error: "Nur bereite Aufgaben können gestartet werden." }, 409);
+  const agentId = task.agent_id ?? "chef";
+  const definition = AGENTS[agentId];
+  if (!definition) return json({ error: "Der zugewiesene Agent ist nicht ausführbar." }, 409);
+  const active = await env.DB.prepare("SELECT 1 FROM agents WHERE id = ? AND active = 1").bind(agentId).first();
+  if (!active) return json({ error: "Der zugewiesene Agent ist nicht aktiv." }, 409);
+  const threadId = crypto.randomUUID();
+  const taskPrompt = [
+    `Arbeitsauftrag ${task.id}: ${task.title}`,
+    task.description ? `Beschreibung:\n${task.description}` : "",
+    task.acceptance_criteria ? `Abnahmekriterien:\n${task.acceptance_criteria}` : "",
+    "Arbeite ausschließlich an diesem Auftrag. Halte dich an Repository-Regeln, Tool-Grenzen und erforderliche Freigaben. Melde Ergebnis, offene Punkte und Verifikationsstatus. Markiere die Aufgabe nicht selbst als abgeschlossen.",
+  ].filter(Boolean).join("\n\n");
+
+  const claim = await env.DB.prepare("UPDATE tasks SET agent_id = ?, status = 'in_progress', updated_at = unixepoch() WHERE id = ? AND status = 'ready'")
+    .bind(agentId, task.id).run();
+  if (!claim.meta.changes) return json({ error: "Aufgabe wurde bereits geändert oder gestartet." }, 409);
+  try {
+    await env.DB.prepare("INSERT INTO threads (id, agent_id, project_id, task_id, title, created_by) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(threadId, agentId, task.project_id, task.id, task.title.slice(0, 120), caller.actor).run();
+  } catch (error) {
+    await env.DB.prepare("UPDATE tasks SET agent_id = ?, status = 'ready', updated_at = unixepoch() WHERE id = ? AND status = 'in_progress'")
+      .bind(task.agent_id, task.id).run();
+    throw error;
+  }
+  const assigned = await loadTask(env, task.id);
+  if (assigned) await publish(env, caller, assigned, "task_updated");
+
+  try {
+    const accepted = await env.AGENTS.get(env.AGENTS.idFromName(`thread:${threadId}`)).chat({
+      threadId,
+      agentId,
+      projectId: task.project_id ?? "uguroezdamar",
+      taskId: task.id,
+      text: taskPrompt.slice(0, 20_000),
+    });
+    if (!accepted.accepted) throw new Error(accepted.message ?? "Der Agent hat den Auftrag nicht angenommen.");
+    return json({ taskId: task.id, threadId, accepted: accepted.accepted, busy: accepted.busy ?? false }, 202);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Agentenlauf konnte nicht gestartet werden.";
+    await env.DB.prepare("UPDATE tasks SET status = 'blocked', output = ?, updated_at = unixepoch() WHERE id = ? AND status = 'in_progress'")
+      .bind(`Startfehler: ${message}`.slice(0, 5_000), task.id).run();
+    const blocked = await loadTask(env, task.id);
+    if (blocked) await publish(env, caller, blocked, "task_updated");
+    await env.DB.prepare("UPDATE threads SET archived = 1, updated_at = unixepoch() WHERE id = ?").bind(threadId).run();
+    return json({ error: "Agentenlauf konnte nicht gestartet werden." }, 502);
+  }
 }

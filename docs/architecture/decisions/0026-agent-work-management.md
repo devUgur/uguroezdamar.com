@@ -15,7 +15,7 @@ Das Portal soll von Chat und Office-Visualisierung zu einer nachvollziehbaren En
 2. **`apps/api` ist der Control Plane.** Der Browser ruft keine Agenten-API direkt mit Service-Credentials auf. Server Components und Server Actions des Portals prüfen weiterhin die Admin-Session und sprechen über `agents-api.ts` mit der API.
 3. **Das Work Board zeigt persistierte Aufgaben.** Es unterstützt Backlog, Ready, In Progress, Code Review, QA, Blocked und Done, ergänzt Priorität, Beschreibung und Abnahmekriterien und validiert Statusübergänge zentral in der API.
 4. **Änderungen erzeugen gespeicherte Events.** `task_created` und `task_updated` tragen Task-/Projekt-/Agent-Referenzen und den handelnden Portal-Admin. Der vorhandene Live-Hub verteilt sie; Boards lesen nach dem Ereignis erneut den autoritativen Datensatz.
-5. **Organisation und Ausführung bleiben getrennt.** Der aktuelle Agentenkatalog bleibt durch die Runtime-Registry begrenzt. Ein Work-Item oder ein Avatar erzeugt keine Agenteninstanz, Workstation, Branch oder Ausführung. Automatische Delegation wird erst aktiviert, wenn eine echte Runtime-Übergabe mit Budgets, Berechtigungen, Wiederaufnahme und Abnahme implementiert ist.
+5. **Organisation und Ausführung bleiben getrennt.** Der aktuelle Agentenkatalog bleibt durch die Runtime-Registry begrenzt. Ein Work-Item oder Avatar erzeugt keine Agenteninstanz, Workstation oder Branch. Eine ausdrücklich gestartete `ready`-Aufgabe wird über die vorhandene `AgentRuntimePort` an den registrierten Chef-Agenten übergeben; Task, Thread, Events und Freigaben teilen dieselbe Task-ID. Erfolgreiche Läufe gehen in Review, Fehler/Stop in Blocked. Multi-Agent-Delegation bleibt deaktiviert.
 6. **Die Runtime bleibt austauschbar.** Aufgaben und Events nutzen einen API-Vertrag; sie hängen weder an der 3D-Szene noch an einem bestimmten Modellanbieter oder Agentenframework.
 
 ## Alternativen
@@ -29,7 +29,7 @@ Das Portal soll von Chat und Office-Visualisierung zu einer nachvollziehbaren En
 - Die vorhandene D1-Tasktabelle erhält ein rückwärtsverträgliches Migrations-Upgrade. Frühere `open`-Aufgaben werden dem Backlog zugeordnet.
 - Der Portalpfad `/work` liefert die erste Management-Ansicht; `/agents` bleibt die Office-Ansicht, `/chat` bleibt der Agentendialog.
 - Weitere Domänen müssen einzeln entscheiden, ob sie zur Agentenarbeit (API/D1) oder zu bestehenden relationalen Portal-Daten (Neon) gehören.
-- Die aktuelle Umsetzung bietet noch keine Sprintplanung, dynamische Organisationsverwaltung, automatische Agentenübergabe, isolierte Workstations oder CI/CD-Ausführung. Diese Fähigkeiten werden in getrennten Phasen ergänzt und dürfen nicht als aktiv angezeigt werden.
+- Die aktuelle Umsetzung bietet noch keine Sprintplanung, dynamische Organisationsverwaltung, automatische Mehr-Agenten-Übergabe, isolierte Workstations oder CI/CD-Ausführung. Die explizite Task-zu-Chef-Agent-Ausführung nutzt ausschließlich den vorhandenen, begrenzten Chat-Runner.
 
 ## Rückprüfung
 

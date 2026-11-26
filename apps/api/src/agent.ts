@@ -34,6 +34,7 @@ interface RunState {
   threadId: string;
   agentId: string;
   projectId: string;
+  taskId?: string;
   steps: number;
   stages: number;
   startedAt: number;
@@ -67,10 +68,11 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       threadId: input.threadId,
       agentId: input.agentId,
       projectId: input.projectId,
+      taskId: input.taskId,
       type: "user_message",
       data: { text: input.text },
     });
-    return this.enqueue(input.threadId, input.agentId, input.projectId, input.text);
+    return this.enqueue(input.threadId, input.agentId, input.projectId, input.text, input.taskId);
   }
 
   /** Called after Ugur decided on an approval: the agent learns the outcome and carries on. */
@@ -78,7 +80,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     const note = `[System] Freigabe ${input.approvalId} für ${input.tool} wurde ${
       input.approved ? "erteilt und ausgeführt" : "abgelehnt"
     }. Ergebnis: ${input.outcome}`;
-    return this.enqueue(input.threadId, input.agentId, input.projectId, note);
+    return this.enqueue(input.threadId, input.agentId, input.projectId, note, input.taskId);
   }
 
   async stop(): Promise<void> {
@@ -86,7 +88,8 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     await this.ctx.storage.delete([RUN, INBOX]);
     await this.ctx.storage.deleteAlarm();
     if (run) {
-      await emit(this.env, { threadId: run.threadId, agentId: run.agentId, projectId: run.projectId, type: "stopped", data: { steps: run.steps } });
+      await emit(this.env, { threadId: run.threadId, agentId: run.agentId, projectId: run.projectId, taskId: run.taskId, type: "stopped", data: { steps: run.steps } });
+      if (run.taskId) await this.updateTask(run, "blocked", "Agentenlauf gestoppt. Die Aufgabe kann nach Prüfung erneut gestartet werden.");
     }
   }
 
@@ -105,7 +108,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
   }
 
   /** Messages wait in the inbox until a stage boundary, so tool-call sequences stay intact. */
-  private async enqueue(threadId: string, agentId: string, projectId: string, text: string): Promise<Accepted> {
+  private async enqueue(threadId: string, agentId: string, projectId: string, text: string, taskId?: string): Promise<Accepted> {
     const inbox = (await this.ctx.storage.get<string[]>(INBOX)) ?? [];
     inbox.push(text);
     await this.ctx.storage.put(INBOX, inbox);
@@ -113,7 +116,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       return { accepted: true, busy: true, message: "Ich arbeite gerade; dein Hinweis fließt in den nächsten Schritt ein." };
     }
     const now = Date.now();
-    await this.ctx.storage.put<RunState>(RUN, { threadId, agentId, projectId, steps: 0, stages: 0, startedAt: now, touchedAt: now });
+    await this.ctx.storage.put<RunState>(RUN, { threadId, agentId, projectId, taskId, steps: 0, stages: 0, startedAt: now, touchedAt: now });
     await this.ctx.storage.setAlarm(now);
     return { accepted: true };
   }
@@ -122,6 +125,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     const run = await this.ctx.storage.get<RunState>(RUN);
     if (run && Date.now() - run.touchedAt > STALE_RUN_MS) {
       await this.ctx.storage.delete(RUN);
+      if (run.taskId) await this.updateTask(run, "blocked", "Agentenlauf ist abgelaufen. Bitte Aufgabe prüfen und erneut starten.");
       return undefined;
     }
     return run;
@@ -130,7 +134,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
   override async alarm(): Promise<void> {
     const run = await this.ctx.storage.get<RunState>(RUN);
     if (!run) return;
-    const base = { threadId: run.threadId, agentId: run.agentId, projectId: run.projectId };
+    const base = { threadId: run.threadId, agentId: run.agentId, projectId: run.projectId, taskId: run.taskId };
     try {
       const inbox = (await this.ctx.storage.get<string[]>(INBOX)) ?? [];
       if (inbox.length) {
@@ -139,12 +143,14 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       }
 
       const outcome = await this.stage(run);
-      if (outcome === "paused") {
+      if (outcome.kind === "paused") {
         await this.ctx.storage.put<RunState>(RUN, { ...run, stages: run.stages + 1, touchedAt: Date.now() });
         await emit(this.env, { ...base, type: "stage_paused", data: { steps: run.steps, stage: run.stages + 1 } });
         await this.ctx.storage.setAlarm(Date.now() + 200);
         return;
       }
+      const hasQueuedMessage = ((await this.ctx.storage.get<string[]>(INBOX)) ?? []).length > 0;
+      if (run.taskId && !hasQueuedMessage) await this.updateTask(run, outcome.kind === "done" ? "review" : "blocked", outcome.reply);
       await this.ctx.storage.delete(RUN);
       // Something arrived while the run was finishing: start the next one right away.
       if (((await this.ctx.storage.get<string[]>(INBOX)) ?? []).length) {
@@ -156,14 +162,15 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       // No rethrow: a retried alarm would repeat side effects. Report and end the run.
       await this.ctx.storage.delete(RUN);
       const message = error instanceof Error ? error.message : String(error);
+      if (run.taskId) await this.updateTask(run, "blocked", message).catch(() => undefined);
       await emit(this.env, { ...base, type: "error", data: { message } }).catch(() => undefined);
     }
   }
 
   /** One stage of the loop; updates run.steps in place. */
-  private async stage(run: RunState): Promise<"paused" | "ended"> {
+  private async stage(run: RunState): Promise<{ kind: "paused" } | { kind: "done" | "failed"; reply: string }> {
     const { threadId, agentId, projectId } = run;
-    const base = { threadId, agentId, projectId };
+    const base = { threadId, agentId, projectId, taskId: run.taskId };
     const definition = AGENTS[agentId];
     if (!definition) throw new Error(`Unbekannter Agent "${agentId}"`);
 
@@ -178,7 +185,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       const reply = `Mein Tagesbudget von ${dailyBudget.toFixed(2)} $ ist aufgebraucht (${spent.toFixed(2)} $). Ich mache morgen weiter oder du erhöhst das Budget.`;
       await emit(this.env, { ...base, type: "budget_blocked", data: { budget: dailyBudget, spent } });
       await emit(this.env, { ...base, type: "message", data: { text: reply } });
-      return "ended";
+      return { kind: "failed", reply };
     }
 
     const repo = project?.repo ?? this.env.DEFAULT_REPO;
@@ -220,13 +227,14 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
         const approvalId = crypto.randomUUID();
         const description = describeApproval(tool, args);
         await this.env.DB.prepare(
-          `INSERT INTO approvals (id, agent_id, thread_id, action, details, summary, risk, warnings, expires_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch() + ?)`,
+          `INSERT INTO approvals (id, agent_id, thread_id, task_id, action, details, summary, risk, warnings, expires_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch() + ?)`,
         )
           .bind(
             approvalId,
             agentId,
             threadId,
+            run.taskId ?? null,
             tool,
             JSON.stringify({ args, projectId, repo }),
             description.summary,
@@ -244,7 +252,22 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     });
     await deltas.flush();
     run.steps = outcome.steps;
-    return outcome.kind === "paused" ? "paused" : "ended";
+    if (outcome.kind === "paused") return { kind: "paused" };
+    return outcome.kind === "done" ? { kind: "done", reply: outcome.reply } : { kind: "failed", reply: outcome.reply };
+  }
+
+  private async updateTask(run: RunState, status: "review" | "blocked", output: string): Promise<void> {
+    if (!run.taskId) return;
+    const result = await this.env.DB.prepare(
+      "UPDATE tasks SET status = ?, output = ?, updated_at = unixepoch() WHERE id = ? AND status = 'in_progress'",
+    ).bind(status, output.slice(0, 5_000), run.taskId).run();
+    if (!result.meta.changes) return;
+    await emit(this.env, {
+      taskId: run.taskId,
+      projectId: run.projectId,
+      type: "task_updated",
+      data: { status, agentId: run.agentId, threadId: run.threadId, source: "agent-runtime" },
+    });
   }
 
   private append(message: ChatMessage): void {

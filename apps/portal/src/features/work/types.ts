@@ -6,6 +6,7 @@ export interface WorkTask {
   id: string;
   projectId: string | null;
   agent: { id: string; name: string; role: string } | null;
+  threadId: string | null;
   parentId: string | null;
   title: string;
   description: string | null;

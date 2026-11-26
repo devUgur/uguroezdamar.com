@@ -11,6 +11,7 @@ export interface ChatInput {
   threadId: string;
   agentId: string;
   projectId: string;
+  taskId?: string;
   text: string;
 }
 
@@ -18,6 +19,7 @@ export interface ResumeInput {
   threadId: string;
   agentId: string;
   projectId: string;
+  taskId?: string;
   approvalId: string;
   tool: string;
   approved: boolean;

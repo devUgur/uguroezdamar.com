@@ -42,3 +42,11 @@ export async function updateWorkTask(formData: FormData): Promise<void> {
   revalidatePath("/work");
   redirect("/work");
 }
+
+export async function startWorkTask(formData: FormData): Promise<void> {
+  const id = String(formData.get("id") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("Ungültige Aufgaben-ID.");
+  const result = await agentsApi<{ threadId: string }>(`/api/tasks/${id}/run`, await actor(), { method: "POST" });
+  revalidatePath("/work");
+  redirect(`/chat/${result.threadId}`);
+}

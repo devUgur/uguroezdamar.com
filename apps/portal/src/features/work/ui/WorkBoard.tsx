@@ -1,18 +1,19 @@
 "use client";
 
 import { useCallback } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createWorkTask, updateWorkTask } from "../actions";
+import { createWorkTask, startWorkTask, updateWorkTask } from "../actions";
 import type { WorkStatus, WorkTask } from "../types";
 import { WorkLiveStatus } from "./WorkLiveStatus";
 
 const COLUMNS: { id: WorkStatus; label: string; next: WorkStatus[] }[] = [
   { id: "backlog", label: "Backlog", next: ["ready", "blocked"] },
-  { id: "ready", label: "Ready", next: ["backlog", "in_progress", "blocked"] },
+  { id: "ready", label: "Ready", next: ["backlog", "blocked"] },
   { id: "in_progress", label: "In Progress", next: ["ready", "review", "blocked"] },
   { id: "review", label: "Code Review", next: ["in_progress", "qa", "blocked"] },
   { id: "qa", label: "QA / Testing", next: ["in_progress", "done", "blocked"] },
-  { id: "blocked", label: "Blocked", next: ["backlog", "ready", "in_progress", "review", "qa"] },
+  { id: "blocked", label: "Blocked", next: ["backlog", "ready", "review", "qa"] },
   { id: "done", label: "Done", next: ["backlog"] },
 ];
 
@@ -33,6 +34,9 @@ function TaskCard({ task, next }: { task: WorkTask; next: WorkStatus[] }) {
           <p className="mt-2 whitespace-pre-wrap">{task.acceptanceCriteria}</p>
         </details>
       ) : null}
+      {task.output ? <details className="text-sm"><summary className="cursor-pointer text-muted-foreground">Letztes Agentenergebnis</summary><p className="mt-2 whitespace-pre-wrap">{task.output}</p></details> : null}
+      {task.threadId ? <Link href={`/chat/${task.threadId}`} className="inline-block text-sm underline underline-offset-4">Agenten-Thread öffnen</Link> : null}
+      {task.status === "ready" ? <form action={startWorkTask}><input type="hidden" name="id" value={task.id} /><button className="w-full rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground">An Chef-Agent übergeben</button></form> : null}
       {next.length ? (
         <form action={updateWorkTask} className="flex flex-wrap gap-2 border-t border-border pt-3">
           <input type="hidden" name="id" value={task.id} />

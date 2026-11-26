@@ -42,12 +42,12 @@ Die Next.js-Seite ruft Queries und Actions ihres eigenen Features auf. UI-Code g
 
 ### Agentenlauf
 
-1. Ein Mensch legt eine Aufgabe an oder weist sie einem Worker zu.
-2. Der Server prüft die Berechtigung und schreibt Aufgabe sowie Run mit Status queued.
-3. Eine versionierte Worker-Definition legt Modellprofil, Werkzeuge, Wissensbereiche, Grenzen und Freigaberegeln fest.
-4. Der Runner führt einen klar begrenzten Schritt aus und protokolliert Statusereignisse. Lange Arbeit wird wiederaufnehmbar; ein erneuter Versuch darf Seiteneffekte nicht doppelt auslösen.
-5. Schreibende oder externe Aktionen erzeugen eine Freigabeanforderung. Erst ein berechtigter Mensch kann sie bestätigen oder ablehnen.
-6. Ergebnis, Quellen, Token-/Nutzungswerte und Endstatus werden gespeichert und in Portal/Graph dargestellt.
+1. Ein Admin legt eine Aufgabe an und verschiebt sie in `ready`.
+2. Die geschützte API prüft den aktuellen Status und startet sie derzeit ausschließlich beim registrierten Chef-Agenten. Sie erzeugt einen Thread mit `task_id` und wechselt atomar per bedingtem Update nach `in_progress`.
+3. Titel, Beschreibung und Abnahmekriterien bilden den Arbeitsauftrag; die Agent-Definition beschränkt Modellprofil, Werkzeuge, Budget und Freigaben.
+4. Der Durable-Object-Thread führt begrenzte Etappen aus. Task-ID, Events, Freigaben und Thread sind verknüpft; Stop oder Fehler blockieren die Aufgabe.
+5. Schreibende/externe Aktionen warten auf Freigabe. Ein erfolgreicher Agentenlauf verschiebt die Aufgabe nach `review`; der Mensch prüft und führt sie durch QA zu `done`.
+6. Ergebnis, Event-Spur und Endstatus werden aus D1 im Board angezeigt. Eine automatische Delegation oder QA-Runtime ist noch nicht aktiv.
 
 Ein Modell darf Vorschläge liefern, aber weder seine eigene Berechtigung erweitern noch die Autorisierung oder den Statusübergang selbst festlegen.
 

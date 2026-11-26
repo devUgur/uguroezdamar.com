@@ -20,7 +20,7 @@ Der erste Betriebsumfang bleibt klein: ein Owner, die vorhandene Chef-Agent-Defi
 | Agentenruntime | `apps/api`, D1, Durable Objects, Model-/Tool-Ports, Freigaben | Nur der registrierte Chef-Agent ist derzeit ausführbar |
 | Chat | `/chat`, Threads, Live-Streaming, Stop und Approval | Keine automatische Delegation an andere Rollen |
 | Office | `/agents`, 2D/3D, serverautoritatives Präsenzmodell und individuelle Kamera | Visualisierung spiegelt Laufzeit und ersetzt sie nicht |
-| Work | `/work`, persistente Tasks, Priorität, Kriterien, Statusübergänge und Live-Events | Noch keine Sprintplanung oder automatische Ausführung aus einer Task-Zuweisung |
+| Work | `/work`, persistente Tasks, Priorität, Abnahmekriterien, Statusübergänge und Live-Events; Start aus Ready erzeugt verknüpften Chef-Agent-Thread | Noch keine Sprintplanung, Multi-Agent-Delegation oder isolierte Workstation |
 
 Die Aufgaben liegen bei Agentenarbeit gemäß [ADR 0026](../decisions/0026-agent-work-management.md) in D1, zusammen mit den Agentenreferenzen und Events. Neon bleibt für die bestehenden Portal-Domänen zuständig. Es gibt keine zweite Kopie derselben Aufgaben.
 
@@ -44,6 +44,7 @@ Die Aufgaben liegen bei Agentenarbeit gemäß [ADR 0026](../decisions/0026-agent
 
 - **Umgesetzt:** `/work` liest und schreibt Tasks über die geschützte Agenten-API; D1 ist maßgeblich.
 - **Umgesetzt:** Statusübergänge werden im API-Layer validiert und als `task_created`/`task_updated` gespeichert und live verteilt.
+- **Umgesetzt:** Eine bereite Aufgabe kann an den registrierten Chef-Agenten übergeben werden. Task, Thread, Approval und Agenten-Events tragen dieselbe Task-ID; Erfolg geht in Review, Fehler/Stop in Blocked.
 - **Als Nächstes:** Zuweisungs- und Abhängigkeitsregeln, Epic-/Story-Beziehungen, Sprint-Ziel und Kapazität ergänzen.
 - PR, Commit, CI-Lauf, Ergebnis und Blockierungsgrund als strukturierte, auditierbare Referenzen erfassen.
 - Scrum-Begriffe dienen dem Arbeitsfluss; das System erzwingt keine Meetings oder Schätzwerte.
@@ -115,11 +116,10 @@ Es wird kein zusätzliches Agentenframework, Message Broker, Graph-/Vektorspeich
 
 ## Nächste Reihenfolge
 
-1. Task-Board im Dev-Portal auf Erstellung, Übergänge, zwei Browser und WebSocket-Reconnect abnehmen.
-2. Tasks mit den vorhandenen Agent-Threads/Runs verbinden, sodass Zuweisung und Ausführung eine echte, auditierbare Kette bilden.
-3. Agent-Definitionen und Instanzen als Organisationskatalog modellieren; nur die registrierte ausführbare Instanz bleibt aktiv.
-4. Reviewer-/QA-Handoff und unabhängige Abnahme ergänzen.
-5. Workstation-/Worktree-Runner isoliert evaluieren; erst nach erfolgreichem POC persistente Orchestrierung erweitern.
-6. Management- und Agent-Detailansicht sowie dynamische Abteilungen aus den bestätigten Datenverträgen bauen.
+1. Task-Board und Task-zu-Thread-Ausführung im Dev-Portal auf echte Modellannahme, Statusänderungen, zwei Browser und WebSocket-Reconnect abnehmen.
+2. Agent-Definitionen und Instanzen als Organisationskatalog modellieren; nur die registrierte ausführbare Instanz bleibt aktiv.
+3. Reviewer-/QA-Handoff und unabhängige Abnahme ergänzen.
+4. Workstation-/Worktree-Runner isoliert evaluieren; erst nach erfolgreichem POC persistente Orchestrierung erweitern.
+5. Management- und Agent-Detailansicht sowie dynamische Abteilungen aus den bestätigten Datenverträgen bauen.
 
 Produktionsdaten, Secrets, bezahlte Anbieter und Production-Deployments bleiben getrennte Owner-Entscheidungen gemäß [AGENTS.md](../../../AGENTS.md) und den gültigen ADRs.

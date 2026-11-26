@@ -41,6 +41,7 @@ interface ThreadRow {
   id: string;
   agent_id: string;
   project_id: string | null;
+  task_id: string | null;
   title: string | null;
   model: string | null;
   created_by: string | null;
@@ -54,6 +55,7 @@ function toThread(row: ThreadRow) {
     id: row.id,
     agentId: row.agent_id,
     projectId: row.project_id ?? DEFAULT_PROJECT,
+    taskId: row.task_id,
     title: row.title,
     model: row.model ? (JSON.parse(row.model) as { provider: string; model: string }) : null,
     createdBy: row.created_by,
@@ -95,6 +97,7 @@ interface ApprovalRow {
   id: string;
   agent_id: string;
   thread_id: string | null;
+  task_id: string | null;
   action: string;
   details: string;
   status: string;
@@ -157,6 +160,7 @@ async function decideApproval(env: Env, caller: Caller, id: string, approve: boo
   await emit(env, {
     agentId: row.agent_id,
     threadId: row.thread_id ?? undefined,
+    taskId: row.task_id ?? undefined,
     projectId: details.projectId,
     type: "approval_decided",
     data: { approvalId: id, tool: row.action, approved: approve, ok, by: caller.actor, outcome: outcome.slice(0, 600) },
@@ -167,6 +171,7 @@ async function decideApproval(env: Env, caller: Caller, id: string, approve: boo
       threadId: row.thread_id,
       agentId: row.agent_id,
       projectId: details.projectId,
+      taskId: row.task_id ?? undefined,
       approvalId: id,
       tool: row.action,
       approved: approve,
@@ -241,7 +246,7 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
       .bind(text.replace(/\s+/g, " ").slice(0, 80), threadId)
       .run();
     return json(
-      await stub.chat({ threadId, agentId: thread.agent_id, projectId: thread.project_id ?? DEFAULT_PROJECT, text: text.slice(0, 20_000) }),
+      await stub.chat({ threadId, agentId: thread.agent_id, projectId: thread.project_id ?? DEFAULT_PROJECT, taskId: thread.task_id ?? undefined, text: text.slice(0, 20_000) }),
     );
   }
 

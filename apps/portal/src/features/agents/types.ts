@@ -9,6 +9,7 @@ export interface Thread {
   id: string;
   agentId: string;
   projectId: string;
+  taskId: string | null;
   title: string | null;
   model: ModelChoice | null;
   createdBy: string | null;
