@@ -124,6 +124,15 @@ export interface AgentConfig {
   desk: { x: number; y: number };
   model: { alias: string; chain: { provider: string; providerLabel: string; model: string; available: boolean }[] };
   tools: { name: string; description: string; requiresApproval: boolean; inputs: { name: string; required: boolean }[] }[];
+  organization: {
+    department: string;
+    role: { id: string; name: string; purpose: string; responsibilities: string[]; capabilities: string[]; version: number };
+    definition: { id: string; runtimeKey: string; version: number };
+  } | null;
+  work: {
+    byStatus: Record<string, number>;
+    active: { id: string; title: string; status: string; priority: string; updatedAt: number; threadId: string | null }[];
+  };
   prompt: string;
   limits: {
     maxSteps: number;

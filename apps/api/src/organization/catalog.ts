@@ -35,7 +35,7 @@ interface InstanceRow {
   desk_y: number | null;
 }
 
-function parseList(value: string): string[] {
+export function parseList(value: string): string[] {
   try {
     const parsed: unknown = JSON.parse(value);
     return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];

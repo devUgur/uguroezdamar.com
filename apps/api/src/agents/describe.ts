@@ -2,6 +2,7 @@ import { APPROVAL_TTL_SECONDS, PROTECTED_PATHS } from "../approvals.ts";
 import type { Env } from "../env.ts";
 import { secret } from "../env.ts";
 import { spentToday } from "../events.ts";
+import { parseList } from "../organization/catalog.ts";
 import { ModelRouter } from "../models/router.ts";
 import { EXTERNAL_SUBREQUESTS_PER_STAGE } from "../runtime/budget.ts";
 import { HISTORY_LIMIT, MAX_STEPS, STALE_RUN_MS } from "../runtime/limits.ts";
@@ -17,6 +18,31 @@ const CREDENTIALS = [
 ] as const;
 
 const DEFAULT_PROJECT = "uguroezdamar";
+
+interface OrganizationRow {
+  definition_id: string | null;
+  runtime_key: string | null;
+  definition_version: number | null;
+  role_id: string | null;
+  role_name: string | null;
+  role_purpose: string | null;
+  responsibilities: string | null;
+  capabilities: string | null;
+  role_version: number | null;
+  department_name: string | null;
+}
+
+interface WorkRow {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  updated_at: number;
+  thread_id: string | null;
+}
+
+/** Statuses that still need attention; done and backlog items stay out of the sheet's short list. */
+const ACTIVE_TASKS = "('ready', 'in_progress', 'review', 'qa', 'blocked')";
 
 async function count(env: Env, sql: string, ...params: string[]): Promise<number> {
   const row = await env.DB.prepare(sql).bind(...params).first<{ n: number }>();
@@ -35,7 +61,7 @@ export async function describeAgent(env: Env, agentId: string) {
   if (!definition) return null;
 
   const router = await ModelRouter.load(env);
-  const [row, project, spent, threads, pendingApprovals, memories, totals] = await Promise.all([
+  const [row, project, spent, threads, pendingApprovals, memories, totals, organization, taskCounts, activeTasks] = await Promise.all([
     env.DB.prepare("SELECT role, daily_budget_usd, desk_x, desk_y FROM agents WHERE id = ?")
       .bind(agentId)
       .first<{ role: string; daily_budget_usd: number; desk_x: number | null; desk_y: number | null }>(),
@@ -49,6 +75,27 @@ export async function describeAgent(env: Env, agentId: string) {
     env.DB.prepare("SELECT COUNT(*) AS events, COALESCE(SUM(cost_usd), 0) AS cost FROM events WHERE agent_id = ?")
       .bind(agentId)
       .first<{ events: number; cost: number }>(),
+    env.DB.prepare(
+      `SELECT a.definition_id, d.runtime_key, d.version AS definition_version, r.id AS role_id, r.name AS role_name,
+              r.purpose AS role_purpose, r.responsibilities, r.capabilities, r.version AS role_version, dep.name AS department_name
+         FROM agents a
+         LEFT JOIN agent_definitions d ON d.id = a.definition_id
+         LEFT JOIN role_profiles r ON r.id = d.role_id
+         LEFT JOIN departments dep ON dep.id = r.department_id
+        WHERE a.id = ?`,
+    )
+      .bind(agentId)
+      .first<OrganizationRow>(),
+    env.DB.prepare("SELECT status, COUNT(*) AS n FROM tasks WHERE agent_id = ? GROUP BY status")
+      .bind(agentId)
+      .all<{ status: string; n: number }>(),
+    env.DB.prepare(
+      `SELECT t.id, t.title, t.status, t.priority, t.updated_at,
+              (SELECT th.id FROM threads th WHERE th.task_id = t.id AND th.archived = 0 ORDER BY th.updated_at DESC LIMIT 1) AS thread_id
+         FROM tasks t WHERE t.agent_id = ? AND t.status IN ${ACTIVE_TASKS} ORDER BY t.updated_at DESC LIMIT 5`,
+    )
+      .bind(agentId)
+      .all<WorkRow>(),
   ]);
 
   const repo = project?.repo ?? env.DEFAULT_REPO;
@@ -65,6 +112,31 @@ export async function describeAgent(env: Env, agentId: string) {
       requiresApproval: Boolean(tool.requiresApproval),
       inputs: inputsOf(tool.spec.parameters),
     })),
+    organization: organization?.role_id
+      ? {
+          department: organization.department_name ?? "",
+          role: {
+            id: organization.role_id,
+            name: organization.role_name ?? organization.role_id,
+            purpose: organization.role_purpose ?? "",
+            responsibilities: parseList(organization.responsibilities ?? "[]"),
+            capabilities: parseList(organization.capabilities ?? "[]"),
+            version: organization.role_version ?? 1,
+          },
+          definition: { id: organization.definition_id ?? "", runtimeKey: organization.runtime_key ?? "", version: organization.definition_version ?? 1 },
+        }
+      : null,
+    work: {
+      byStatus: Object.fromEntries(taskCounts.results.map((entry) => [entry.status, entry.n])) as Record<string, number>,
+      active: activeTasks.results.map((task) => ({
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        priority: task.priority,
+        updatedAt: task.updated_at,
+        threadId: task.thread_id,
+      })),
+    },
     prompt: definition.systemPrompt({ repo, projectName: project?.name ?? DEFAULT_PROJECT, memories: [] }),
     limits: {
       maxSteps: MAX_STEPS,

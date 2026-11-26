@@ -24,7 +24,7 @@ function TaskCard({ task, next }: { task: WorkTask; next: WorkStatus[] }) {
     <article className="space-y-3 rounded-lg border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>{PRIORITIES[task.priority]}{task.storyPoints ? ` · ${task.storyPoints} SP` : ""}</span>
-        {task.agent ? <span>{task.agent.name}</span> : <span>Nicht zugewiesen</span>}
+        {task.agent ? <Link href={`/agents?agent=${encodeURIComponent(task.agent.id)}`} className="underline underline-offset-4" title="Im Agentenbüro zeigen">{task.agent.name}</Link> : <span>Nicht zugewiesen</span>}
       </div>
       <h3 className="font-medium leading-snug">{task.title}</h3>
       {task.description ? <p className="whitespace-pre-wrap text-sm text-muted-foreground">{task.description}</p> : null}

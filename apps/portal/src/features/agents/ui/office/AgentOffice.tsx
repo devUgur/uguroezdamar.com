@@ -13,12 +13,14 @@ interface AgentOfficeProps {
   liveOrigin: string | null;
   initialPresence: OfficeSnapshot | null;
   initialPresenceError: string | null;
+  /** Agent to open right away (deep link from the board or the organization); ignored when it is not in the office. */
+  initialAgentId?: string | null;
 }
 
 /** /agents: every configured agent in one room, live. A click opens its configuration; from there into a chat. */
-export function AgentOffice({ agents, liveOrigin, initialPresence, initialPresenceError }: AgentOfficeProps) {
+export function AgentOffice({ agents, liveOrigin, initialPresence, initialPresenceError, initialAgentId = null }: AgentOfficeProps) {
   const { states, connected, presence, presenceError, serverOffsetMs } = useOfficeLive(agents, liveOrigin, initialPresence, initialPresenceError);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(() => (agents.some((agent) => agent.id === initialAgentId) ? initialAgentId : null));
   const [chat, setChat] = useState<{ agent: AgentSummary; fresh: boolean } | null>(null);
   const selected = agents.find((agent) => agent.id === selectedId) ?? null;
 
