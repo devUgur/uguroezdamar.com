@@ -1,85 +1,125 @@
-# Office Brain – Roadmap
+# Office Brain – Umsetzungsroadmap
 
-- Status: Gesamtvorhaben Vorschlag; synchronisierte Agentenpräsenz ist eine separat akzeptierte und implementierte Scheibe (ADR 0025)
-- Ziel: erst einen sichtbaren und sicheren Arbeitsfluss belegen, danach Worker und Infrastruktur erweitern
+- Status: Agentenchat, Office-Präsenz und erstes persistentes Aufgabenboard umgesetzt; Organisationsverwaltung und automatische Orchestrierung folgen
+- Stand: 26.11.2026
+- Ziel: Aus dem bestehenden Portal und Agenten-Control-Plane schrittweise eine nachvollziehbare AI-Software-Organisation entwickeln
 
-## Phase 0 — Arbeitsfälle und Grenzen festlegen
+Diese Roadmap gilt für `uguroezdamar.com`. Sie übernimmt keine Repository-Befunde aus dem eingefügten aidevops-Text. Maßgeblich sind der aktuelle Code sowie ADR 0024, 0025 und 0026. „Vollständig“ heißt hier ein durchgängiges Produktziel in prüfbaren Stufen, nicht simulierte Rollen oder eine 3D-Szene, die nicht mit echter Ausführung verbunden ist.
 
-**Ergebnis:** knapper Produktvertrag für das Office und eine messbare POC-Aufgabe.
+## Zielbild
 
-- Drei echte, wiederkehrende Arbeitsfälle mit Input, erwartetem Ergebnis und Owner aufschreiben.
-- Für jeden Fall festlegen: read-only oder schreibend, Datenklasse, nötige Quellen und menschliche Entscheidung.
-- Rollen, erste Worker-Profile, Werkzeug-Allowlist und maximale Ausgaben/Run definieren.
-- Datenaufbewahrung, Providerkonto/-region und Budgetfreigabe klären.
+Ein menschlicher Owner steuert Anforderungen über das Portal. Ein klar begrenzter Control Plane verwaltet Organisation, Aufgaben, Zuweisungen, Runs, Ereignisse und Freigaben. Agenten-Runtimes sind austauschbare Ausführungsadapter. Office- und Management-Ansichten lesen dieselben gespeicherten Daten; die 3D-Ansicht ist niemals Runtime oder Datenquelle.
 
-**Gate:** mindestens ein kleiner, wertvoller Arbeitsfall passt in einen begrenzten Einzelagentenlauf. Kein Multi-Agent-Schwarm als Startanforderung.
+Der erste Betriebsumfang bleibt klein: ein Owner, die vorhandene Chef-Agent-Definition und echte Aufgaben. Rollenprofile und weitere Worker kommen erst hinzu, wenn sie eigene Fähigkeiten, Berechtigungen, Prompts, Limits und Abnahmekriterien haben.
 
-## Phase 1 — Office-Shell und Sichtbarkeit
+## Bestehende Bausteine
 
-**Ergebnis:** geschützte Portalübersicht für Agentenkatalog, Aufgabenstatus, Run-Ereignisse und erste Graphansicht.
+| Bereich | Implementiert | Grenze |
+| --- | --- | --- |
+| Portalzugang | Admin-Session und geschützte Portalrouten | Browser erhält nie das API-Service-Token |
+| Agentenruntime | `apps/api`, D1, Durable Objects, Model-/Tool-Ports, Freigaben | Nur der registrierte Chef-Agent ist derzeit ausführbar |
+| Chat | `/chat`, Threads, Live-Streaming, Stop und Approval | Keine automatische Delegation an andere Rollen |
+| Office | `/agents`, 2D/3D, serverautoritatives Präsenzmodell und individuelle Kamera | Visualisierung spiegelt Laufzeit und ersetzt sie nicht |
+| Work | `/work`, persistente Tasks, Priorität, Kriterien, Statusübergänge und Live-Events | Noch keine Sprintplanung oder automatische Ausführung aus einer Task-Zuweisung |
 
-- Bestehende Admin-Session und Rollen nutzen.
-- Zunächst nur lesbare Demo-/Testdaten oder einen ausdrücklich freigegebenen kleinen Datensatz anzeigen.
-- Der Graph visualisiert gespeicherte Objekte und typisierte Beziehungen; keine Ausführung wird durch Ziehen eines Knotens ausgelöst.
-- Keine Modellprovider, Embeddings oder zusätzlichen Cloud-Dienste voraussetzen.
+Die Aufgaben liegen bei Agentenarbeit gemäß [ADR 0026](../decisions/0026-agent-work-management.md) in D1, zusammen mit den Agentenreferenzen und Events. Neon bleibt für die bestehenden Portal-Domänen zuständig. Es gibt keine zweite Kopie derselben Aufgaben.
 
-**Gate:** Owner kann Aufgabe, Worker, Status und Beziehungen verstehen; Graph funktioniert mit Tastatur und bei schmalen Viewports; Rechte und leere/fehlerhafte Zustände sind sichtbar geprüft.
+## Sechs Umsetzungsphasen
 
-### Bereits separat umgesetzt: Agentenbüro und gemeinsame Präsenz
+### 1. Organisation und Agentenkatalog
 
-Das bestehende `/agents`-Feature ist nicht der Aufgaben-/Graph-Shell aus dieser Roadmap. Seine 2D- und 3D-Figuren nutzen einen serverautoritativen Bewegungsplan aus `OfficePresence` in `apps/api`; D1-Ereignisse bestimmen die Aktivität, Live-Updates gehen über den bestehenden Hub. Jeder Browser erhält beim WebSocket-Verbinden einen Snapshot und rendert dieselbe Bewegung. Freie Agenten wandern kontinuierlich, solange mindestens ein Büro geöffnet ist; ohne Abonnenten pausieren die Alarme. Die Kamera bleibt individuell. Die Portalansicht meldet eine fehlende Snapshot-Synchronisierung sichtbar, statt eine erfolgreiche Live-Synchronisierung vorzutäuschen.
+**Ergebnis:** verwaltbare Abteilungen, Rollenprofile, Fähigkeiten und Agent-Definitionen; getrennt von konkreten Agent-Instanzen, Runs und Workstations.
 
-**Abnahme für diesen Slice:** Dev-Preview in zwei Browsern parallel auf Agentenbewegungen und Aktivitätswechsel prüfen; WebSocket-Neuverbindung, 2D-Rückfall, Reduced Motion und getrennte Kamerasicht manuell prüfen. Produktionsfreigabe bleibt getrennt.
+- Bestehende `AGENTS`-Registry und D1-Instanzen inventarisieren; keine scheinbaren Mitarbeitenden aus UI-Daten erzeugen.
+- Stabilen Vertrag für `department`, `role`, `reportsTo`, `capabilities`, Policy-Version und Agent-Definition festlegen.
+- Definition und Instanz unterscheiden: Definition enthält Prompt-/Tool-/Modell-Policy; Instanz ist ein aktiver Runtime-Akteur mit Limits und Desk.
+- Hierarchie nur als Delegationsregel behandeln, nie als implizite Berechtigung.
+- Owner-geschützte Verwaltung erst nach Rollen-/Scope-Modell freischalten.
 
-## Phase 2 — Ein einzelner beaufsichtigter Worker
+**Gate:** Katalog und Office zeigen dieselben aktiven Instanzen; jede Rolle hat belegte Aufgaben und Least-Privilege-Tools; Deaktivieren löscht weder historische Runs noch Events.
 
-**Ergebnis:** ein Agent erledigt eine begrenzte read-only Aufgabe und liefert ein Ergebnis mit Quellen/Tool-Spur.
+### 2. Backlog und Delivery
 
-- Zentraler ModelPort mit festen Profilaliasen und Provider-Key ausschließlich serverseitig.
-- Explizite, typisierte Werkzeuge; keine beliebigen URLs, Shell-Kommandos oder generischen SQL-Werkzeuge.
-- Laufzeit-, Schritt-, Token- und Kostenobergrenzen; Run abbrechen können.
-- Status und Nutzungsdaten persistieren; menschliche Bewertung von Ergebnisqualität und Kosten.
+**Ergebnis:** eine echte Aufgabenquelle für Backlog, Ready, Umsetzung, Review, QA, Blockaden und Done.
 
-**Gate:** akzeptable Erfolgsrate im vereinbarten Testfall, reproduzierbares Kostenprofil und keine nicht freigegebenen Schreibaktionen.
+- **Umgesetzt:** `/work` liest und schreibt Tasks über die geschützte Agenten-API; D1 ist maßgeblich.
+- **Umgesetzt:** Statusübergänge werden im API-Layer validiert und als `task_created`/`task_updated` gespeichert und live verteilt.
+- **Als Nächstes:** Zuweisungs- und Abhängigkeitsregeln, Epic-/Story-Beziehungen, Sprint-Ziel und Kapazität ergänzen.
+- PR, Commit, CI-Lauf, Ergebnis und Blockierungsgrund als strukturierte, auditierbare Referenzen erfassen.
+- Scrum-Begriffe dienen dem Arbeitsfluss; das System erzwingt keine Meetings oder Schätzwerte.
 
-## Phase 3 — Kuratierte Wissensbibliothek
+**Gate:** Board und API zeigen nach Reload/Live-Event dieselbe Datenversion; ungültige Übergänge, unbekannte Agenten und unautorisierte Schreibzugriffe werden abgewiesen.
 
-**Ergebnis:** kontrollierte Dokumente mit Herkunft, Version, Scope und zitierbaren Abschnitten.
+### 3. Begrenzte Orchestrierung und Übergaben
 
-- Zuerst bestehende Git-Dokumente referenzieren und PostgreSQL-Volltext evaluieren.
-- Kleine, freigegebene interne Testquelle ergänzen, wenn der Fall sie benötigt.
-- Bewertungssatz aus echten Fragen und Sollquellen aufbauen.
-- Erst nach Retrieval-Auswertung pgvector aktivieren oder andere Suchtechnik vergleichen.
-- Agentenschreibvorschläge als Review-Warteschlange führen.
+**Ergebnis:** ein Auftrag kann nach expliziten Regeln von Intake zu Planung, Umsetzung, unabhängiger Prüfung und Rückmeldung laufen.
 
-**Gate:** Antworten zeigen passende, zugängliche Quellen; fremde Scopes liefern keine Treffer; Neuimport und Löschung sind nachvollziehbar.
+- Chief koordiniert; Product/Planner klären Anforderungen; Engineering Lead zerlegt Arbeit; Developer führen zugewiesene Tasks aus; Reviewer/QA prüfen unabhängig.
+- Beginne sequenziell mit einem einzigen ausführbaren Agenten. Delegation/Fan-out wird erst nach messbarem Vorteil aktiviert.
+- Jeder Run referenziert Task, Definition-/Prompt-Version, Modellprofil, Tool-Allowlist, Budget und Ergebnis.
+- Zustandsmaschine: `queued → running ↔ waiting_approval → succeeded | failed | cancelled`; Retries sind begrenzt und idempotent.
+- Übergaben sind persistierte Events mit Quell-/Zielrolle, Task-ID, erlaubtem Scope und akzeptiertem Ergebnis; keine freie Agent-zu-Agent-Chat-Schleife.
+- Externe Schreibaktionen und Release bleiben menschlich freigabepflichtig.
 
-## Phase 4 — Dauerhafte Aufgaben und Freigaben
+**Gate:** Resume, Stop, Timeout, Toolfehler und doppelte Zustellung sind nachvollziehbar; der Entwickler kann nicht allein seinen eigenen Review/QA-Schritt abschließen.
 
-**Ergebnis:** länger dauernde Arbeit kann sicher pausieren, fortsetzen, abbrechen und nach einem Laufzeitfehler wiederaufgenommen werden.
+### 4. Isolierte Ausführung und Workstations
 
-- Vercel-Request und Worker-Run über RunPort entkoppeln.
-- Cloudflare Workflows und eine zur bestehenden Hostingplattform passende Alternative als kleinen POC vergleichen.
-- Neon bleibt die Quelle für Runstatus und fachliche Daten.
-- Retry-/Idempotenzverhalten, Webhook-Authentifizierung, Secrets und Datenzugriff belegen.
+**Ergebnis:** parallele Coding-Läufe ohne gemeinsamen schreibenden Workspace.
 
-**Gate:** gemessener Vorteil gegenüber kurzen Portal-Runs, inklusive tatsächlicher Tarif-/Betriebskosten und erfolgreichem Resume-/Approval-Test.
+- Ein Workstation-Datensatz bindet Agent-Run, Workspace/Worktree, Branch, Ressourcenlimits und Lifecycle.
+- Isolierung über bestehende GitHub-/Runner-Grenzen; kein Zugriff auf lokale Owner-Dateien oder beliebige Shell-Kommandos.
+- Logs und Artefakte redigieren Secrets/PII; Retention und Cleanup sind festgelegt.
+- Workstations werden nach Bedarf kurzlebig bereitgestellt und nach Ende/Abbruch bereinigt.
 
-## Phase 5 — Team aus Agenten und Integrationen
+**Gate:** konkurrierende Läufe beeinflussen einander nicht; Cleanup nach Erfolg, Fehler und Abbruch ist belegt; Kosten und Laufzeit lassen sich je Run zuordnen.
 
-**Ergebnis:** weitere spezialisierte Worker arbeiten nach ausdrücklicher Zuweisung und über nachvollziehbare Übergaben.
+### 5. Management, Agent-Ansicht und Office-Visualisierung
 
-- Agenten spezialisieren sich erst nach nachgewiesenem Bedarf, etwa Recherche, Planung oder Qualitätsprüfung.
-- Übergabe enthält Aufgaben-ID, Quellen, erlaubte Scopes und versionierte Ergebnisse.
-- Externe Integrationen kommen einzeln als minimal berechtigte Tools hinzu.
-- Modellwechsel werden mit festem Evaluationssatz, Kostenvergleich und Rollback überprüft.
+**Ergebnis:** zusammenhängende Control-Plane-Oberfläche mit drei klaren Aufgaben.
 
-**Gate:** zusätzliche Agenten verbessern die Abnahmequote oder Laufzeit messbar und bleiben innerhalb der freigegebenen Budget-/Berechtigungsgrenzen.
+- **Office View:** Räume, Plätze und Status aus Organisations- und Präsenzdaten; Kamera und Auswahl lokal je Browser.
+- **Management View:** Backlog/Sprints, Auslastung, Risiken, Kosten, Freigaben und Delivery; ohne 3D vollständig bedienbar.
+- **Agent View:** Rolle, Fähigkeiten, aktueller Task/Run, Verlauf, freigegebene Tool-Spuren, Modellprofil und Limits.
+- Räume/Abteilungen werden aus Daten gerendert; 2D bleibt kompakter, zugänglicher Fallback.
+- Statusanimationen werden aus echten Run-/Task-Events abgeleitet und als Visualisierung kenntlich gemacht.
 
-## Vor jeder Implementierungsphase
+**Gate:** alle Ansichten referenzieren dieselben IDs/Revisionen; Screenreader-/Tastaturbedienung und schmale Viewports sind geprüft; bei API-Ausfall sind Fehler und letzte bekannte Daten klar erkennbar.
 
-1. Issue mit Scope, Datenklassen, Sicherheitsauswirkung und Kostenmessung anlegen.
-2. Für dauerhafte Technologie-/Datenmodell-/Hostingentscheidungen einen ADR-Entwurf in decisions/ ergänzen.
-3. Aktuelle offizielle API-/Lizenz-/Preisquellen erneut prüfen.
-4. Datenmigrationen, Secrets, Cloudzugriffe und Deployment als getrennte Freigaben behandeln.
-5. PR mit Tests, Preview, Rollen-/Negativfällen und Owner-Abnahme schließen.
+### 6. QA, DevOps und kontrollierte Lieferung
+
+**Ergebnis:** verifizierte Artefakte und Release-Berichte, keine automatische Produktion ohne Owner-Freigabe.
+
+- CI-Ergebnis, Review, QA, Commit und PR werden an die Task-/Run-Historie gebunden.
+- Release-Agent darf Status erfassen und Vorschläge machen; Secrets, Deployment und Merge bleiben durch bestehende Freigaberegeln geschützt.
+- Observability zeigt Erfolgsquote, Laufzeit, Tool-/Modellverbrauch, Retries, Blockaden und Kosten je akzeptiertem Ergebnis.
+- Kostenlimits, Zeit-/Schrittlaufgrenzen, Stop und Alarmierung sind Pflicht vor Multi-Agent-Betrieb.
+
+**Gate:** fehlgeschlagene Pflichtchecks blockieren die Lieferung; Produktionsaktionen benötigen die bestehende explizite Freigabe und sind rückverfolgbar.
+
+## Produktarchitektur
+
+~~~text
+apps/portal
+  Office UI · Management UI · Agent UI · Session/Auth · serverseitiger API-Adapter
+apps/api (Cloudflare Worker)
+  Control Plane · D1 Work/Org/Events · Policies · AgentRuntimePort · ModelPort · ToolPort
+  Durable Objects: Thread-Runtime · LiveHub · synchronisierte OfficePresence
+Neon / packages/server
+  bestehende Portal-Domänen; keine zweite Kopie von Agenten-Work-Items
+GitHub / CI
+  Branches, Reviews, Checks und freigabepflichtige Delivery
+~~~
+
+Es wird kein zusätzliches Agentenframework, Message Broker, Graph-/Vektorspeicher oder Worker-Produkt eingeführt, bevor ein POC den konkreten Bedarf und Betriebsvorteil zeigt.
+
+## Nächste Reihenfolge
+
+1. Task-Board im Dev-Portal auf Erstellung, Übergänge, zwei Browser und WebSocket-Reconnect abnehmen.
+2. Tasks mit den vorhandenen Agent-Threads/Runs verbinden, sodass Zuweisung und Ausführung eine echte, auditierbare Kette bilden.
+3. Agent-Definitionen und Instanzen als Organisationskatalog modellieren; nur die registrierte ausführbare Instanz bleibt aktiv.
+4. Reviewer-/QA-Handoff und unabhängige Abnahme ergänzen.
+5. Workstation-/Worktree-Runner isoliert evaluieren; erst nach erfolgreichem POC persistente Orchestrierung erweitern.
+6. Management- und Agent-Detailansicht sowie dynamische Abteilungen aus den bestätigten Datenverträgen bauen.
+
+Produktionsdaten, Secrets, bezahlte Anbieter und Production-Deployments bleiben getrennte Owner-Entscheidungen gemäß [AGENTS.md](../../../AGENTS.md) und den gültigen ADRs.

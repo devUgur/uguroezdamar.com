@@ -5,32 +5,31 @@
 
 ## Systemkontext
 
-Das Office erweitert das bestehende Portal, statt eine zweite Verwaltungs-App daneben zu stellen. Das Portal bleibt die Bedienoberfläche und Autorisierungsgrenze. Server Use Cases validieren jede Aktion und speichern ihren Zustand in Neon. Modell- und Ausführungsanbieter hängen hinter schmalen Adaptern.
+Das Office erweitert das bestehende Portal, statt eine zweite Verwaltungs-App daneben zu stellen. Das Portal bleibt die Bedienoberfläche und Session-Grenze. Agentenarbeit wird über die geschützte `apps/api`-Control-Plane validiert und in D1 gespeichert (ADR 0026); bestehende Portal-Domänen nutzen weiterhin `packages/server` und Neon. Modell- und Ausführungsanbieter hängen hinter schmalen Adaptern.
 
-**Bestand heute:** Agentenchat und Agentenbüro sind bereits ein eigener, in ADR 0024/0025 festgelegter Laufzeitpfad: das Portal auf Vercel ruft `apps/api` auf Cloudflare auf; D1 hält Ereignisse, Durable Objects halten Thread-Verlauf und synchronisierte Office-Bewegungspläne. Diese bestehende Plattform wird nicht in das Neon-Zielbild umgebogen. Neue Office-Brain-Fachmodule müssen ihren Speicherpfad ausdrücklich festlegen und Agentenereignisse über einen klaren Adapter beziehen.
+**Bestand heute:** Agentenchat, Aufgabenboard und Agentenbüro nutzen einen Laufzeitpfad: das Portal auf Vercel ruft `apps/api` auf Cloudflare auf; D1 hält Work-Items und Events, Durable Objects halten Thread-Verlauf und synchronisierte Office-Bewegungspläne. Neon bleibt für bestehende Portal-Daten. Weitere Domänen erhalten einen expliziten Speichervertrag, statt dieselben Aufgaben in Neon und D1 zu duplizieren.
 
 ~~~mermaid
 flowchart LR
   Owner[Owner / Admin] --> Portal[apps/portal<br/>Office UI und API]
-  Portal --> Server[packages/server<br/>Office Use Cases und Rechte]
-  Server --> DB[(Neon PostgreSQL<br/>Arbeitsdaten, Graph, Wissen, Ereignisse)]
-  Server --> ModelPort[ModelPort<br/>Profil → Provider/Modell]
+  Portal --> API[apps/api<br/>Control Plane und Agenten-Adapter]
+  API --> D1[(Cloudflare D1<br/>Tasks, Agenten, Events)]
+  API --> Runtime[Durable Objects<br/>Thread, LiveHub, OfficePresence]
+  API --> ModelPort[ModelPort<br/>Profil → Provider/Modell]
   ModelPort --> LLM[Modellprovider oder Gateway]
-  Server --> RunPort[RunPort<br/>kurze / dauerhafte Ausführung]
-  RunPort -. bei nachgewiesenem Bedarf .-> Workflow[optionale durable Worker-Plattform]
-  Server --> BlobPort[Artefakt-Adapter]
-  BlobPort -. nur wenn Dateien es erfordern .-> Blob[privater Objektspeicher]
-  Infisical[Infisical<br/>Provider-Secrets] --> Server
-  Infisical --> Workflow
+  Portal --> Server[packages/server<br/>bestehende Portal-Domänen]
+  Server --> Neon[(Neon PostgreSQL)]
+  API -. langer Lauf bei Bedarf .-> Workflow[optionale durable Worker-Plattform]
+  Infisical[Infisical<br/>Portal-Secrets] --> Server
 ~~~
 
-Die Grafik ist ein Zielbild, keine bereits vorhandene Infrastruktur. Der erste Schritt benötigt nur Portal, vorhandene Servergrenze und Neon. Ein separater Worker oder Objektspeicher bleibt ein späteres Entscheidungstor.
+Die Grafik zeigt den bestehenden Agentenpfad und geplante Erweiterungen. Das Portal verwendet Neon weiter für seine bestehenden Fachbereiche. Agentenbezogene Aufgaben laufen über D1; eine zusätzliche Worker-Plattform oder ein Objektspeicher bleibt ein späteres Entscheidungstor.
 
 ## Laufzeitgrenzen
 
 ### Portal als Kontrollzentrum
 
-Die Office-Oberfläche gehört unter eine geschützte Portalroute, konzeptionell etwa /admin/office. Vorgeschlagene Bereiche:
+Die Office-Oberfläche gehört unter geschützte Portalrouten. `/agents`, `/chat` und `/work` sind die bestehenden Bereiche. Weitere Management-/Knowledge-Ansichten sind Vorschläge:
 
 - Übersicht: offene Aufgaben, laufende und wartende Runs, letzte Aktivitäten;
 - Workers: Agenten, Fähigkeiten, erlaubte Werkzeuge, Modellprofil und Status;
@@ -39,7 +38,7 @@ Die Office-Oberfläche gehört unter eine geschützte Portalroute, konzeptionell
 - Wissen: Quellen, Versionen, Zugriffsumfang, Freigabestatus und Zitate;
 - Kosten/Aktivität: Modellnutzung, Fehler, Laufzeiten und Kostenabschätzung.
 
-Die Next.js-Seite ruft Queries und Actions ihres eigenen Features auf. UI-Code greift nicht direkt auf Neon zu. Jede Route und Action prüft Session, Rolle, Ressourcenumfang und konkrete Berechtigung serverseitig.
+Die Next.js-Seite ruft Queries und Actions ihres eigenen Features auf. UI-Code greift weder direkt auf D1/Neon noch auf Cloudflare-Bindings zu. Jede Route und Action prüft die Portal-Session; die API prüft Service-Token, Eingaben, Statusübergänge und Scope serverseitig.
 
 ### Agentenlauf
 

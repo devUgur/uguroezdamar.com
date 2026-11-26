@@ -4,6 +4,7 @@ import { ThemeToggle } from "@ugur/ui";
 const LINKS = [
   { href: "/", label: "Dashboard" },
   { href: "/agents", label: "Agenten" },
+  { href: "/work", label: "Aufgaben" },
   { href: "/chat", label: "Chat" },
   { href: "/admin/team", label: "Team" },
 ];

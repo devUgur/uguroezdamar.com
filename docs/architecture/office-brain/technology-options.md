@@ -10,7 +10,7 @@ Diese Auswahl bezieht sich auf künftige Office-Brain-Fachmodule. Sie ist kein V
 | Bereich | Startvorschlag | Warum | Erneut prüfen, wenn |
 | --- | --- | --- | --- |
 | Weboberfläche | bestehendes Next.js-Portal auf Vercel | Auth, Portal und Hosting sind bereits vorhanden | Worker-Last oder Laufzeitgrenzen die UI-Plattform betreffen |
-| System of record | bestehendes Neon/PostgreSQL | minimiert neue Dienste; relationale Daten, Transaktionen, Volltext und spätere Vektoren | Suchvolumen oder Datenmenge messbar nicht mehr passt |
+| System of record | bestehende Portal-Daten in Neon; Agenten-Work-Items in D1 gemäß ADR 0026 | nutzt je Domäne die vorhandene Quelle und vermeidet eine doppelte Aufgabenhaltung | eine neue Domäne braucht eine eigene dokumentierte Datenentscheidung |
 | Graphdarstellung | @xyflow/react (React Flow) | React-Komponenten als Knoten, interaktive Kanten, Controls und anpassbare Oberfläche; MIT-Lizenz | ein reiner Lesekatalog ohne Editier-/Flow-Bedarf genügt |
 | Modellzugriff | Kandidat: Vercel AI SDK Core mit zentralem Provider-Registry/ModelPort | gemeinsame API für Provider und strukturierte Tool-Schritte; Model IDs bleiben hinter Profilaliasen | Agentenworkflow-Funktionen eine andere Laufzeit erfordern |
 | Agenten-Orchestrierung | zuerst ein einzelner begrenzter Agent mit explizitem Toolloop und deterministischen Server-Use-Cases | weniger Infrastruktur, leichter prüfbar und günstiger als frühe Multi-Agent-Fan-outs | reale Arbeit Wiederaufnahme, Parallelität oder viele Handoffs benötigt |
@@ -54,7 +54,7 @@ Das Vercel AI SDK bietet Provider- und Modellmanagement über ein Registry sowie
 
 1. Dokumente erhalten Version, Urheber/Herkunft, Zugriffsumfang und Status.
 2. PostgreSQL-Volltextsuche bildet die erste Messbasis.
-3. Wenn ein Testsatz echte semantische Suchlücken nachweist, kann pgvector je Datenbank auf Neon aktiviert und per Migration eingebunden werden.
+3. Wenn ein Testsatz echte semantische Suchlücken nachweist, kann pgvector in der dafür gewählten Wissensdatenbank aktiviert werden; Agenten-Work-Items bleiben in D1.
 4. Vektoren werden getrennt nach Embedding-Modell/Version und Dimension identifiziert; Providerwechsel verlangt Neuindexierung oder parallele, versionierte Vektorsätze.
 5. Ein externer Graph- oder Vektordienst wird nur eingeführt, wenn eine dokumentierte Last-/Qualitätsmessung PostgreSQL übersteigt.
 

@@ -8,6 +8,7 @@ import { buildOfficeLayout } from "./office/layout.ts";
 import { officeActivityOf } from "./office/presence.ts";
 import { SubrequestBudget } from "./runtime/budget.ts";
 import { toolByName } from "./tools/registry.ts";
+import { handleTasks } from "./work/tasks.ts";
 
 export { AgentRuntime } from "./agent.ts";
 export { LiveHub } from "./hub.ts";
@@ -268,6 +269,9 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   }
 
   if (path === "/api/office/state" && method === "GET") return json(await officeSnapshot(env));
+
+  const tasks = await handleTasks(request, env, caller, path);
+  if (tasks) return tasks;
 
   const threads = await handleThreads(request, env, caller, path);
   if (threads) return threads;

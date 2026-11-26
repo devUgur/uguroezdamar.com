@@ -13,7 +13,9 @@ export type EventType =
   | "error"
   | "budget_blocked"
   | "stage_paused"
-  | "stopped";
+  | "stopped"
+  | "task_created"
+  | "task_updated";
 
 export interface AgentEvent {
   agentId?: string;

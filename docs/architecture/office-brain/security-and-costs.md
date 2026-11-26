@@ -42,7 +42,7 @@ Ein Run speichert mindestens Agent-/Prompt-/Toolversion, Provider und Modell-ID,
 
 ## Betrieb und Wiederanlauf
 
-Neon ist die Quelle für Status und Ereignisse. Laufzeitprozesse sind ersetzbar und dürfen keinen ungesicherten Zustand nur im Arbeitsspeicher halten. Zustandswechsel sind atomar; Hintergrundarbeit arbeitet mit Idempotenzschlüsseln und begrenzten Retries. Geplante Worker-Plattformen schreiben über einen kontrollierten Repository-/API-Adapter, nicht durch direkte Umgehung der Use Cases.
+Für Agenten-Work-Items und -Events ist D1 im API-Control-Plane maßgeblich (ADR 0026); bestehende Portal-Domänen bleiben in Neon. Laufzeitprozesse sind ersetzbar und dürfen keinen ungesicherten Zustand nur im Arbeitsspeicher halten. Zustandswechsel sind atomar; Hintergrundarbeit arbeitet mit Idempotenzschlüsseln und begrenzten Retries. Geplante Worker-Plattformen schreiben über einen kontrollierten API-Adapter, nicht durch direkte Umgehung der Use Cases.
 
 Vor produktiven Agentenaktionen sind mindestens erforderlich:
 
