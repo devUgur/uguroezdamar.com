@@ -251,8 +251,8 @@ Danach folgen Kundenanmeldung mit GitHub, Rollen je Mandant, Grenzen und Budgets
 
 | # | Punkt | Wer | Nächster Schritt |
 | --- | --- | --- | --- |
-| 1 | Codex-Arbeit liegt uncommittet im Checkout: Portfolio (ADR 0034), GitHub-Issue-Sync (ADR 0035), `/costs`, `agent_handoff` | Owner/Codex | Tenancy-Wächter reparieren (Portfolio-Tabellen haben `tenant_id` erst ab Migration 0014; zwei `UPDATE tasks` ohne `tenant_id` in `github/issues.ts` und `github/webhook.ts`), Lint-Fehler in `github/issues.ts`, dann committen |
-| 2 | `/costs` (Codex, rechnet aus Events) und `/usage` (Protokoll) zeigen dasselbe doppelt | Agent | `/costs` auf `model_calls` umstellen oder in `/usage` aufgehen lassen |
+| 1 | Codex-Arbeit uncommittet | erledigt | Übernommen mit Korrekturen: Migrationen als 0020/0021, Tenancy-Wächter grün, Issue-Webhook nur für die Mandanten der sendenden Installation |
+| 2 | `/costs` und `/usage` doppelt | erledigt | `/costs` leitet auf `/usage` weiter, Auswertung aus Events entfernt |
 | 3 | Sandbox-Branch ungemergt, ADR-Nummer doppelt (0035) | Agent | Siehe Stufe 6 |
 | 4 | Workers Paid nicht gebucht | Owner | Entscheidung, siehe Abschnitt 7 |
 | 5 | Workers-AI-Kontingent (10.000 Neurons am Tag) ist täglich schnell leer: Vektoren des Wissensindex fehlen, Workers AI als Modell fällt aus | Owner | Workers Paid oder Embeddings über einen anderen Anbieter |

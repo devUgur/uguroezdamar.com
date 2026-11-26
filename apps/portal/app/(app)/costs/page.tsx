@@ -1,7 +1,6 @@
-import { getCostReport } from "@/src/features/costs";
-import { CostsView } from "@/src/features/costs/ui/CostsView";
+import { redirect } from "next/navigation";
 
-export default async function CostsPage() {
-  const result = await getCostReport();
-  return <CostsView report={result.report} error={result.error} />;
+/** Costs live in the usage ledger since plan stage 1: one page for consumption and costs. Old links keep working. */
+export default function CostsPage() {
+  redirect("/usage");
 }

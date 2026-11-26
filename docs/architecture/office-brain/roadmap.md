@@ -136,7 +136,7 @@ Es wird kein zusätzliches Agentenframework, Message Broker, Graph-/Vektorspeich
 4. Work-Items um echte Issue-, PR-, Commit-, CI-Referenzen und Abhängigkeiten ergänzen.
 5. Product/Planning und Tech-Lead-Rollen mit strukturierten Übergaben umsetzen; zuerst sequenziell und mit Begrenzungen.
 6. Management-/Agent-Detailansichten sowie Kosten- und Delivery-Metriken aus echten Runs ergänzen.
-6. **Umgesetzt:** Managementseite `/costs` zeigt 30-Tage-Kostenschätzung, Tokens, Aufrufe, Tagesverlauf sowie Aufteilung nach Agent und Modell. Beträge beruhen auf Modellkatalogpreisen und sind keine Rechnungsdaten.
+6. **Umgesetzt:** Verbrauch und Kosten stehen unter `/usage` aus dem Verbrauchsprotokoll (`runs`, `model_calls`, `tool_calls`; Plan Stufe 1): Filter, Tagesverlauf, Aufteilung nach Mitarbeiter, Modell, Projekt und Anbieter, Läufe mit Trace, CSV. Die frühere Seite `/costs` (Auswertung aus Events) leitet dorthin weiter. Beträge beruhen auf Katalogpreisen und sind keine Rechnungsdaten.
 7. Isolierte Workstation als Sandbox-POC erst nach Workers-Paid-/Container-Budget, Egress-/Credential-Konzept und automatisiertem Cleanup freigeben. Cloudflare Sandboxes benötigen laut aktueller Doku Workers Paid; Container-Durable-Object-Scheduling ist Public Beta.
 8. GitHub Projects V2 anschließen, sobald App-/CLI-Projektberechtigungen gesetzt sind. GraphQL-Queries brauchen `read:project`, Änderungen `project`; V2-Webhooks sind aktuell Public Preview.
 

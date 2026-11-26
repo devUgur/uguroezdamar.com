@@ -431,38 +431,6 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     );
   }
 
-  if (path === "/api/costs" && method === "GET") {
-    const days = Math.min(Math.max(Number(url.searchParams.get("days") ?? 30) || 30, 1), 90);
-    const since = Date.now() - days * 86_400_000;
-    const [totals, byDay, byAgent, byModel] = await Promise.all([
-      env.DB.prepare(
-        `SELECT COALESCE(SUM(cost_usd), 0) AS cost, COALESCE(SUM(tokens_in), 0) AS tokensIn,
-                COALESCE(SUM(tokens_out), 0) AS tokensOut, COUNT(*) AS calls
-           FROM events WHERE tenant_id = ? AND type = 'model_result' AND ts >= ?`,
-      ).bind(caller.tenantId, since).first<{ cost: number; tokensIn: number; tokensOut: number; calls: number }>(),
-      env.DB.prepare(
-        `SELECT date(ts / 1000, 'unixepoch') AS day, SUM(cost_usd) AS cost, SUM(tokens_in) AS tokensIn,
-                SUM(tokens_out) AS tokensOut, COUNT(*) AS calls
-           FROM events WHERE tenant_id = ? AND type = 'model_result' AND ts >= ?
-           GROUP BY day ORDER BY day`,
-      ).bind(caller.tenantId, since).all(),
-      env.DB.prepare(
-        `SELECT e.agent_id AS agentId, COALESCE(a.name, e.agent_id, 'Unbekannt') AS agent,
-                SUM(e.cost_usd) AS cost, SUM(e.tokens_in) AS tokensIn, SUM(e.tokens_out) AS tokensOut, COUNT(*) AS calls
-           FROM events e LEFT JOIN agents a ON a.id = e.agent_id
-           WHERE e.tenant_id = ? AND e.type = 'model_result' AND e.ts >= ?
-           GROUP BY e.agent_id ORDER BY cost DESC`,
-      ).bind(caller.tenantId, since).all(),
-      env.DB.prepare(
-        `SELECT COALESCE(json_extract(data, '$.model'), 'Modell unbekannt') AS model,
-                SUM(cost_usd) AS cost, SUM(tokens_in) AS tokensIn, SUM(tokens_out) AS tokensOut, COUNT(*) AS calls
-           FROM events WHERE tenant_id = ? AND type = 'model_result' AND ts >= ?
-           GROUP BY model ORDER BY cost DESC`,
-      ).bind(caller.tenantId, since).all(),
-    ]);
-    return json({ days, since, totals: totals ?? { cost: 0, tokensIn: 0, tokensOut: 0, calls: 0 }, byDay: byDay.results, byAgent: byAgent.results, byModel: byModel.results, basis: "estimated" });
-  }
-
   if (path === "/api/approvals" && method === "GET") {
     return json(await pendingApprovals(env, caller.tenantId, url.searchParams.get("thread") ?? undefined));
   }
