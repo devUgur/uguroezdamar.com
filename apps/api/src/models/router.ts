@@ -12,6 +12,8 @@ export interface RouteOptions {
   /** Each external attempt takes one subrequest; without a budget nothing is counted. */
   budget?: SubrequestBudget;
   onDelta?: (text: string) => void;
+  /** Only providers that never train on content: set for private repositories. */
+  privateContent?: boolean;
   /** A model chosen in the portal for this thread; tried first, the alias chain stays as fallback. */
   pinned?: PinnedModel;
 }
@@ -27,6 +29,8 @@ export interface CatalogEntry {
   shortLabel: string;
   /** False while the provider's key is missing; the portal shows it greyed out. */
   available: boolean;
+  /** True when the provider may train on prompts; such models are blocked for private repositories. */
+  trainsOnData: boolean;
   models: { id: string; label: string; note?: string; inputUsdPerM: number; outputUsdPerM: number }[];
 }
 
@@ -59,6 +63,7 @@ export class ModelRouter {
       label: provider.label ?? id,
       shortLabel: provider.shortLabel ?? provider.label ?? id,
       available: this.hasCredentials(id),
+      trainsOnData: provider.trainsOnData !== false,
       models: (provider.models ?? []).map(({ id: model, label, note, inputUsdPerM, outputUsdPerM }) => ({ id: model, label, note, inputUsdPerM, outputUsdPerM })),
     }));
     return { providers, aliases: this.config.aliases };
@@ -81,8 +86,12 @@ export class ModelRouter {
 
   async chat(alias: string, request: Omit<ChatRequest, "model">, options: RouteOptions = {}): Promise<RoutedResult> {
     const chain = this.config.aliases[alias] ?? [];
-    const targets = options.pinned ? [this.pinnedTarget(options.pinned), ...chain.filter((target) => !(target.provider === options.pinned?.provider && target.model === options.pinned?.model))] : chain;
-    if (!targets.length) throw new ModelError(`Unknown model alias "${alias}"`, "router", 400);
+    const ordered = options.pinned ? [this.pinnedTarget(options.pinned), ...chain.filter((target) => !(target.provider === options.pinned?.provider && target.model === options.pinned?.model))] : chain;
+    if (!ordered.length) throw new ModelError(`Unknown model alias "${alias}"`, "router", 400);
+    const targets = options.privateContent ? ordered.filter((target) => this.config.providers[target.provider]?.trainsOnData === false) : ordered;
+    if (!targets.length) {
+      throw new ModelError("Dieses Projekt ist privat: Es darf nur ein Modell ohne Datenauswertung antworten (Workers AI oder Modal), und keines davon ist für diese Rolle eingetragen.", "router", 400);
+    }
 
     const attempts: string[] = [];
     let lastError: unknown;

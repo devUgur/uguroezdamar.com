@@ -4,6 +4,7 @@ import { authorize, type Caller } from "./auth.ts";
 import type { Env } from "./env.ts";
 import { emit, recentEvents } from "./events.ts";
 import { ModelRouter } from "./models/router.ts";
+import { listRepositories, ProjectError, registerProject, unregisterProject } from "./projects/repositories.ts";
 import { buildOfficeLayout } from "./office/layout.ts";
 import { officeActivityOf } from "./office/presence.ts";
 import { organizationCatalog } from "./organization/catalog.ts";
@@ -24,6 +25,11 @@ function json(data: unknown, status = 200): Response {
     status,
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
   });
+}
+
+function projectFailure(error: unknown): Response {
+  if (error instanceof ProjectError) return json({ error: error.message }, error.status);
+  throw error;
 }
 
 async function body<T>(request: Request): Promise<Partial<T>> {
@@ -196,6 +202,10 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
   if (path === "/api/threads" && method === "POST") {
     const input = await body<{ agentId: string; projectId: string; title: string; model: { provider: string; model: string } | null }>(request);
     const agentId = input.agentId && AGENTS[input.agentId] ? input.agentId : DEFAULT_AGENT;
+    if (input.projectId) {
+      const project = await env.DB.prepare("SELECT 1 FROM projects WHERE id = ? AND status = 'active'").bind(input.projectId).first();
+      if (!project) return json({ error: "Unbekanntes oder entferntes Projekt" }, 400);
+    }
     const id = crypto.randomUUID();
     await env.DB.prepare("INSERT INTO threads (id, agent_id, project_id, title, model, created_by) VALUES (?, ?, ?, ?, ?, ?)")
       .bind(id, agentId, input.projectId ?? DEFAULT_PROJECT, input.title?.slice(0, 120) ?? null, input.model ? JSON.stringify(input.model) : null, caller.actor)
@@ -346,8 +356,39 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   }
 
   if (path === "/api/projects" && method === "GET") {
-    const { results } = await env.DB.prepare("SELECT * FROM projects ORDER BY name").all();
+    const { results } = await env.DB.prepare(
+      `SELECT id, name, repo, domain, status, visibility, default_branch AS defaultBranch, write_mode AS writeMode
+         FROM projects WHERE status = 'active' ORDER BY name`,
+    ).all();
     return json(results);
+  }
+
+  // Repositories the token can see, so the owner can pick which ones become projects.
+  if (path === "/api/github/repositories" && method === "GET") {
+    try {
+      return json(await listRepositories(env));
+    } catch (error) {
+      return projectFailure(error);
+    }
+  }
+
+  if (path === "/api/projects" && method === "POST") {
+    const { repo } = await body<{ repo: string }>(request);
+    try {
+      const result = await registerProject(env, String(repo ?? "").trim());
+      return json(result, result.created ? 201 : 200);
+    } catch (error) {
+      return projectFailure(error);
+    }
+  }
+
+  const projectMatch = path.match(/^\/api\/projects\/([a-z0-9-]{1,40})$/);
+  if (projectMatch && method === "DELETE") {
+    try {
+      return (await unregisterProject(env, projectMatch[1] ?? "")) ? json({ ok: true }) : json({ error: "Projekt nicht gefunden" }, 404);
+    } catch (error) {
+      return projectFailure(error);
+    }
   }
 
   return json({ error: "Nicht gefunden" }, 404);

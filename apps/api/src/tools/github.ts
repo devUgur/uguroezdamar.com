@@ -10,10 +10,50 @@ const MAX_FILE_CHARS = 60_000;
 export const WORK_BRANCH = "dev";
 export const BRANCH_PREFIX = "agent/";
 
-function assertWritableBranch(branch: string): void {
-  if (branch !== WORK_BRANCH && !branch.startsWith(BRANCH_PREFIX)) {
-    throw new ToolInputError(`Schreiben nur auf "${WORK_BRANCH}" oder "${BRANCH_PREFIX}…", nie auf main.`);
+type WriteMode = "dev-first" | "pr-only";
+
+/** How agents may write to the repository of a project: set per project (migration 0009). */
+interface RepoPolicy {
+  defaultBranch: string;
+  /** dev-first: commits on dev, release by pull request dev -> default branch. pr-only: agent/... branches and pull requests only. */
+  writeMode: WriteMode;
+}
+
+const policies = new WeakMap<ToolContext, Promise<RepoPolicy>>();
+
+/** The registered project's rules for this repository; an unregistered repository gets the strictest ones. */
+function policyOf(context: ToolContext): Promise<RepoPolicy> {
+  let policy = policies.get(context);
+  if (!policy) {
+    policy = context.env.DB.prepare("SELECT default_branch, write_mode FROM projects WHERE repo = ? AND status = 'active'")
+      .bind(context.repo)
+      .first<{ default_branch: string; write_mode: string }>()
+      .then((row) => ({ defaultBranch: row?.default_branch ?? "main", writeMode: row?.write_mode === "dev-first" ? "dev-first" : "pr-only" }));
+    policies.set(context, policy);
   }
+  return policy;
+}
+
+/** Branch that reading and new agent branches start from: dev in dev-first projects, otherwise the default branch. */
+const baseBranch = (policy: RepoPolicy): string => (policy.writeMode === "dev-first" ? WORK_BRANCH : policy.defaultBranch);
+
+async function readRef(context: ToolContext): Promise<string> {
+  return baseBranch(await policyOf(context));
+}
+
+/** Where a pull request from `branch` goes: dev-first releases dev into the default branch, everything else lands on dev. */
+function pullBase(policy: RepoPolicy, branch: string): string {
+  return policy.writeMode === "dev-first" && branch !== WORK_BRANCH ? WORK_BRANCH : policy.defaultBranch;
+}
+
+function assertWritableBranch(branch: string, policy: RepoPolicy): void {
+  const allowed = branch.startsWith(BRANCH_PREFIX) || (policy.writeMode === "dev-first" && branch === WORK_BRANCH);
+  if (allowed) return;
+  throw new ToolInputError(
+    policy.writeMode === "dev-first"
+      ? `Schreiben nur auf "${WORK_BRANCH}" oder "${BRANCH_PREFIX}…", nie auf ${policy.defaultBranch}.`
+      : `In diesem Projekt nur auf Branches "${BRANCH_PREFIX}…" schreiben, nie auf ${policy.defaultBranch}; danach Pull Request öffnen.`,
+  );
 }
 
 async function gh<T>(context: ToolContext, path: string, init: RequestInit = {}): Promise<T> {
@@ -57,7 +97,7 @@ const listFiles: Tool = {
   },
   async run(args, context) {
     const path = str(args, "path", "").replace(/^\/+|\/+$/g, "");
-    const ref = str(args, "ref", WORK_BRANCH);
+    const ref = str(args, "ref", await readRef(context));
     if (args.recursive === true) {
       const tree = await gh<{ tree: { path: string; type: string }[]; truncated: boolean }>(
         context,
@@ -92,7 +132,7 @@ const readFile: Tool = {
   },
   async run(args, context) {
     const path = str(args, "path").replace(/^\/+/, "");
-    const ref = str(args, "ref", WORK_BRANCH);
+    const ref = str(args, "ref", await readRef(context));
     const file = await gh<{ content?: string; encoding?: string; size: number; sha: string; type: string }>(
       context,
       `/repos/${context.repo}/contents/${path}?ref=${encodeURIComponent(ref)}`,
@@ -161,13 +201,14 @@ const commitFiles: Tool = {
     },
   },
   async run(args, context) {
-    const branch = str(args, "branch", WORK_BRANCH);
-    assertWritableBranch(branch);
+    const policy = await policyOf(context);
+    const branch = str(args, "branch", policy.writeMode === "dev-first" ? WORK_BRANCH : undefined);
+    assertWritableBranch(branch, policy);
     const message = str(args, "message");
     const files = (Array.isArray(args.files) ? args.files : []) as FileChange[];
     if (!files.length) throw new ToolInputError("Keine Dateien angegeben.");
 
-    const base = WORK_BRANCH;
+    const base = baseBranch(policy);
     let headSha: string;
     try {
       headSha = (await gh<{ object: { sha: string } }>(context, `/repos/${context.repo}/git/ref/heads/${branch}`)).object.sha;
@@ -220,13 +261,14 @@ const openPullRequest: Tool = {
     },
   },
   async run(args, context) {
+    const policy = await policyOf(context);
     const branch = str(args, "branch");
-    assertWritableBranch(branch);
+    assertWritableBranch(branch, policy);
     const pull = await gh<{ number: number; html_url: string }>(context, `/repos/${context.repo}/pulls`, {
       method: "POST",
       body: JSON.stringify({
         head: branch,
-        base: branch === WORK_BRANCH ? "main" : WORK_BRANCH,
+        base: pullBase(policy, branch),
         title: str(args, "title"),
         body: `${str(args, "body")}\n\n---\nErstellt vom ${context.agentId}-Agenten der Plattform.`,
       }),

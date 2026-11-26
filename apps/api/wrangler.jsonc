@@ -15,6 +15,7 @@
   "observability": { "enabled": true },
   "vars": {
     "DEFAULT_REPO": "devUgur/uguroezdamar.com",
+    "GITHUB_OWNERS": "devUgur",
     "CF_ACCOUNT_ID": "4a35dadb67f662616fe6911bfbeecc0b",
     "AI_GATEWAY_ID": "uguroezdamar",
     // "true" routes Gemini and OpenRouter through the AI Gateway (logs, caching). Off until the gateway exists.
@@ -52,6 +53,7 @@
       "routes": [{ "pattern": "api-dev.uguroezdamar.com", "custom_domain": true }],
       "vars": {
         "DEFAULT_REPO": "devUgur/uguroezdamar.com",
+        "GITHUB_OWNERS": "devUgur",
         "CF_ACCOUNT_ID": "4a35dadb67f662616fe6911bfbeecc0b",
         "AI_GATEWAY_ID": "uguroezdamar",
         "MODEL_VIA_GATEWAY": "false",

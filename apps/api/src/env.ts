@@ -13,6 +13,8 @@ export interface Env {
   OFFICE: DurableObjectNamespace<OfficePresence>;
 
   DEFAULT_REPO: string;
+  /** GitHub accounts whose repositories may become projects, comma-separated. Organizations stay out until decided. */
+  GITHUB_OWNERS: string;
   CF_ACCOUNT_ID: string;
   AI_GATEWAY_ID: string;
   MODEL_VIA_GATEWAY: string;

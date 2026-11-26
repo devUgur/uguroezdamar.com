@@ -28,6 +28,9 @@ interface ProjectRow {
   id: string;
   name: string;
   repo: string | null;
+  status: string;
+  /** 'private' projects only talk to models that never train on the content (see models/config.ts). */
+  visibility: string;
 }
 
 interface RunState {
@@ -246,7 +249,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     if (!definition) throw new Error(`Unbekannter Agent "${agentId}"`);
 
     const [project, budgetRow, spent, thread] = await Promise.all([
-      this.env.DB.prepare("SELECT id, name, repo FROM projects WHERE id = ?").bind(projectId).first<ProjectRow>(),
+      this.env.DB.prepare("SELECT id, name, repo, status, visibility FROM projects WHERE id = ?").bind(projectId).first<ProjectRow>(),
       this.env.DB.prepare("SELECT daily_budget_usd FROM agents WHERE id = ?").bind(agentId).first<{ daily_budget_usd: number }>(),
       spentToday(this.env, agentId),
       this.env.DB.prepare("SELECT model FROM threads WHERE id = ?").bind(threadId).first<{ model: string | null }>(),
@@ -255,6 +258,12 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     if (spent >= dailyBudget) {
       const reply = `Mein Tagesbudget von ${dailyBudget.toFixed(2)} $ ist aufgebraucht (${spent.toFixed(2)} $). Ich mache morgen weiter oder du erhöhst das Budget.`;
       await emit(this.env, { ...base, type: "budget_blocked", data: { budget: dailyBudget, spent } });
+      await emit(this.env, { ...base, type: "message", data: { text: reply } });
+      return { kind: "failed", reply };
+    }
+
+    if (project && project.status !== "active") {
+      const reply = `Das Projekt „${project.name}“ wurde aus der Projektliste entfernt. Ich arbeite dort nicht weiter; wähle ein anderes Projekt oder registriere das Repository neu.`;
       await emit(this.env, { ...base, type: "message", data: { text: reply } });
       return { kind: "failed", reply };
     }
@@ -280,7 +289,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
         const result = await router.chat(
           definition.modelAlias,
           { ...request, temperature: 0.3, maxTokens: 8192 },
-          { budget, onDelta, pinned: pinned && router.offers(pinned) ? pinned : undefined },
+          { budget, onDelta, pinned: pinned && router.offers(pinned) ? pinned : undefined, privateContent: project?.visibility === "private" },
         );
         await deltas.flush();
         return {

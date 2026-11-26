@@ -41,6 +41,11 @@ export interface ProviderConfig {
   enabledVar?: string;
   /** Short name in front of each model in the portal's list. */
   shortLabel?: string;
+  /**
+   * The provider may use prompts and answers to improve its models (free tiers usually may). Content of
+   * private repositories is never sent to such a provider. Missing counts as true: unknown is unsafe.
+   */
+  trainsOnData?: boolean;
 }
 
 export interface ModelConfig {
@@ -54,6 +59,8 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
       kind: "openai-compatible",
       label: "Google Gemini",
       shortLabel: "Gemini",
+      // Free tier of the Gemini API: Google may use requests for product improvement.
+      trainsOnData: true,
       models: [
         { id: "gemini-flash-latest", label: "Gemini Flash (aktuell)", inputUsdPerM: 0, outputUsdPerM: 0 },
         { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite", inputUsdPerM: 0, outputUsdPerM: 0 },
@@ -66,6 +73,7 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
       kind: "openai-compatible",
       label: "OpenRouter",
       shortLabel: "OpenRouter",
+      trainsOnData: true,
       models: [],
       baseUrl: "https://openrouter.ai/api/v1",
       gatewayPath: "openrouter",
@@ -77,6 +85,8 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
       kind: "openai-compatible",
       label: "Modal (eigene GPUs)",
       shortLabel: "Modal",
+      // Our own vLLM servers: nothing leaves the workspace.
+      trainsOnData: false,
       apiKeySecret: "MODAL_LLM_API_KEY",
       enabledVar: "MODAL_ENABLED",
       models: [
@@ -102,6 +112,8 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
       kind: "workers-ai",
       label: "Cloudflare Workers AI",
       shortLabel: "Workers AI",
+      // Cloudflare does not train on Workers AI customer content.
+      trainsOnData: false,
       models: [
         { id: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", label: "Llama 3.3 70B", inputUsdPerM: 0, outputUsdPerM: 0 },
         { id: "@cf/meta/llama-3.1-8b-instruct-fast", label: "Llama 3.1 8B (schnell)", inputUsdPerM: 0, outputUsdPerM: 0 },
