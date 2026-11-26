@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { responseText } from "../apps/api/src/models/workers-ai.ts";
 import { announcesUndoneWork } from "../apps/api/src/runtime/loop.ts";
-import { latestRunFailure } from "../apps/portal/src/features/agents/ui/chat/runFailure.ts";
-import type { AgentEvent } from "../apps/portal/src/features/agents/types.ts";
+import { latestRunFailure } from "../apps/office/src/features/agents/ui/chat/runFailure.ts";
+import type { AgentEvent } from "../apps/office/src/features/agents/types.ts";
 
 let id = 0;
 const event = (type: string, data?: Record<string, unknown>): AgentEvent => ({ id: ++id, ts: id, type, threadId: "t", data });

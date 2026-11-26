@@ -5,14 +5,8 @@ function hasAdminCookie(request: NextRequest) {
   return Boolean(request.cookies.get("admin_session")?.value);
 }
 
-/** office.<domain> (and office.localhost) is the office app: its root serves /office, every other path the portal as usual. */
-export function isOfficeHost(host: string | null): boolean {
-  return /^office\./i.test(host ?? "");
-}
-
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const officeRoot = pathname === "/" && isOfficeHost(request.headers.get("host"));
 
   if (pathname === "/admin") {
     return NextResponse.redirect(new URL("/", request.url));
@@ -44,7 +38,6 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  if (officeRoot) return NextResponse.rewrite(new URL(`/office${request.nextUrl.search}`, request.url));
   return NextResponse.next();
 }
 

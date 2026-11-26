@@ -15,7 +15,9 @@
     "VERCEL_BYPASS_SITE",
     "VERCEL_BYPASS_PORTAL",
     "API_URL",
-    "API_SERVICE_TOKEN"
+    "API_SERVICE_TOKEN",
+    "OFFICE_URL",
+    "PORTAL_URL"
   ],
   "tasks": {
     "transit": {

@@ -1,0 +1,33 @@
+{
+  // The office app (ADR 0039) as a Cloudflare Worker built by OpenNext. Deployed only by .github/workflows/office-deploy.yml:
+  //   branch dev  -> uguroezdamar-office-dev, office-dev.uguroezdamar.com (env "dev")
+  //   branch main -> uguroezdamar-office,     office.uguroezdamar.com (production)
+  // The custom domains create their DNS records and certificates in the zone uguroezdamar.com on deploy.
+  // Secret (from the GitHub environment of the stage): API_SERVICE_TOKEN.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "uguroezdamar-office",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "office.uguroezdamar.com", "custom_domain": true }],
+  "observability": { "enabled": true },
+  "vars": {
+    "API_URL": "https://api.uguroezdamar.com",
+    "PORTAL_URL": "https://portal.uguroezdamar.com",
+    "OFFICE_STAGE": "prod"
+  },
+  "env": {
+    "dev": {
+      "name": "uguroezdamar-office-dev",
+      "routes": [{ "pattern": "office-dev.uguroezdamar.com", "custom_domain": true }],
+      "vars": {
+        "API_URL": "https://api-dev.uguroezdamar.com",
+        "PORTAL_URL": "https://uguroezdamar-portal-git-dev-devugur1s-projects.vercel.app",
+        "OFFICE_STAGE": "dev"
+      }
+    }
+  }
+}

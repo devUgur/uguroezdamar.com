@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildOfficeLayout } from "../apps/api/src/office/layout.ts";
-import { buildOffice } from "../apps/portal/src/features/agents/ui/office/world/layout.ts";
+import { buildOffice } from "../apps/office/src/features/agents/ui/office/world/layout.ts";
 
 /**
  * apps/api cannot import workspace packages (ADR 0024), so the desk layout exists twice: on the

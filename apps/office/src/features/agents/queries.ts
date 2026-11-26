@@ -1,15 +1,12 @@
 import "server-only";
 
-import { redirect } from "next/navigation";
 import { AgentsApiError, agentsApi, agentsApiOrigin, isAgentsApiId } from "@/src/adapters/agents-api";
-import { getCurrentSession } from "@/src/adapters/auth";
+import { requireSession } from "@/src/adapters/session";
 import type { AgentSummary, Approval, ModelCatalog, OfficeScope, OfficeSnapshot, OfficeTask, OfficeWorkspace, Thread, ThreadDetail, ThreadProject } from "./types";
 
 /** Every chat read runs as the signed-in admin; without a session the portal login takes over. */
 export async function requireActor(): Promise<string> {
-  const session = await getCurrentSession();
-  if (!session) redirect("/login?next=/chat");
-  return session.email;
+  return (await requireSession()).email;
 }
 
 export async function listThreads(): Promise<Thread[]> {
@@ -29,6 +26,11 @@ export async function getThread(threadId: string): Promise<ThreadDetail | null> 
 
 export async function getModelCatalog(): Promise<ModelCatalog> {
   return agentsApi<ModelCatalog>("/api/models", await requireActor());
+}
+
+/** Registered projects: the inner scopes of the office navigation. */
+export async function listProjects(): Promise<ThreadProject[]> {
+  return agentsApi<ThreadProject[]>("/api/projects", await requireActor());
 }
 
 export async function listAgents(): Promise<AgentSummary[]> {

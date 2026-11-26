@@ -1,6 +1,6 @@
 # apps/api
 
-Agenten-Backend des Admin-Portals: Threads, Agentenschleife, Modelle, Werkzeuge, Freigaben, Live-Events. Cloudflare Worker, Free Plan ([ADR 0024](../../docs/architecture/decisions/0024-agent-platform-on-cloudflare.md)). Die Oberfläche ist `/chat` im Portal (`apps/portal/src/features/chat`); der Worker selbst hat keine.
+Agenten-Backend des Admin-Portals: Threads, Agentenschleife, Modelle, Werkzeuge, Freigaben, Live-Events. Cloudflare Worker, Free Plan ([ADR 0024](../../docs/architecture/decisions/0024-agent-platform-on-cloudflare.md)). Die Oberfläche ist die Office-App (`apps/office`, ADR 0039) mit Büro und Chats; der Worker selbst hat keine.
 
 | Pfad | Zweck |
 | --- | --- |
@@ -55,6 +55,7 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 | `GET /api/events?thread=…&since=…` | Events nachladen |
 | `GET /api/usage/summary`, `…/calls`, `…/runs`, `…/runs/:id`, `…/export.csv` | Verbrauch je Mitarbeiter, Modell, Projekt, Anbieter und Tag; Läufe; Trace eines Laufs; CSV. Filter: `from`, `to` (YYYY-MM-DD, UTC), `project`, `agent`, `provider`, `model`, `status` |
 | `POST /api/live-ticket`, `GET /api/live?ticket=…` | Einmal-Ticket, dann WebSocket für Events und `delta` |
+| `POST /api/auth/handoff`, `POST /api/auth/handoff/redeem` | Anmeldung Portal → Office: Einmal-Ticket (60 s) für die angemeldete Person, vom Office-Server genau einmal eingelöst (ADR 0039) |
 | `GET/POST /api/tasks`, `PATCH /api/tasks/:id` | persistente Tasks, validierte Statusübergänge und Owner-Abnahme |
 | `POST /api/tasks/:id/run`, `POST /api/tasks/:id/review` | Chef-Ausführung bzw. getrennte, read-only QA-Übergabe |
 

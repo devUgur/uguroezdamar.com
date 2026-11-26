@@ -26,6 +26,7 @@ export function parseStage(value: string | undefined, fallback: Stage = "dev"): 
 export const LOCAL_ORIGINS = {
   site: "http://localhost:3100",
   portal: "http://localhost:3101",
+  office: "http://localhost:3102",
 } as const;
 
 /** The address variables of a local run, replacing the hosted values of the `dev` stage. */
@@ -33,5 +34,8 @@ export function localEnv(): Record<string, string> {
   return {
     NEXT_PUBLIC_SITE_URL: LOCAL_ORIGINS.site,
     APP_URL: LOCAL_ORIGINS.portal,
+    // Portal and office of a local run find each other here (ADR 0039).
+    OFFICE_URL: LOCAL_ORIGINS.office,
+    PORTAL_URL: LOCAL_ORIGINS.portal,
   };
 }

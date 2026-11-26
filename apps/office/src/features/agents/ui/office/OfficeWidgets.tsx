@@ -25,11 +25,11 @@ function Widget({ title, action, children }: { title: string; action?: ReactNode
   );
 }
 
-function TasksWidget({ tasks }: { tasks: OfficeTask[] }) {
+function TasksWidget({ tasks, portalUrl }: { tasks: OfficeTask[]; portalUrl: string }) {
   const open = tasks.filter((task) => OPEN_STATUSES.includes(task.status));
   const counts = OPEN_STATUSES.map((status) => ({ status, count: open.filter((task) => task.status === status).length })).filter((entry) => entry.count);
   return (
-    <Widget title="Aufgaben" action={<Link href="/work" className="text-xs underline underline-offset-4">Board</Link>}>
+    <Widget title="Aufgaben" action={<a href={`${portalUrl}/work`} className="text-xs underline underline-offset-4">Board</a>}>
       {open.length ? (
         <>
           <p className="text-xs text-muted-foreground">{counts.map((entry) => `${STATUS_LABEL[entry.status]} ${entry.count}`).join(" · ")}</p>
@@ -73,9 +73,9 @@ function ApprovalsWidget({ approvals }: { approvals: Approval[] }) {
   );
 }
 
-function TodayWidget({ today, scope }: { today: OfficeWorkspace["today"]; scope: string | null }) {
+function TodayWidget({ today, scope, portalUrl }: { today: OfficeWorkspace["today"]; scope: string | null; portalUrl: string }) {
   return (
-    <Widget title="Heute" action={<Link href={scope ? `/usage?project=${encodeURIComponent(scope)}` : "/usage"} className="text-xs underline underline-offset-4">Details</Link>}>
+    <Widget title="Heute" action={<a href={`${portalUrl}/usage${scope ? `?project=${encodeURIComponent(scope)}` : ""}`} className="text-xs underline underline-offset-4">Details</a>}>
       {today ? (
         <dl className="grid grid-cols-3 gap-2 text-sm">
           <div>
@@ -99,12 +99,12 @@ function TodayWidget({ today, scope }: { today: OfficeWorkspace["today"]; scope:
 }
 
 /** The office's side widgets for the current scope; approvals are shown for every scope, because all of them wait for Ugur. */
-export function OfficeWidgets({ workspace }: { workspace: Pick<OfficeWorkspace, "tasks" | "approvals" | "today" | "scope"> }) {
+export function OfficeWidgets({ workspace, portalUrl }: { workspace: Pick<OfficeWorkspace, "tasks" | "approvals" | "today" | "scope">; portalUrl: string }) {
   return (
     <div className="flex flex-col gap-3">
-      <TodayWidget today={workspace.today} scope={workspace.scope} />
+      <TodayWidget today={workspace.today} scope={workspace.scope} portalUrl={portalUrl} />
       <ApprovalsWidget approvals={workspace.approvals} />
-      <TasksWidget tasks={workspace.tasks} />
+      <TasksWidget tasks={workspace.tasks} portalUrl={portalUrl} />
     </div>
   );
 }

@@ -3,8 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { AgentsApiError, agentsApi, agentsApiOrigin, isAgentsApiId } from "@/src/adapters/agents-api";
-import { getCurrentSession } from "@/src/adapters/auth";
-import { currentOrganizationAccess } from "@/src/server/organization-access";
+import { getCurrentSession } from "@/src/adapters/session";
 import type { AgentConfig, AgentEvent, AgentSettings, AgentSettingsForm, AgentSummary, ChatView, ModelCatalog, ModelChoice, OfficeSnapshot, Thread, ThreadDetail } from "./types";
 
 export interface ActionResult {
@@ -18,6 +17,13 @@ async function actor(): Promise<string> {
   const session = await getCurrentSession();
   if (!session) throw new Error("Nicht angemeldet.");
   return session.email;
+}
+
+/** Owner rights come from the portal at sign-in (ADR 0039) and live in the office session. */
+async function organizationAccess(): Promise<{ actor: string; canManage: boolean }> {
+  const session = await getCurrentSession();
+  if (!session) throw new Error("Nicht angemeldet.");
+  return { actor: session.email, canManage: session.canManage };
 }
 
 function failure(error: unknown): ActionResult {
@@ -181,7 +187,7 @@ export async function eventsSince(threadId: string, sinceId: number): Promise<Ag
 
 /** Settings form of an agent: its stored settings, the models it may use and whether the viewer may change them. */
 export async function loadAgentSettings(agentId: string): Promise<AgentSettingsForm> {
-  const access = await currentOrganizationAccess();
+  const access = await organizationAccess();
   if (!/^[a-z0-9-]{1,40}$/.test(agentId)) throw new Error("Unbekannter Agent.");
   const [settings, catalog] = await Promise.all([
     agentsApi<AgentSettings>(`/api/agents/${agentId}/settings`, access.actor),
@@ -196,11 +202,11 @@ export async function saveAgentSettings(
   input: { model: ModelChoice | null; effort: AgentSettings["effort"]; maxSteps: number | null; dailyBudgetUsd: number | null; version: number },
 ): Promise<ActionResult & { settings?: AgentSettings }> {
   try {
-    const access = await currentOrganizationAccess();
+    const access = await organizationAccess();
     if (!access.canManage) return { ok: false, error: "Nur der Owner darf Mitarbeiter einstellen." };
     if (!/^[a-z0-9-]{1,40}$/.test(agentId)) return { ok: false, error: "Unbekannter Agent." };
     const settings = await agentsApi<AgentSettings>(`/api/agents/${agentId}/settings`, access.actor, { method: "PUT", body: input, scopes: ["organization:write"] });
-    revalidatePath("/office");
+    revalidatePath("/");
     return { ok: true, settings };
   } catch (error) {
     return failure(error);

@@ -1,12 +1,10 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { ChatPage, getModelCatalog, getThread, liveOrigin } from "@/src/features/agents";
+import { notFound, redirect } from "next/navigation";
+import { isAgentsApiId } from "@/src/adapters/agents-api";
+import { officeUrl } from "@/src/adapters/office";
 
-export const metadata: Metadata = { title: "Chat" };
-
+/** Links from the board, the projects and the usage trace keep working: the chat itself is in the office app (ADR 0039). */
 export default async function ChatThreadPage({ params }: { params: Promise<{ threadId: string }> }) {
   const { threadId } = await params;
-  const [detail, catalog] = await Promise.all([getThread(threadId), getModelCatalog()]);
-  if (!detail) notFound();
-  return <ChatPage key={threadId} detail={detail} catalog={catalog} liveOrigin={liveOrigin()} />;
+  if (!isAgentsApiId(threadId)) notFound();
+  redirect(officeUrl(`/chat/${threadId}`));
 }

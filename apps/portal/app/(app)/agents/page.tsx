@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
+import { officeUrl } from "@/src/adapters/office";
 
-/** The office moved into its own fullscreen app; old links (board, organization) keep working. */
+/** The agents' office moved into its own app (ADR 0039); old links (board, organization) keep working. */
 export default async function AgentsPage({ searchParams }: { searchParams: Promise<{ agent?: string | string[] }> }) {
   const { agent } = await searchParams;
-  redirect(typeof agent === "string" ? `/office?agent=${encodeURIComponent(agent)}` : "/office");
+  redirect(officeUrl(typeof agent === "string" ? `/?agent=${encodeURIComponent(agent)}` : "/"));
 }

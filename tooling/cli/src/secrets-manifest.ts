@@ -71,6 +71,10 @@ export const SECRETS: readonly SecretSpec[] = [
     managedBy: "pnpm ugur api secrets",
     apps: ["portal"],
   }),
+  // Portal and office find each other (ADR 0039). Both have defaults per stage in the code (portal: VERCEL_ENV,
+  // office: wrangler vars); a local run sets the localhost addresses. Set only to override.
+  ...optional("Origin of the office app the portal links to and signs in for (default by stage)", ["OFFICE_URL"], { apps: ["portal"] }),
+  ...optional("Origin of the portal the office signs in through (wrangler vars per stage)", ["PORTAL_URL"], { cliOnly: true }),
   // GitHub App of the agent API (ADR 0031). Infisical holds the values (paste the whole .pem into the web
   // interface, multi-line is fine); `pnpm ugur api secrets` copies them into GitHub Actions, because the API is
   // deployed from there. One app serves both stages, so the values live in `prod` only and are never synced to a host.

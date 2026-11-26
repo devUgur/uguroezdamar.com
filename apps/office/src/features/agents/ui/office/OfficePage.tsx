@@ -1,3 +1,4 @@
+import { portalUrl } from "@/src/adapters/session";
 import { liveOrigin, loadOfficeWorkspace } from "../../queries";
 import { AgentOffice } from "./AgentOffice";
 import { OfficeSidebar } from "./OfficeSidebar";
@@ -9,7 +10,7 @@ interface OfficePageProps {
   initialAgentId: string | null;
 }
 
-/** The office app on /office (and office.uguroezdamar.com): navigation, room and widgets for one scope. */
+/** The office's start page: navigation, room and widgets for one scope. */
 export async function OfficePage({ project, initialAgentId }: OfficePageProps) {
   try {
     const workspace = await loadOfficeWorkspace(project);
@@ -24,8 +25,8 @@ export async function OfficePage({ project, initialAgentId }: OfficePageProps) {
         scope={workspace.scope}
         scopeLabel={scopeLabel}
         initialAgentId={initialAgentId}
-        sidebar={<OfficeSidebar projects={workspace.projects} scope={workspace.scope} />}
-        widgets={<OfficeWidgets workspace={workspace} />}
+        sidebar={<OfficeSidebar projects={workspace.projects} scope={workspace.scope} portalUrl={portalUrl()} />}
+        widgets={<OfficeWidgets workspace={workspace} portalUrl={portalUrl()} />}
       />
     );
   } catch (error) {

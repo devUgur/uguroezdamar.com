@@ -1,6 +1,6 @@
 # ADR 0038: Office als eigene App, Gesprächsbereich Firma oder Projekt, kostenloser Prüfweg
 
-- Status: accepted
+- Status: accepted; Punkte 2 und 3 ersetzt durch [ADR 0039](0039-office-as-own-app-on-workers.md) (Office als eigene App auf Workers)
 - Datum: 2026-11-26
 - Beteiligte: Projektverantwortlicher
 - Ergänzt: [ADR 0024](0024-agent-platform-on-cloudflare.md), [ADR 0025](0025-synchronisierte-agentenpraesenz.md), [ADR 0036](0036-isolated-workstations-and-previews.md), [Plan](../../product/agent-company-plan.md) Stufe 4

@@ -7,7 +7,7 @@ import {
   stepToward,
   turnToward,
   yawToward,
-} from "../apps/portal/src/features/agents/ui/office/world/layout.ts";
+} from "../apps/office/src/features/agents/ui/office/world/layout.ts";
 
 describe("3D office layout", () => {
   it("seats every agent at its own desk, in front of the back wall, looking at it", () => {

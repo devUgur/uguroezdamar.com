@@ -1,0 +1,47 @@
+{
+  "name": "@ugur/office",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "next dev --turbopack -p 3102",
+    "build": "next build",
+    "build:worker": "opennextjs-cloudflare build",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "start": "next start -p 3102",
+    "lint": "eslint app src --ext .ts,.tsx",
+    "typecheck": "rimraf .next/types .next/dev/types && next typegen && tsc -p tsconfig.json --noEmit",
+    "clean": "rimraf .next .open-next"
+  },
+  "dependencies": {
+    "@fontsource/inter": "catalog:",
+    "@fontsource/jetbrains-mono": "catalog:",
+    "@fontsource/playfair-display": "catalog:",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "@ugur/core": "workspace:*",
+    "@ugur/ui": "workspace:*",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "server-only": "catalog:",
+    "three": "^0.187.0",
+    "tw-animate-css": "catalog:"
+  },
+  "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.19",
+    "@tailwindcss/postcss": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@types/three": "^0.187.0",
+    "postcss": "catalog:",
+    "rimraf": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "wrangler": "^4.45.0"
+  }
+}

@@ -12,7 +12,7 @@ function sources(dir: string): string[] {
   return readdirSync(join(root, dir), { withFileTypes: true }).flatMap((entry) => {
     const path = `${dir}/${entry.name}`;
     if (entry.isDirectory()) {
-      return ["node_modules", ".next", "dist", ".turbo", "drizzle"].includes(entry.name) ? [] : sources(path);
+      return ["node_modules", ".next", ".open-next", ".wrangler", "dist", ".turbo", "drizzle"].includes(entry.name) ? [] : sources(path);
     }
     return /\.(ts|tsx|mjs)$/.test(entry.name) ? [path] : [];
   });

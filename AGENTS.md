@@ -24,7 +24,7 @@ Diese Datei ist die einzige Regelquelle für Menschen und Agenten. Editor-spezif
 | Daten | Neon PostgreSQL, Branches `dev` und `prod` |
 | Secret-Werte | Infisical (eu), nie Dateien; Ausnahme `apps/api`: GitHub-Actions-Secrets, beim Deploy als Worker-Secrets gesetzt (ADR 0024) |
 | Variablennamen | `tooling/cli/src/secrets-manifest.ts` |
-| Deployment | Vercel, zwei Projekte aus diesem Repository ([`docs/operations/preview.md`](docs/operations/preview.md), ADR 0020); `apps/api` als Cloudflare Worker ([ADR 0024](docs/architecture/decisions/0024-agent-platform-on-cloudflare.md)) |
+| Deployment | Vercel, zwei Projekte aus diesem Repository ([`docs/operations/preview.md`](docs/operations/preview.md), ADR 0020); `apps/api` als Cloudflare Worker ([ADR 0024](docs/architecture/decisions/0024-agent-platform-on-cloudflare.md)); `apps/office` als Cloudflare Worker per OpenNext, `office-dev.` und `office.uguroezdamar.com` ([ADR 0039](docs/architecture/decisions/0039-office-as-own-app-on-workers.md)) |
 | Gestaltung | [`docs/product/r2-design-brief.md`](docs/product/r2-design-brief.md), Tokens in `apps/site/app/globals.css` |
 
 ## Befehle
@@ -33,6 +33,7 @@ Diese Datei ist die einzige Regelquelle für Menschen und Agenten. Editor-spezif
 pnpm ugur setup     # einmalig: Infisical und Neon im Browser anmelden
 pnpm dev            # Site :3100 mit dev-Secrets
 pnpm dev:portal     # Portal :3101
+pnpm dev:office     # Portal :3101 und Office :3102 (Anmeldung über das Portal)
 pnpm dev:all        # beide
 pnpm dev:clean      # blockierte Ports freigeben und dev starten
 pnpm kill:ports     # blockierte Ports (3100, 3101 etc.) beenden
@@ -54,8 +55,8 @@ Details: [`docs/operations/secrets.md`](docs/operations/secrets.md).
 
 ## Struktur
 
-- `apps/site` – öffentliche Website. `apps/portal` – Admin-Portal. Beide Next.js App Router.
-- `apps/api` – Agenten-Backend des Portals (Chat unter `/chat` im Portal), Cloudflare Worker mit eigener D1-Datenbank und eigenen Secrets (ADR 0024). Es importiert keine anderen Workspace-Pakete; Agenten ändern dieses Repository nur nach Freigabe des Owners, per Commit auf `dev` oder `agent/…` und per Pull Request, nie auf `main`.
+- `apps/site` – öffentliche Website. `apps/portal` – Admin-Portal. `apps/office` – das Office: 3D-Büro, Mitarbeiter und Chats der Agenten, ohne Datenbank, nur über `apps/api`, Anmeldung über das Portal (ADR 0039). Alle drei Next.js App Router.
+- `apps/api` – Agenten-Backend von Portal und Office (Chat im Office), Cloudflare Worker mit eigener D1-Datenbank und eigenen Secrets (ADR 0024). Es importiert keine anderen Workspace-Pakete; Agenten ändern dieses Repository nur nach Freigabe des Owners, per Commit auf `dev` oder `agent/…` und per Pull Request, nie auf `main`.
 - `packages/server` – Datenzugriff, Validierung, Auth-Logik. `packages/ui` – app-neutrale Bausteine. `packages/core` – reine Hilfsfunktionen.
 - Die Pakete werden als TypeScript-Quellcode eingebunden: kein Build, kein `dist`, Exporte nur aus `src` (ADR 0017). `@/…` ist in jeder App der Alias auf die eigene Wurzel.
 - `tooling/cli` – die `pnpm ugur`-CLI. `tests/` – Vitest, Repository-Tests gegen In-Memory-Postgres.

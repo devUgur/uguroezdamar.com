@@ -14,6 +14,7 @@
     "dev": "pnpm ugur dev",
     "dev:site": "pnpm ugur dev --filter site",
     "dev:portal": "pnpm ugur dev --filter portal",
+    "dev:office": "pnpm ugur dev --filter portal --filter office",
     "dev:all": "pnpm ugur dev --all",
     "dev:clean": "pnpm kill:ports && pnpm dev",
     "kill:ports": "pnpm ugur kill:ports",

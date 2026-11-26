@@ -42,7 +42,7 @@ const siteRestrictedPatterns = [
 
 export default tseslint.config(
   {
-    ignores: [".next/**", "out/**", "node_modules/**", "**/dist/**"],
+    ignores: [".next/**", "out/**", "node_modules/**", "**/dist/**", "**/.open-next/**", "**/.wrangler/**"],
   },
   {
     files: codeFiles,
@@ -174,6 +174,22 @@ export default tseslint.config(
         "error",
         {
           patterns: [...alwaysRestrictedPatterns, ...portalRestrictedPatterns],
+        },
+      ],
+    },
+  },
+  {
+    // The office app (ADR 0039) reads no database and runs on Workers: no @ugur/server, nothing from other apps.
+    files: ["apps/office/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            ...alwaysRestrictedPatterns,
+            { group: ["@/apps/**", "apps/**", "**/apps/portal/**", "**/apps/site/**"], message: "Office must not import app-internal code of other apps." },
+            { group: ["@ugur/server", "@ugur/server/*"], message: "The office reads no database; data comes from apps/api." },
+          ],
         },
       ],
     },
