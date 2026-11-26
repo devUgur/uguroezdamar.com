@@ -25,6 +25,7 @@ import { handleUsage } from "./usage/routes.ts";
 import { listPreviews } from "./workstation/previews.ts";
 import { handleSprints } from "./work/sprints.ts";
 import { handleTasks } from "./work/tasks.ts";
+import { HandoffError, issueHandoff, redeemHandoff } from "./handoff.ts";
 
 export { AgentRuntime } from "./agent.ts";
 export { LiveHub } from "./hub.ts";
@@ -355,6 +356,20 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 
   const caller = await authorize(request, env);
   if (!caller) return json({ error: "Nicht angemeldet" }, 401);
+
+  // Sign-in handoff portal → office (ADR 0039): issued for the signed-in person, redeemed once by the office server.
+  if (path === "/api/auth/handoff" && method === "POST") {
+    try {
+      return json(await issueHandoff(env, caller, await body<{ canManage: boolean }>(request)), 201);
+    } catch (error) {
+      if (error instanceof HandoffError) return json({ error: error.message }, 400);
+      throw error;
+    }
+  }
+  if (path === "/api/auth/handoff/redeem" && method === "POST") {
+    const identity = await redeemHandoff(env, (await body<{ ticket: string }>(request)).ticket);
+    return identity ? json(identity) : json({ error: "Ticket ungültig oder abgelaufen" }, 400);
+  }
 
   if (path === "/api/live-ticket" && method === "POST") {
     return json({ ticket: await env.HUB.get(env.HUB.idFromName("main")).issueTicket() });
