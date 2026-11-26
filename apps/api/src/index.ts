@@ -4,11 +4,14 @@ import { authorize, type Caller } from "./auth.ts";
 import type { Env } from "./env.ts";
 import { emit, recentEvents } from "./events.ts";
 import { ModelRouter } from "./models/router.ts";
+import { buildOfficeLayout } from "./office/layout.ts";
+import { officeActivityOf } from "./office/presence.ts";
 import { SubrequestBudget } from "./runtime/budget.ts";
 import { toolByName } from "./tools/registry.ts";
 
 export { AgentRuntime } from "./agent.ts";
 export { LiveHub } from "./hub.ts";
+export { OfficePresence } from "./office/presence.ts";
 
 const DEFAULT_PROJECT = "uguroezdamar";
 const DEFAULT_AGENT = "chef";
@@ -61,6 +64,30 @@ function toThread(row: ThreadRow) {
 
 async function loadThread(env: Env, id: string): Promise<ThreadRow | null> {
   return env.DB.prepare("SELECT * FROM threads WHERE id = ? AND archived = 0").bind(id).first<ThreadRow>();
+}
+
+async function officeSnapshot(env: Env) {
+  const { results } = await env.DB.prepare(
+    `SELECT a.id, a.desk_x, a.desk_y,
+            (SELECT e.type FROM events e WHERE e.agent_id = a.id ORDER BY e.id DESC LIMIT 1) AS last_event,
+            (SELECT e.id FROM events e WHERE e.agent_id = a.id ORDER BY e.id DESC LIMIT 1) AS last_event_id
+       FROM agents a WHERE a.active = 1 ORDER BY a.created_at`,
+  ).all<{ id: string; desk_x: number | null; desk_y: number | null; last_event: string | null; last_event_id: number | null }>();
+  const active = results.filter((row) => AGENTS[row.id]);
+  const layout = buildOfficeLayout(active.map((row) => ({ id: row.id, deskX: Number(row.desk_x ?? 0), deskY: Number(row.desk_y ?? 0) })));
+  const byId = new Map(active.map((row) => [row.id, row]));
+  const snapshot = await env.OFFICE.get(env.OFFICE.idFromName("main")).configure({
+    bounds: layout.bounds,
+    agents: layout.agents.map((placement) => {
+      const row = byId.get(placement.agentId);
+      return {
+        ...placement,
+        activity: officeActivityOf(row?.last_event),
+        lastEventId: Number(row?.last_event_id ?? 0),
+      };
+    }),
+  });
+  return snapshot;
 }
 
 interface ApprovalRow {
@@ -239,6 +266,8 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   if (path === "/api/live-ticket" && method === "POST") {
     return json({ ticket: await env.HUB.get(env.HUB.idFromName("main")).issueTicket() });
   }
+
+  if (path === "/api/office/state" && method === "GET") return json(await officeSnapshot(env));
 
   const threads = await handleThreads(request, env, caller, path);
   if (threads) return threads;

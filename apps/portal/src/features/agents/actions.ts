@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { agentsApi, agentsApiOrigin, isAgentsApiId } from "@/src/adapters/agents-api";
+import { AgentsApiError, agentsApi, agentsApiOrigin, isAgentsApiId } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/auth";
-import type { AgentConfig, AgentEvent, AgentSummary, ChatView, ModelCatalog, ModelChoice, Thread, ThreadDetail } from "./types";
+import type { AgentConfig, AgentEvent, AgentSummary, ChatView, ModelCatalog, ModelChoice, OfficeSnapshot, Thread, ThreadDetail } from "./types";
 
 export interface ActionResult {
   ok: boolean;
@@ -127,6 +127,27 @@ export async function loadChat(threadId: string): Promise<ChatView> {
 export async function liveTicket(): Promise<string> {
   const { ticket } = await agentsApi<{ ticket: string }>("/api/live-ticket", await actor(), { method: "POST" });
   return ticket;
+}
+
+/** Current shared figure positions; the caller's 3D camera never leaves this browser. */
+export async function loadOfficeState(): Promise<{ ok: true; snapshot: OfficeSnapshot } | { ok: false; error: string }> {
+  try {
+    return { ok: true, snapshot: await agentsApi<OfficeSnapshot>("/api/office/state", await actor()) };
+  } catch (error) {
+    if (!(error instanceof AgentsApiError)) {
+      console.error("office snapshot load failed", error);
+      return { ok: false, error: "Der Bürostatus konnte nicht geladen werden." };
+    }
+    const message = error.status === 404
+      ? "Der API-Worker kennt den Büro-Endpunkt noch nicht. Bitte API-Dev aktualisieren."
+      : error.status === 401 || error.status === 403
+        ? "Die API hat den Bürostatus-Zugriff abgelehnt. API-Zugang prüfen."
+        : error.status === 502 || error.status === 503
+          ? error.message
+          : `Bürostatus konnte nicht geladen werden (HTTP ${error.status}).`;
+    console.error("office snapshot load failed", error.status, error.message);
+    return { ok: false, error: message };
+  }
 }
 
 /** Events of a thread after a given id, to catch up after the live connection dropped. */

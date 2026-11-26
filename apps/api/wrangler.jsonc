@@ -38,10 +38,14 @@
   "durable_objects": {
     "bindings": [
       { "name": "AGENTS", "class_name": "AgentRuntime" },
-      { "name": "HUB", "class_name": "LiveHub" }
+      { "name": "HUB", "class_name": "LiveHub" },
+      { "name": "OFFICE", "class_name": "OfficePresence" }
     ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AgentRuntime", "LiveHub"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["AgentRuntime", "LiveHub"] },
+    { "tag": "v2", "new_sqlite_classes": ["OfficePresence"] }
+  ],
   "env": {
     "dev": {
       "name": "uguroezdamar-api-dev",
@@ -70,7 +74,8 @@
       "durable_objects": {
         "bindings": [
           { "name": "AGENTS", "class_name": "AgentRuntime" },
-          { "name": "HUB", "class_name": "LiveHub" }
+          { "name": "HUB", "class_name": "LiveHub" },
+          { "name": "OFFICE", "class_name": "OfficePresence" }
         ]
       }
     }

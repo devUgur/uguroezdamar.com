@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { liveTicket } from "../../actions";
-import type { AgentEvent } from "../../types";
+import type { AgentEvent, OfficeSnapshot } from "../../types";
 
 export interface LiveDelta {
   agentId?: string;
@@ -13,6 +13,8 @@ export interface LiveDelta {
 
 interface Handlers {
   onEvent: (event: AgentEvent) => void;
+  onOffice?: (snapshot: OfficeSnapshot) => void;
+  onOpen?: () => void | Promise<void>;
   onDelta?: (delta: LiveDelta) => void;
   /** Runs before every reconnect, to catch up on what happened while the socket was down. */
   onReconnect?: () => Promise<void>;
@@ -45,11 +47,16 @@ export function useLiveSocket(origin: string | null, handlers: Handlers): { conn
         if (!closed) retry = setTimeout(connect, 5000);
         return;
       }
-      socket.onopen = () => setConnected(true);
+      socket.onopen = () => {
+        setConnected(true);
+        if (latest.current.onOffice) socket?.send("subscribe:office");
+        void Promise.resolve(latest.current.onOpen?.()).catch(() => undefined);
+      };
       socket.onmessage = (message) => {
         if (message.data === "pong") return;
-        const payload = JSON.parse(String(message.data)) as { type: string; event?: AgentEvent } & Partial<LiveDelta>;
+        const payload = JSON.parse(String(message.data)) as { type: string; event?: AgentEvent; snapshot?: OfficeSnapshot } & Partial<LiveDelta>;
         if (payload.type === "event" && payload.event) latest.current.onEvent(payload.event);
+        if (payload.type === "office" && payload.snapshot) latest.current.onOffice?.(payload.snapshot);
         if (payload.type === "delta" && payload.text) {
           latest.current.onDelta?.({ agentId: payload.agentId, threadId: payload.threadId, step: payload.step, text: payload.text });
         }

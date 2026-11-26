@@ -7,6 +7,7 @@ Diese Dokumentation ist die zentrale, gepflegte Referenz für Architektur, Engin
 | Bereich | Inhalt |
 | --- | --- |
 | [Architektur](architecture/README.md) | Systemkontext, Anwendungen, Pakete, Abhängigkeitsregeln, Architekturentscheidungen |
+| [Office Brain – Planung](architecture/office-brain/README.md) | Vorschlag für ein modulares Agenten-Office mit Wissensbibliothek und interaktiver Graphansicht |
 | [ADRs](architecture/decisions/) | datierte Architekturentscheidungen und deren Status |
 | [Engineering-Qualität](engineering/quality.md) | Lint, Typecheck, Tests, Guards, CI und Merge-Gates |
 | [Abhängigkeitsmatrix](engineering/dependency-matrix.md) | unterstützte Laufzeiten, Paketstände, Upgrade-Entscheidungen und Pflege |

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { cn } from "@ugur/core";
 import type { AgentSummary } from "../../types";
 import { AgentChatDialog } from "./AgentChatDialog";
 import { AgentConfigSheet } from "./AgentConfigSheet";
-import { OfficeRoom } from "./OfficeRoom";
+import { OfficeStage } from "./OfficeStage";
 import { useOfficeLive } from "./useOfficeLive";
 
 interface AgentOfficeProps {
@@ -14,7 +15,7 @@ interface AgentOfficeProps {
 
 /** /agents: every configured agent in one room, live. A click opens its configuration; from there into a chat. */
 export function AgentOffice({ agents, liveOrigin }: AgentOfficeProps) {
-  const { states, connected } = useOfficeLive(agents, liveOrigin);
+  const { states, connected, presence, presenceError, serverOffsetMs } = useOfficeLive(agents, liveOrigin);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [chat, setChat] = useState<{ agent: AgentSummary; fresh: boolean } | null>(null);
   const selected = agents.find((agent) => agent.id === selectedId) ?? null;
@@ -28,13 +29,17 @@ export function AgentOffice({ agents, liveOrigin }: AgentOfficeProps) {
             Wer gerade arbeitet, sitzt am Platz und tippt; wer frei ist, läuft durchs Büro. Klick auf eine Figur zeigt ihre Konfiguration.
           </p>
         </div>
-        <span className="text-xs text-muted-foreground">{liveOrigin ? (connected ? "live" : "verbindet …") : "API nicht konfiguriert"}</span>
+        <span
+          role="status"
+          aria-live="polite"
+          className={cn("max-w-xl text-right text-xs", presenceError ? "text-destructive" : "text-muted-foreground")}
+        >
+          {!liveOrigin ? "API nicht konfiguriert · lokale Vorschau" : presence ? (connected ? "synchronisiert" : "Snapshot geladen · Live-Verbindung getrennt") : presenceError ? `${presenceError} Lokale Vorschau aktiv.` : !connected ? "verbindet … · lokale Vorschau aktiv" : "Bürostatus wird geladen · lokale Vorschau aktiv"}
+        </span>
       </div>
 
       {agents.length ? (
-        <div className="overflow-hidden rounded-xl border border-border">
-          <OfficeRoom agents={agents} states={states} selectedId={selectedId} onSelect={setSelectedId} />
-        </div>
+        <OfficeStage agents={agents} states={states} presence={presence} serverOffsetMs={serverOffsetMs} selectedId={selectedId} onSelect={setSelectedId} />
       ) : (
         <p className="text-sm text-muted-foreground">Noch keine Agenten konfiguriert.</p>
       )}

@@ -36,6 +36,7 @@ export class LiveHub extends DurableObject<Env> {
     }
     const pair = new WebSocketPair();
     this.ctx.acceptWebSocket(pair[1]);
+    pair[1].serializeAttachment({ office: false });
     pair[1].send(JSON.stringify({ type: "hello", ts: Date.now() }));
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
@@ -54,10 +55,40 @@ export class LiveHub extends DurableObject<Env> {
   }
 
   override webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): void {
-    if (message === "ping") socket.send("pong");
+    const text = typeof message === "string" ? message : new TextDecoder().decode(message);
+    if (text === "ping") {
+      socket.send("pong");
+      return;
+    }
+    if (text === "subscribe:office") {
+      const attachment = socket.deserializeAttachment() as { office?: boolean } | null;
+      if (!attachment?.office) {
+        socket.serializeAttachment({ office: true });
+        void this.syncOfficeViewers().catch((error) => console.error("office viewer registration failed", error));
+      }
+    } else if (text === "unsubscribe:office") {
+      const attachment = socket.deserializeAttachment() as { office?: boolean } | null;
+      if (attachment?.office) {
+        socket.serializeAttachment({ office: false });
+        void this.syncOfficeViewers().catch((error) => console.error("office viewer removal failed", error));
+      }
+    }
   }
 
   override webSocketClose(socket: WebSocket, code: number): void {
-    socket.close(code, "closed");
+    const attachment = socket.deserializeAttachment() as { office?: boolean } | null;
+    const validCloseCode = code >= 1000 && code < 5000 && ![1004, 1005, 1006, 1015].includes(code);
+    if (validCloseCode) socket.close(code, "closed");
+    else socket.close();
+    if (attachment?.office) {
+      void this.syncOfficeViewers(socket).catch((error) => console.error("office viewer removal failed", error));
+    }
+  }
+
+  private async syncOfficeViewers(excluded?: WebSocket): Promise<void> {
+    const count = this.ctx
+      .getWebSockets()
+      .filter((socket) => socket !== excluded && (socket.deserializeAttachment() as { office?: boolean } | null)?.office).length;
+    await this.env.OFFICE.get(this.env.OFFICE.idFromName("main")).setViewers(count);
   }
 }

@@ -1,5 +1,6 @@
 import type { AgentRuntime } from "./agent.ts";
 import type { LiveHub } from "./hub.ts";
+import type { OfficePresence } from "./office/presence.ts";
 
 /** Bindings from wrangler.jsonc plus secrets set by the deploy workflow. */
 export interface Env {
@@ -9,6 +10,7 @@ export interface Env {
   AI: Ai;
   AGENTS: DurableObjectNamespace<AgentRuntime>;
   HUB: DurableObjectNamespace<LiveHub>;
+  OFFICE: DurableObjectNamespace<OfficePresence>;
 
   DEFAULT_REPO: string;
   CF_ACCOUNT_ID: string;

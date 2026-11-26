@@ -87,6 +87,26 @@ export interface AgentSummary {
   lastThreadId: string | null;
 }
 
+/** Shared office motion plan. Camera pose and selection are deliberately not part of this state. */
+export interface OfficeMotion {
+  agentId: string;
+  activity: "idle" | "working" | "waiting" | "error";
+  from: { x: number; z: number };
+  target: { x: number; z: number };
+  startedAt: number;
+  speed: number;
+  restUntil: number | null;
+  lastEventId: number;
+}
+
+export interface OfficeSnapshot {
+  revision: number;
+  serverTime: number;
+  bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
+  placements: { agentId: string; desk: { x: number; z: number }; seat: { x: number; z: number } }[];
+  agents: Record<string, OfficeMotion>;
+}
+
 /** Everything a chat needs, loaded together for a dialog that has no page around it. */
 export interface ChatView {
   detail: ThreadDetail;

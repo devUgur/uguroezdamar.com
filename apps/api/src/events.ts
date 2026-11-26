@@ -66,6 +66,17 @@ export async function emit(env: Env, event: AgentEvent): Promise<StoredEvent> {
     .first<{ id: number; ts: number }>();
 
   const stored: StoredEvent = { ...event, id: row?.id ?? 0, ts: row?.ts ?? Date.now() };
+  if (stored.agentId && stored.id) {
+    try {
+      await env.OFFICE.get(env.OFFICE.idFromName("main")).recordEvent({
+        agentId: stored.agentId,
+        type: stored.type,
+        id: stored.id,
+      });
+    } catch (error) {
+      console.error("office state update failed", error);
+    }
+  }
   try {
     await env.HUB.get(env.HUB.idFromName("main")).broadcast(JSON.stringify({ type: "event", event: stored }));
   } catch (error) {
