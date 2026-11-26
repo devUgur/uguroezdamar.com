@@ -11,6 +11,8 @@ export interface SecretSpec {
   managedBy?: string;
   /** A random value of our own making; `secrets generate` can create it. */
   random?: boolean;
+  /** Only the CLI reads it, straight from Infisical: no task needs it in its environment, so turbo does not pass it on. */
+  cliOnly?: boolean;
   /** The apps that read the key at runtime or build time; `hosting env` syncs it to those. */
   apps?: readonly ("site" | "portal")[];
 }
@@ -69,6 +71,11 @@ export const SECRETS: readonly SecretSpec[] = [
     managedBy: "pnpm ugur api secrets",
     apps: ["portal"],
   }),
+  // GitHub App of the agent API (ADR 0031). Infisical holds the values (paste the whole .pem into the web
+  // interface, multi-line is fine); `pnpm ugur api secrets` copies them into GitHub Actions, because the API is
+  // deployed from there. One app serves both stages, so the values live in `prod` only and are never synced to a host.
+  ...optional("GitHub App of the agents: App ID", ["AGENT_GH_APP_ID"], { stages: ["prod"], cliOnly: true }),
+  ...optional("GitHub App of the agents: private key (PEM), copied to GitHub Actions", ["AGENT_GH_APP_PRIVATE_KEY"], { stages: ["prod"], cliOnly: true }),
 ];
 
 /** Keys that used to exist. `secrets audit` names them so they get removed, not re-declared. */

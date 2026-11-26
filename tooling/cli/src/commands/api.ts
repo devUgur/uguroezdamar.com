@@ -1,7 +1,6 @@
 import { randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
 import { has, run } from "../lib/exec.ts";
-import { listSecretNames, setSecret as setInfisicalSecret } from "../lib/infisical.ts";
+import { listSecretNames, secretValues, setSecret as setInfisicalSecret } from "../lib/infisical.ts";
 import { askHidden } from "../lib/prompt.ts";
 import type { Stage } from "../lib/stages.ts";
 
@@ -23,8 +22,8 @@ interface RepoSecret {
   required: boolean;
   purpose: string;
   howTo?: string[];
-  /** Multi-line value (a PEM key): the prompt asks for the path of a file, which is read and handed to gh without printing it. */
-  fromFile?: boolean;
+  /** Kept in Infisical (prod) and copied to GitHub from there, never typed into this command. */
+  fromInfisical?: boolean;
 }
 
 const REPO_SECRETS: RepoSecret[] = [
@@ -50,15 +49,16 @@ const REPO_SECRETS: RepoSecret[] = [
   {
     name: "AGENT_GH_APP_ID",
     required: false,
+    fromInfisical: true,
     purpose: "GitHub App der Agenten (ADR 0031): App ID",
     howTo: ["github.com/settings/apps → die App → „About“ → App ID (nur Ziffern)"],
   },
   {
     name: "AGENT_GH_APP_PRIVATE_KEY",
     required: false,
-    fromFile: true,
+    fromInfisical: true,
     purpose: "GitHub App der Agenten: privater Schlüssel",
-    howTo: ["Auf der App-Seite „Generate a private key“; die .pem-Datei wird heruntergeladen", "Hier den Pfad der Datei eingeben (der Inhalt wird nicht angezeigt)"],
+    howTo: ["Auf der App-Seite „Generate a private key“; die .pem-Datei wird heruntergeladen"],
   },
   {
     name: "AGENT_GITHUB_TOKEN",
@@ -157,27 +157,34 @@ export async function apiSecrets(apply: boolean, rotate: boolean): Promise<numbe
     if (entry.stage === "dev") changedDev = true;
   }
 
-  for (const secret of REPO_SECRETS.filter((entry) => !entry.required && !repo.has(entry.name))) {
+  // The GitHub App: Infisical (prod) is the source of truth, GitHub Actions gets a copy for the deploy.
+  const appNames = REPO_SECRETS.filter((entry) => entry.fromInfisical).map((entry) => entry.name);
+  const appValues = secretValues("prod", appNames);
+  if (appValues) {
+    for (const name of appNames) {
+      if (repo.has(name) && !rotate) continue;
+      if (!setGhSecret(name, appValues[name] ?? "")) {
+        console.error(`${name} konnte nicht von Infisical nach GitHub kopiert werden.`);
+        return 1;
+      }
+      changedDev = true;
+      console.log(`\n${name}: aus Infisical (prod) nach GitHub kopiert.`);
+    }
+  } else if (appNames.some((name) => !repo.has(name))) {
+    console.log("\nGitHub App (ADR 0031): AGENT_GH_APP_ID und AGENT_GH_APP_PRIVATE_KEY fehlen in Infisical (prod).");
+    console.log("  · Im Infisical-Web (Projekt, Environment prod) beide als Secret anlegen: die App ID (Ziffern) und den kompletten Inhalt der .pem-Datei (mehrzeilig einfügen).");
+    console.log("  · Danach diesen Befehl erneut ausführen; er kopiert die Werte nach GitHub. Die .pem-Datei danach löschen.");
+  }
+
+  for (const secret of REPO_SECRETS.filter((entry) => !entry.required && !entry.fromInfisical && !repo.has(entry.name))) {
     console.log(`\n${secret.name} – ${secret.purpose}`);
     for (const line of secret.howTo ?? []) console.log(`  · ${line}`);
-    let value = await askHidden(secret.fromFile ? "Pfad der .pem-Datei (leer = überspringen): " : "Wert einfügen (leer = überspringen): ");
+    const value = await askHidden("Wert einfügen (leer = überspringen): ");
     if (value === null) {
       console.log("Kein interaktives Terminal; übersprungen.");
       continue;
     }
     if (!value) continue;
-    if (secret.fromFile) {
-      try {
-        value = readFileSync(value.replace(/^"|"$/g, ""), "utf8");
-      } catch {
-        console.error("Datei nicht lesbar; übersprungen.");
-        continue;
-      }
-      if (!value.includes("PRIVATE KEY")) {
-        console.error("Das ist keine PEM-Schlüsseldatei; übersprungen.");
-        continue;
-      }
-    }
     if (!setGhSecret(secret.name, value)) {
       console.error(`${secret.name} konnte nicht gesetzt werden.`);
       return 1;

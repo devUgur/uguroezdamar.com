@@ -58,7 +58,8 @@ describe("secrets manifest", () => {
       ...(siteTurbo.tasks.build?.passThroughEnv ?? []),
       ...(siteTurbo.tasks.dev?.passThroughEnv ?? []),
     ]);
-    expect([...declared].filter((key) => !passed.has(key))).toEqual([]);
+    const needed = SECRETS.filter((spec) => !spec.cliOnly).map((spec) => spec.key);
+    expect(needed.filter((key) => !passed.has(key))).toEqual([]);
     expect(turbo.tasks.dev?.env).toEqual(["NEXT_PUBLIC_SITE_URL"]);
     expect(turbo.globalPassThroughEnv).not.toContain("CRON_SECRET");
     expect(siteTurbo.tasks.build?.passThroughEnv).toEqual(["CRON_SECRET"]);

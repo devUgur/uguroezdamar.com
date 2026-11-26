@@ -20,7 +20,7 @@ Die Agenten griffen bisher mit einem Fine-grained Personal Access Token (`AGENT_
 3. **Die Besitzer-Freigabe bleibt die Grenze.** Die App kann auf mehr Konten installiert sein, als Agenten nutzen dürfen: Nur Besitzer in `GITHUB_OWNERS` zählen (ADR 0029). Das Portal zeigt unter `/projects`, wo die App installiert ist und welche Konten freigegeben sind (`GET /api/github/status`). Eine Organisation wird nutzbar, indem man die App dort installiert und den Besitzer in `GITHUB_OWNERS` einträgt.
 4. **Anlegen von Repositories bleibt am Token.** Ein Installations-Token kann keine Repositories auf einem persönlichen Konto anlegen (das braucht ein Nutzer-Token). `repo_create` nutzt deshalb weiter `AGENT_GITHUB_TOKEN` mit `Administration: Read and write`; in Organisationen ginge es über die App mit dem Recht `Administration`, das wir nicht vergeben.
 5. **Rechte der App** (Repository permissions): `Contents` Read and write, `Pull requests` Read and write, `Checks` Read-only; `Metadata` ist automatisch Read-only. Kein `Administration`, kein `Workflows`, keine Organisationsrechte, keine Webhooks.
-6. **Secrets.** `AGENT_GH_APP_ID` und `AGENT_GH_APP_PRIVATE_KEY` (der Name darf nicht mit `GITHUB_` beginnen) liegen als GitHub-Actions-Secrets und werden beim Deploy zu Worker-Secrets. `pnpm ugur api secrets --apply` fragt die App-ID ab und liest den Schlüssel aus der heruntergeladenen `.pem`-Datei, ohne ihn anzuzeigen. Der Schlüssel darf als PKCS#1 (so liefert ihn GitHub) oder PKCS#8 vorliegen.
+6. **Secrets.** Quelle der Wahrheit ist Infisical (Environment `prod`, ein Wert für beide Stages, nur von der CLI gelesen und nie an Vercel synchronisiert): `AGENT_GH_APP_ID` und `AGENT_GH_APP_PRIVATE_KEY`. Der Schlüssel wird als mehrzeiliges Secret in der Infisical-Weboberfläche angelegt, nicht über einen Dateipfad. `pnpm ugur api secrets --apply` kopiert beide Werte nach GitHub Actions (der Name darf nicht mit `GITHUB_` beginnen), weil die API von dort deployt wird und der Deploy sie als Worker-Secrets setzt (Ausnahme zu ADR 0024). `--rotate` kopiert erneut. Der Schlüssel darf als PKCS#1 (so liefert ihn GitHub) oder PKCS#8 vorliegen.
 
 ## App anlegen (einmalig)
 
@@ -30,7 +30,8 @@ Die Agenten griffen bisher mit einem Fine-grained Personal Access Token (`AGENT_
 4. „Where can this GitHub App be installed?“: „Only on this account“.
 5. „Create GitHub App“. Auf der Seite der App die **App ID** notieren und unter „Private keys“ „Generate a private key“: Die `.pem`-Datei wird heruntergeladen.
 6. Links „Install App“ → das Konto wählen → „All repositories“ oder „Only select repositories“.
-7. `pnpm ugur api secrets --apply`: App-ID und Pfad der `.pem`-Datei eingeben. Danach die `.pem`-Datei löschen.
+7. In Infisical (Environment `prod`) zwei Secrets anlegen: `AGENT_GH_APP_ID` (die Ziffern) und `AGENT_GH_APP_PRIVATE_KEY` (den kompletten Inhalt der `.pem`-Datei einfügen). Die `.pem`-Datei danach löschen.
+8. `pnpm ugur api secrets --apply` kopiert beide nach GitHub und startet den Dev-Deploy.
 
 Das Portal zeigt anschließend „GitHub App verbunden“. Den `AGENT_GITHUB_TOKEN` braucht es dann nur noch zum Anlegen von Repositories.
 
