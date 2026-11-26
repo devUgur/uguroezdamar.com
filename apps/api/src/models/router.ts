@@ -64,6 +64,16 @@ export class ModelRouter {
     return { providers, aliases: this.config.aliases };
   }
 
+  /** The fallback chain of an alias with the state of each provider, for the configuration view. */
+  chain(alias: string): { provider: string; providerLabel: string; model: string; available: boolean }[] {
+    return (this.config.aliases[alias] ?? []).map((target) => ({
+      provider: target.provider,
+      providerLabel: this.config.providers[target.provider]?.label ?? target.provider,
+      model: target.model,
+      available: this.hasCredentials(target.provider),
+    }));
+  }
+
   /** True when the provider exists and offers this model in the catalog. */
   offers(pinned: PinnedModel): boolean {
     return Boolean(this.config.providers[pinned.provider]?.models?.some((model) => model.id === pinned.model));

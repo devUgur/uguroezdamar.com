@@ -30,6 +30,16 @@ export {
   DialogTitle,
   DialogTrigger,
 } from "./primitives/Dialog";
+export {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "./primitives/Sheet";
 export { Container } from "./primitives/Container";
 export { ScrollProgress } from "./layout/ScrollProgress";
 export { Section } from "./primitives/Section";

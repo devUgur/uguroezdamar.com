@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { agentsApi, agentsApiOrigin, isAgentsApiId } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/auth";
-import type { AgentEvent, AgentSummary, ChatView, ModelCatalog, ModelChoice, Thread, ThreadDetail } from "./types";
+import type { AgentConfig, AgentEvent, AgentSummary, ChatView, ModelCatalog, ModelChoice, Thread, ThreadDetail } from "./types";
 
 export interface ActionResult {
   ok: boolean;
@@ -97,6 +97,13 @@ async function chatView(threadId: string, who: string): Promise<ChatView> {
     agentsApi<ModelCatalog>("/api/models", who),
   ]);
   return { detail, catalog, liveOrigin: agentsApiOrigin() };
+}
+
+/** Configuration shown in the office's side sheet. Names and states only, never secret values. */
+export async function loadAgentConfig(agentId: string): Promise<AgentConfig> {
+  const who = await actor();
+  if (!/^[a-z0-9-]{1,40}$/.test(agentId)) throw new Error("Unbekannter Agent.");
+  return agentsApi<AgentConfig>(`/api/agents/${agentId}/config`, who);
 }
 
 /** The agent's newest open thread, or a new one: what the office's chat dialog shows. */

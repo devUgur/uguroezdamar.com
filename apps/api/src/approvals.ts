@@ -14,12 +14,12 @@ export interface ApprovalDescription {
 /** Approvals expire after a day; the agent then has to propose again. */
 export const APPROVAL_TTL_SECONDS = 24 * 60 * 60;
 
-const PROTECTED_PATHS: { pattern: RegExp; reason: string }[] = [
-  { pattern: /^\.github\/workflows\//, reason: "CI/Deploy-Workflow" },
-  { pattern: /^apps\/api\/wrangler\.jsonc$/, reason: "API-Konfiguration (Bindings, Domains)" },
-  { pattern: /^apps\/api\/src\/auth\.ts$/, reason: "Anmeldung der API" },
-  { pattern: /^apps\/api\/src\/approvals\.ts$/, reason: "Regeln für Freigaben" },
-  { pattern: /^tooling\/cli\/src\/secrets-manifest\.ts$/, reason: "Secret-Manifest" },
+export const PROTECTED_PATHS: { pattern: RegExp; label: string; reason: string }[] = [
+  { pattern: /^\.github\/workflows\//, label: ".github/workflows/**", reason: "CI/Deploy-Workflow" },
+  { pattern: /^apps\/api\/wrangler\.jsonc$/, label: "apps/api/wrangler.jsonc", reason: "API-Konfiguration (Bindings, Domains)" },
+  { pattern: /^apps\/api\/src\/auth\.ts$/, label: "apps/api/src/auth.ts", reason: "Anmeldung der API" },
+  { pattern: /^apps\/api\/src\/approvals\.ts$/, label: "apps/api/src/approvals.ts", reason: "Regeln für Freigaben" },
+  { pattern: /^tooling\/cli\/src\/secrets-manifest\.ts$/, label: "tooling/cli/src/secrets-manifest.ts", reason: "Secret-Manifest" },
 ];
 
 interface FileArg {

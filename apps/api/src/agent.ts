@@ -6,6 +6,7 @@ import { emit, spentToday } from "./events.ts";
 import type { ChatMessage, ToolCall } from "./models/port.ts";
 import { ModelRouter, type PinnedModel } from "./models/router.ts";
 import { SubrequestBudget } from "./runtime/budget.ts";
+import { DELTA_FLUSH_MS, HISTORY_LIMIT, MAX_STEPS, STALE_RUN_MS } from "./runtime/limits.ts";
 import { runAgentLoop, type LoopEvent } from "./runtime/loop.ts";
 import type { Accepted, AgentRuntimePort, AgentStatus, ChatInput, ResumeInput } from "./runtime/port.ts";
 import { projectMemories } from "./tools/workspace.ts";
@@ -14,13 +15,6 @@ import { toolsByName } from "./tools/registry.ts";
 
 export type { ChatInput, ResumeInput } from "./runtime/port.ts";
 
-/** Steps per task across all stages; the loop stops there and asks Ugur. */
-const MAX_STEPS = 24;
-const HISTORY_LIMIT = 60;
-/** A run without progress for this long is treated as dead (e.g. after a deploy). */
-const STALE_RUN_MS = 15 * 60_000;
-/** Live answer text is sent to browsers in batches, not per token. */
-const DELTA_FLUSH_MS = 250;
 
 interface MessageRow {
   [key: string]: SqlStorageValue;

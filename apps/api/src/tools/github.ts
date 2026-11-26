@@ -7,8 +7,8 @@ const MAX_FILE_CHARS = 60_000;
  * Everyone works on dev (it deploys to the dev environment); main changes only through a pull request
  * from dev. Agents may commit to dev or to their own agent/... branches, always after approval.
  */
-const WORK_BRANCH = "dev";
-const BRANCH_PREFIX = "agent/";
+export const WORK_BRANCH = "dev";
+export const BRANCH_PREFIX = "agent/";
 
 function assertWritableBranch(branch: string): void {
   if (branch !== WORK_BRANCH && !branch.startsWith(BRANCH_PREFIX)) {

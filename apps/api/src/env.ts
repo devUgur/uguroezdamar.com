@@ -16,6 +16,8 @@ export interface Env {
   MODEL_VIA_GATEWAY: string;
   /** "production" (branch main) or "dev" (branch dev). */
   API_ENV: string;
+  /** Names of the storage behind the bindings; shown in the portal, never used to connect. */
+  STORAGE: { d1: string; d1Region: string; kv: string; r2: string };
   /** "true" once the models in apps/api/modal/llm.py are deployed; until then Modal stays unselectable. */
   MODAL_ENABLED?: string;
 

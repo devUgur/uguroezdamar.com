@@ -14,6 +14,8 @@ Agenten-Backend des Admin-Portals: Threads, Agentenschleife, Modelle, Werkzeuge,
 | `src/models/` | `ModelPort`, Router mit Fallback und Modellwahl je Thread, Katalog, Adapter (OpenAI-kompatibel, Workers AI) |
 | `src/tools/` | `ToolPort`, GitHub-Werkzeuge, Projekt- und Notiz-Werkzeuge |
 | `src/agents/registry.ts` | die Agenten: Prompt, Modell-Alias, Werkzeuge |
+| `src/agents/describe.ts` | Konfigurationsansicht eines Agenten für das Portal |
+| `src/runtime/limits.ts` | Grenzwerte eines Laufs, von Laufzeit und Ansicht gemeinsam genutzt |
 | `migrations/` | D1-Schema |
 | `modal/llm.py` | eigene Open-Weight-Modelle auf Modal (vLLM, OpenAI-kompatibel), nicht Teil des Worker-Bundles |
 
@@ -24,6 +26,7 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 | Route | Zweck |
 | --- | --- |
 | `GET /api/agents` | Agenten mit Rolle, Modell-Alias, letztem Event und neuestem Thread (für das Büro) |
+| `GET /api/agents/:id/config` | Konfiguration eines Agenten, nur lesend: Modell-Kette mit Verfügbarkeit, Werkzeuge, Systemprompt, Grenzen, Speicher (D1, KV, R2), Schutzregeln, Zugangsdaten (nur ob gesetzt) |
 | `GET /api/threads`, `POST /api/threads` | Threads auflisten, anlegen |
 | `GET/PATCH/DELETE /api/threads/:id` | Verlauf, Status, offene Freigaben und Events; Titel oder Modell ändern; archivieren |
 | `POST /api/threads/:id/chat`, `…/stop` | Auftrag annehmen, Lauf abbrechen |

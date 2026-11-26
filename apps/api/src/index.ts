@@ -1,3 +1,4 @@
+import { describeAgent } from "./agents/describe.ts";
 import { AGENTS } from "./agents/registry.ts";
 import { authorize, type Caller } from "./auth.ts";
 import type { Env } from "./env.ts";
@@ -241,6 +242,12 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 
   const threads = await handleThreads(request, env, caller, path);
   if (threads) return threads;
+
+  const configMatch = path.match(/^\/api\/agents\/([a-z0-9-]{1,40})\/config$/);
+  if (configMatch && method === "GET") {
+    const description = await describeAgent(env, configMatch[1] ?? "");
+    return description ? json(description) : json({ error: "Unbekannter Agent" }, 404);
+  }
 
   if (path === "/api/agents" && method === "GET") {
     // Everything the office view needs per agent: who it is, where it sits, what it did last.

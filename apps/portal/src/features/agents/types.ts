@@ -93,3 +93,35 @@ export interface ChatView {
   catalog: ModelCatalog;
   liveOrigin: string | null;
 }
+
+/** Read-only configuration of one agent, as the API describes it (apps/api/src/agents/describe.ts). */
+export interface AgentConfig {
+  id: string;
+  name: string;
+  role: string;
+  summary: string;
+  desk: { x: number; y: number };
+  model: { alias: string; chain: { provider: string; providerLabel: string; model: string; available: boolean }[] };
+  tools: { name: string; description: string; requiresApproval: boolean; inputs: { name: string; required: boolean }[] }[];
+  prompt: string;
+  limits: {
+    maxSteps: number;
+    subrequestsPerStage: number;
+    historyMessages: number;
+    staleRunMinutes: number;
+    approvalHours: number;
+    dailyBudgetUsd: number;
+    spentTodayUsd: number;
+  };
+  storage: {
+    environment: string;
+    project: { id: string; name: string; repo: string };
+    database: { name: string; region: string; binding: string };
+    config: { name: string; binding: string };
+    files: { name: string; binding: string };
+    conversations: string;
+  };
+  data: { threads: number; events: number; costUsdTotal: number; pendingApprovals: number; projectNotes: number };
+  guardrails: { workBranch: string; agentBranchPrefix: string; neverWritesTo: string; protectedPaths: { path: string; reason: string }[] };
+  credentials: { name: string; purpose: string; set: boolean }[];
+}
