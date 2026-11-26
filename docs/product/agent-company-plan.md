@@ -101,7 +101,8 @@ Jede Stufe ist einzeln auslieferbar, hat Tests gegen echtes SQLite und wird auf 
 > - **Messung auf Dev (26.11.2026), kurzer Thread mit einem Vorlauf (elf Nachrichten, sechs Dateilesungen):**
 >   - Erster Schritt der Folgefrage: 4.723 Eingabe-Tokens statt geschätzt rund 6.300 mit dem alten Fenster, also etwa 25 Prozent weniger insgesamt und etwa 40 Prozent weniger beim Verlauf. Die Antwort war ohne erneutes Lesen richtig.
 >   - Das 50-Prozent-Ziel ist damit für kurze Threads nicht erreicht. Der feste Teil (Systemprompt und Werkzeugbeschreibungen, rund 2.300 Tokens) überwiegt dort. Lange Threads mit großen Werkzeugergebnissen sparen deutlich mehr (Test `tests/api-context.test.ts`).
->   - Nächster Hebel: Werkzeugbeschreibungen und Systemprompt straffen, Werkzeuge je Aufgabe auswählen.
+>   - **Prompt gestrafft (26.11.2026):** fester Teil des Chefs 8.536 → 6.015 Zeichen, des QA-Reviewers → 3.985, Obergrenzen und Pflichtregeln durch `tests/api-prompt-budget.test.ts` abgesichert. Nächste Folgefrage im selben Thread: 3.929 Eingabe-Tokens (vorher 4.723, obwohl der Thread zwei Nachrichten länger war). Gegenüber dem alten 60-Nachrichten-Fenster sind das rund 40 Prozent weniger.
+>   - Werkzeuge je Situation auszuwählen ist bewusst verworfen: Eine wechselnde Werkzeugliste steht vorn im Prompt und würde den Prompt-Cache bei jedem Wechsel ungültig machen.
 
 - **Agentenblatt im Büro bearbeitbar:**
   - Modell (aus den Anbietern mit Schlüssel und passend zur Datenrichtlinie) und Denkaufwand (niedrig bis hoch, wo der Anbieter es kann).
