@@ -98,6 +98,10 @@ Jede Stufe ist einzeln auslieferbar, hat Tests gegen echtes SQLite und wird auf 
 > - Einstellungen je Mitarbeiter und Mandant (`agent_settings`, Migration `0018`, `GET/PUT /api/agents/:id/settings`) für Modell, Denkaufwand, Schritte und Tagesbudget; bearbeitbar im Agentenblatt des Büros, nur für den Owner.
 > - Reihenfolge der Modelle: Wahl im Chat → Modell des Mitarbeiters → Standard der Rolle → eingebaute Kette.
 > - Der Context Builder (`apps/api/src/runtime/context.ts`) schickt den laufenden Lauf vollständig, damit der Prompt-Cache greift. Davor gehen nur eine fortgeschriebene Zusammenfassung (günstiges Modell, im Protokoll als `context-summary`) und die letzten zehn Nachrichten mit gekürzten Werkzeugergebnissen mit.
+> - **Messung auf Dev (26.11.2026), kurzer Thread mit einem Vorlauf (elf Nachrichten, sechs Dateilesungen):**
+>   - Erster Schritt der Folgefrage: 4.723 Eingabe-Tokens statt geschätzt rund 6.300 mit dem alten Fenster, also etwa 25 Prozent weniger insgesamt und etwa 40 Prozent weniger beim Verlauf. Die Antwort war ohne erneutes Lesen richtig.
+>   - Das 50-Prozent-Ziel ist damit für kurze Threads nicht erreicht. Der feste Teil (Systemprompt und Werkzeugbeschreibungen, rund 2.300 Tokens) überwiegt dort. Lange Threads mit großen Werkzeugergebnissen sparen deutlich mehr (Test `tests/api-context.test.ts`).
+>   - Nächster Hebel: Werkzeugbeschreibungen und Systemprompt straffen, Werkzeuge je Aufgabe auswählen.
 
 - **Agentenblatt im Büro bearbeitbar:**
   - Modell (aus den Anbietern mit Schlüssel und passend zur Datenrichtlinie) und Denkaufwand (niedrig bis hoch, wo der Anbieter es kann).
