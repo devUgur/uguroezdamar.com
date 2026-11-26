@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createWorkTask, startWorkReview, startWorkTask, updateWorkTask } from "../actions";
+import { createWorkTask, startWorkReview, startWorkTask, syncWorkTaskToGitHub, updateWorkTask } from "../actions";
 import type { WorkStatus, WorkTask } from "../types";
 import { WorkLiveStatus } from "./WorkLiveStatus";
 
@@ -40,6 +40,7 @@ function TaskCard({ task, next }: { task: WorkTask; next: WorkStatus[] }) {
         {task.agent ? <Link href={`/agents?agent=${encodeURIComponent(task.agent.id)}`} className="underline underline-offset-4" title="Im Agentenbüro zeigen">{task.agent.name}</Link> : <span>Nicht zugewiesen</span>}
       </div>
       <h3 className="font-medium leading-snug">{task.title}</h3>
+      {task.githubIssue ? <a className="text-sm underline underline-offset-4" href={task.githubIssue.url ?? "/work"} target="_blank" rel="noreferrer">GitHub Issue #{task.githubIssue.number} · {task.githubIssue.state ?? "verknüpft"}</a> : null}
       {task.description ? <p className="whitespace-pre-wrap text-sm text-muted-foreground">{task.description}</p> : null}
       {task.acceptanceCriteria ? (
         <details className="text-sm">
@@ -52,6 +53,7 @@ function TaskCard({ task, next }: { task: WorkTask; next: WorkStatus[] }) {
       {task.latestReview ? <details className="text-sm" open={task.latestReview.status === "running"}><summary className="cursor-pointer text-muted-foreground">QA: {reviewLabel(task.latestReview)}</summary><div className="mt-2 space-y-2"><p>{task.latestReview.summary ?? task.latestReview.error ?? "Prüfung läuft."}</p>{task.latestReview.findings.length ? <ul className="list-inside list-disc">{task.latestReview.findings.map((finding, index) => <li key={`${index}-${finding}`}>{finding}</li>)}</ul> : null}{task.latestReview.evidence.length ? <ul className="list-inside list-disc text-muted-foreground">{task.latestReview.evidence.map((evidence, index) => <li key={`${index}-${evidence}`}>{evidence}</li>)}</ul> : null}{task.latestReview.threadId ? <Link href={`/chat/${task.latestReview.threadId}`} className="inline-block underline underline-offset-4">QA-Thread öffnen</Link> : null}</div></details> : null}
       {task.threadId ? <Link href={`/chat/${task.threadId}`} className="inline-block text-sm underline underline-offset-4">Agenten-Thread öffnen</Link> : null}
       {task.status === "ready" ? <form action={startWorkTask}><input type="hidden" name="id" value={task.id} /><button className="w-full rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground">An Chef-Agent übergeben</button></form> : null}
+      <form action={syncWorkTaskToGitHub}><input type="hidden" name="id" value={task.id} /><button className="w-full rounded-md border border-border px-3 py-2 text-sm hover:bg-accent">{task.githubIssue ? "GitHub Issue aktualisieren" : "GitHub Issue erstellen"}</button></form>
       {task.status === "review" ? <form action={startWorkReview}><input type="hidden" name="id" value={task.id} /><button className="w-full rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground">Unabhängige QA starten</button></form> : null}
       {task.status === "qa" ? <form action={updateWorkTask} className="space-y-2 border-t border-border pt-3"><input type="hidden" name="id" value={task.id} /><input type="hidden" name="status" value="done" /><label className="block space-y-1 text-xs">Owner-Abnahme / manuelle Verifikation <textarea name="completionNote" required minLength={20} maxLength={2000} rows={3} className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm" placeholder="Prüfungen, Befunde und Abschlussentscheidung dokumentieren …" /></label><button className="w-full rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground">Nach Prüfung abschließen</button></form> : null}
       {next.length ? (

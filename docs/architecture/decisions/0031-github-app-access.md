@@ -19,14 +19,14 @@ Die Agenten griffen bisher mit einem Fine-grained Personal Access Token (`AGENT_
 2. **Der Token bleibt als Rückfall.** Wo die App für ein Konto nicht installiert ist, nimmt die API `AGENT_GITHUB_TOKEN`, wenn er gesetzt ist; sonst meldet sie klar, dass die App dort fehlt. Ohne App läuft alles wie bisher mit dem Token.
 3. **Die Besitzer-Freigabe bleibt die Grenze.** Die App kann auf mehr Konten installiert sein, als Agenten nutzen dürfen: Nur Besitzer in `GITHUB_OWNERS` zählen (ADR 0029). Das Portal zeigt unter `/projects`, wo die App installiert ist und welche Konten freigegeben sind (`GET /api/github/status`). Eine Organisation wird nutzbar, indem man die App dort installiert und den Besitzer in `GITHUB_OWNERS` einträgt.
 4. **Anlegen von Repositories bleibt am Token.** Ein Installations-Token kann keine Repositories auf einem persönlichen Konto anlegen (das braucht ein Nutzer-Token). `repo_create` nutzt deshalb weiter `AGENT_GITHUB_TOKEN` mit `Administration: Read and write`; in Organisationen ginge es über die App mit dem Recht `Administration`, das wir nicht vergeben.
-5. **Rechte der App** (Repository permissions): `Contents` Read and write, `Pull requests` Read and write, `Checks` Read-only; `Metadata` ist automatisch Read-only. Kein `Administration`, kein `Workflows`, keine Organisationsrechte, keine Webhooks.
+5. **Rechte der App** (Repository permissions): `Contents` Read and write, `Pull requests` Read and write, `Issues` Read and write, `Checks` Read-only; `Metadata` ist automatisch Read-only. `Issues` wird für die owner-gestützte Issue-Synchronisierung benötigt. Kein `Administration`, kein `Workflows`, keine Organisationsrechte; der bestehende Webhook bleibt für Installationsevents aktiv und abonniert zusätzlich `issues`. GitHub Projects V2 bleibt gesperrt, bis der Zugriff auf Projekte separat eingerichtet ist.
 6. **Secrets.** Quelle der Wahrheit ist Infisical (Environment `prod`, ein Wert für beide Stages, nur von der CLI gelesen und nie an Vercel synchronisiert): `AGENT_GH_APP_ID` und `AGENT_GH_APP_PRIVATE_KEY`. Der Schlüssel wird als mehrzeiliges Secret in der Infisical-Weboberfläche angelegt, nicht über einen Dateipfad. `pnpm ugur api secrets --apply` kopiert beide Werte nach GitHub Actions (der Name darf nicht mit `GITHUB_` beginnen), weil die API von dort deployt wird und der Deploy sie als Worker-Secrets setzt (Ausnahme zu ADR 0024). `--rotate` kopiert erneut. Der Schlüssel darf als PKCS#1 (so liefert ihn GitHub) oder PKCS#8 vorliegen.
 
 ## App anlegen (einmalig)
 
 1. `github.com/settings/apps` → „New GitHub App“.
 2. Name: `uguroezdamar-agents`. Homepage URL: `https://uguroezdamar.com`. Webhook: „Active“ abwählen.
-3. Repository permissions: Contents „Read and write“, Pull requests „Read and write“, Checks „Read-only“. Sonst nichts.
+3. Repository permissions: Contents „Read and write“, Pull requests „Read and write“, Issues „Read and write“, Checks „Read-only“. Sonst nichts.
 4. „Where can this GitHub App be installed?“: „Only on this account“.
 5. „Create GitHub App“. Auf der Seite der App die **App ID** notieren und unter „Private keys“ „Generate a private key“: Die `.pem`-Datei wird heruntergeladen.
 6. Links „Install App“ → das Konto wählen → „All repositories“ oder „Only select repositories“.
@@ -40,7 +40,7 @@ Das Portal zeigt anschließend „GitHub App verbunden“. Den `AGENT_GITHUB_TOK
 Auf der Seite der App unter „General“ (je Stage eine eigene App, weil eine App nur eine Adresse kennt; Dev zuerst):
 
 - **Setup URL:** `https://api-dev.uguroezdamar.com/api/github/setup`. „Redirect on update“ anhaken.
-- **Webhook → Active** anhaken. **Webhook URL:** `https://api-dev.uguroezdamar.com/webhooks/github`. **Secret:** der Wert aus Infisical (`prod`, `AGENT_GH_WEBHOOK_SECRET`), den `pnpm ugur api secrets --apply` erzeugt.
+- **Webhook → Active** anhaken. **Webhook URL:** `https://api-dev.uguroezdamar.com/webhooks/github`. **Secret:** der Wert aus Infisical (`prod`, `AGENT_GH_WEBHOOK_SECRET`), den `pnpm ugur api secrets --apply` erzeugt. Abonniere zusätzlich `Issues`; die App muss dafür mindestens `Issues: Read` haben.
 - Bleibt aus: „Request user authorization (OAuth) during installation“, „Enable Device Flow“, Callback URL.
 - Events brauchen keine Auswahl: `installation` und `installation_repositories` kommen für Apps automatisch.
 

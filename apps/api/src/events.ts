@@ -22,6 +22,8 @@ export type EventType =
   | "organization_updated"
   | "sprint_created"
   | "sprint_updated"
+  | "github_issue_synced"
+  | "agent_handoff"
   | "project_policy_changed"
   | "knowledge_indexed";
 

@@ -16,6 +16,7 @@ Diese Dokumentation ist die zentrale, gepflegte Referenz für Architektur, Engin
 | [Content & Portfolio](product/content-and-portfolio.md) | Inhaltsmodell, Publish-Entscheidung und redaktionelle Qualität |
 | [Portfolio R3: Ladezeit, Interaktion und Lokalisierung](product/portfolio-r3-experience-plan.md) | Font-Performance, Cursorbewegung, zweisprachige Routen und Release-Abnahme |
 | [Secrets & Entwicklungsumgebung](operations/secrets.md) | Infisical, Secrets-Manifest, `pnpm ugur`-CLI, Datenbank-Befehle, Rotation |
+| [Graphify-Pilot](operations/graphify.md) | Lokaler, code-only Repository-Graph ohne externe Modellverarbeitung |
 | [Cloudflare und Kontotrennung](operations/cloudflare.md) | Wrangler-Profile je Repository, DNS-Zuständigkeit, Vercel-Cutover und minimale Berechtigungen |
 | [Hosting, Preview und Release](operations/preview.md) | Vercel-Projekte, Vorschau je Pull Request, Health-Endpunkt, Smoke-Lauf, Freigabe in die Produktion |
 | [Betrieb & Recovery](operations/release-and-recovery.md) | Build, Release, Rollback, Backups und Incident-Ablauf |

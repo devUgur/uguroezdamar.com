@@ -4,6 +4,8 @@ import type { Env } from "../env.ts";
 import { emit } from "../events.ts";
 import { AGENTS } from "../agents/registry.ts";
 import { sprintBelongsTo } from "./sprints.ts";
+import { syncTaskIssue } from "../github/issues.ts";
+import { GithubAccessError } from "../github/app.ts";
 
 export const TASK_STATUSES = ["backlog", "ready", "in_progress", "review", "qa", "blocked", "done"] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
@@ -52,6 +54,9 @@ interface TaskRow {
   review_error?: string | null;
   review_thread_id?: string | null;
   review_created_at?: number | null;
+  github_issue_number?: number | null;
+  github_issue_url?: string | null;
+  github_issue_state?: string | null;
 }
 
 function stringList(value: string | null | undefined): string[] {
@@ -99,6 +104,11 @@ function asTask(row: TaskRow) {
       error: row.review_error,
       threadId: row.review_thread_id,
       createdAt: row.review_created_at,
+    } : null,
+    githubIssue: row.github_issue_number ? {
+      number: row.github_issue_number,
+      url: row.github_issue_url,
+      state: row.github_issue_state,
     } : null,
   };
 }
@@ -194,6 +204,16 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
     if (!task) return json({ error: "Aufgabe konnte nicht geladen werden." }, 500);
     await publish(env, caller, task, "task_created");
     return json(asTask(task), 201);
+  }
+
+  const githubMatch = path.match(/^\/api\/tasks\/([0-9a-f-]{36})\/github$/);
+  if (githubMatch && request.method === "POST") {
+    try {
+      return json(await syncTaskIssue(env, caller, githubMatch[1] ?? ""));
+    } catch (error) {
+      if (error instanceof GithubAccessError) return json({ error: error.message }, error.status);
+      throw error;
+    }
   }
 
   const match = path.match(/^\/api\/tasks\/([0-9a-f-]{36})(?:\/(run|review))?$/);
@@ -329,8 +349,18 @@ async function startTaskReview(env: Env, caller: Caller, task: TaskRow): Promise
       text: taskPrompt.slice(0, 20_000),
     });
     if (!accepted.accepted) throw new Error(accepted.message ?? "QA-Reviewer hat die Prüfung nicht angenommen.");
+    await emit(env, {
+      tenantId: caller.tenantId, agentId: reviewerId, threadId, taskId: task.id,
+      projectId: task.project_id ?? undefined, type: "agent_handoff",
+      data: { phase: "accepted", from: "owner", to: reviewerId, scope: definition.tools, reviewId },
+    });
     return json({ taskId: task.id, reviewId, threadId, accepted: accepted.accepted, busy: accepted.busy ?? false }, 202);
   } catch {
+    await emit(env, {
+      tenantId: caller.tenantId, agentId: reviewerId, threadId, taskId: task.id,
+      projectId: task.project_id ?? undefined, type: "agent_handoff",
+      data: { phase: "failed", from: "owner", to: reviewerId, scope: definition.tools, reviewId },
+    });
     await env.DB.batch([
       env.DB.prepare("/* tenant:parent */ UPDATE task_reviews SET status = 'failed', error = 'QA-Lauf konnte nicht gestartet werden.', completed_at = unixepoch() WHERE id = ? AND status = 'running'").bind(reviewId),
       env.DB.prepare("/* tenant:parent */ UPDATE tasks SET status = 'review', updated_at = unixepoch() WHERE id = ? AND status = 'qa'").bind(task.id),
@@ -380,6 +410,11 @@ async function startTaskRun(env: Env, caller: Caller, task: TaskRow): Promise<Re
       text: taskPrompt.slice(0, 20_000),
     });
     if (!accepted.accepted) throw new Error(accepted.message ?? "Der Agent hat den Auftrag nicht angenommen.");
+    await emit(env, {
+      tenantId: caller.tenantId, agentId, threadId, taskId: task.id,
+      projectId: task.project_id ?? undefined, type: "agent_handoff",
+      data: { phase: "accepted", from: "owner", to: agentId, scope: definition.tools },
+    });
     return json({ taskId: task.id, threadId, accepted: accepted.accepted, busy: accepted.busy ?? false }, 202);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Agentenlauf konnte nicht gestartet werden.";
@@ -387,6 +422,11 @@ async function startTaskRun(env: Env, caller: Caller, task: TaskRow): Promise<Re
       .bind(`Startfehler: ${message}`.slice(0, 5_000), task.id).run();
     const blocked = await loadTask(env, caller.tenantId, task.id);
     if (blocked) await publish(env, caller, blocked, "task_updated");
+    await emit(env, {
+      tenantId: caller.tenantId, agentId, threadId, taskId: task.id,
+      projectId: task.project_id ?? undefined, type: "agent_handoff",
+      data: { phase: "failed", from: "owner", to: agentId, scope: definition.tools },
+    });
     await env.DB.prepare("/* tenant:parent */ UPDATE threads SET archived = 1, updated_at = unixepoch() WHERE id = ?").bind(threadId).run();
     return json({ error: "Agentenlauf konnte nicht gestartet werden." }, 502);
   }

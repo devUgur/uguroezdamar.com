@@ -20,7 +20,7 @@ Der erste Betriebsumfang bleibt klein: ein Owner, der Chef-Agent für Umsetzung 
 | Agentenruntime | `apps/api`, D1, Durable Objects, Model-/Tool-Ports, Freigaben | Chef-Agent und read-only QA-Reviewer sind registriert; Planungsrollen führen keine Runs aus |
 | Chat | `/chat`, Threads, Live-Streaming, Stop und Approval | Keine freie oder automatische Delegation; Task-Review ist ein expliziter eigener Start |
 | Office | `/agents`, 2D/3D, serverautoritatives Präsenzmodell und individuelle Kamera | Visualisierung spiegelt Laufzeit und ersetzt sie nicht |
-| Work | `/work`, persistente Tasks, Priorität, Abnahmekriterien, Statusübergänge, Owner-Abnahmen und Live-Events; Ready startet Chef, Review startet read-only QA mit eigener Historie | Noch keine Sprintplanung, parallele Developer-Delegation oder isolierte Workstation |
+| Work | `/work`, persistente Tasks, Priorität, Abnahmekriterien, Statusübergänge, Owner-Abnahmen und Live-Events; Ready startet Chef, Review startet read-only QA mit eigener Historie; Tasks können ein GitHub Issue spiegeln | Noch keine parallele Developer-Delegation oder isolierte Workstation |
 
 Die Aufgaben liegen bei Agentenarbeit gemäß [ADR 0026](../decisions/0026-agent-work-management.md) in D1, zusammen mit den Agentenreferenzen und Events. Neon bleibt für die bestehenden Portal-Domänen zuständig. Es gibt keine zweite Kopie derselben Aufgaben.
 
@@ -36,6 +36,9 @@ Die Aufgaben liegen bei Agentenarbeit gemäß [ADR 0026](../decisions/0026-agent
 - **Umgesetzt:** `reviewer` ist als `qa-reviewer-v1` mit separater Agenteninstanz registriert; nur explizite Lese-Werkzeuge, eigener Thread und Budget.
 - **Umgesetzt:** Owner-geschützte Verwaltung auf `/organization/manage`: Profiländerungen erzeugen neue Versionen, Rollenprofile bleiben nicht ausführbar, registrierte Instanzen lassen sich begrenzt pflegen. API-Scopes, Optimistic Concurrency und Vorher-/Nachher-Audit sind serverseitig erzwungen; aktive Arbeit blockiert Deaktivierungen.
 - Als Nächstes: Dev-Abnahme der Versionskonflikte, Scope-Grenzen, aktiven Runs und Aktualisierung in zwei Browsern; Audit-Retention und Paginierung festlegen, sobald das tatsächliche Änderungsvolumen messbar ist.
+- **Umgesetzt:** lokaler Graphify-Pilot für dieses Repository, code-only und an Graphify `0.9.120` gebunden; SQL-Parser ist für Migrationen aktiviert. Ausgabe bleibt außerhalb von Git.
+- **Umgesetzt:** Projektweiter Codex-MCP-Eintrag zeigt auf den offiziellen Graphify OAuth-Server und dieses Repository. Jedes Teammitglied verbindet sein Graphify-Konto im Browser; Query-Zugriff erfordert ein indexiertes Repository im ausgewählten Workspace.
+- **Nächster Gate:** echte Aufgabenabfragen und Windows-Extraktionslücken bewerten; verwaltetes automatisches Index-Update und Graphify-MCP-Anbindung an den Portal-Agenten entscheiden.
 - Stabilen Vertrag für `department`, `role`, `reportsTo`, `capabilities`, Policy-Version und Agent-Definition erweitern, sobald echte Delegation die Beziehungen benötigt.
 - Definition und Instanz unterscheiden: Definition enthält Prompt-/Tool-/Modell-Policy; Instanz ist ein aktiver Runtime-Akteur mit Limits und Desk.
 - Hierarchie nur als Delegationsregel behandeln, nie als implizite Berechtigung.
@@ -52,7 +55,11 @@ Die Aufgaben liegen bei Agentenarbeit gemäß [ADR 0026](../decisions/0026-agent
 - **Umgesetzt:** Eine bereite Aufgabe kann an den registrierten Chef-Agenten übergeben werden. Task, Thread, Approval und Agenten-Events tragen dieselbe Task-ID; Erfolg geht in Review, Fehler/Stop in Blocked.
 - **Umgesetzt:** `review` kann ausschließlich über die QA-Route an einen eigenen Reviewer-Thread übergeben werden. Review-Ausgaben, Findings, Evidence und Task-Referenzen werden persistiert.
 - **Umgesetzt:** QA kann weder `Done` setzen noch `qa` vortäuschen. Owner-Abschluss benötigt eine begründete Notiz; bei fehlender QA-Evidenz ist manuelle Abnahme möglich.
+- **Umgesetzt:** Chef- und QA-Übergaben speichern `agent_handoff`-Events mit Quell-/Zielrolle, Task, Thread, erlaubten Tools und angenommenem oder fehlgeschlagenem Ergebnis.
 - **Als Nächstes:** Zuweisungs- und Abhängigkeitsregeln, Epic-/Story-Beziehungen, Sprint-Ziel und Kapazität ergänzen.
+- **Umgesetzt:** `/portfolio` trennt Produktprojekte von den Repository-Freigaben (`/projects`) und verknüpft mehrere aktive Repository-Projekte mit einem Produkt; die Zuordnung ändert keine Agentenrechte (ADR 0034).
+- **Umgesetzt, begrenzter Sync:** D1 speichert Issue-Nummer, URL und GitHub-Zeitstempel. Der Owner kann Titel/Beschreibung aus D1 zu GitHub spiegeln; signierte `issues`-Webhooks spiegeln spätere GitHub-Titel/Beschreibungsänderungen zurück. Issue-Schließen setzt keinen Task auf Done. Voraussetzung: GitHub App `Issues: Read and write` und Webhook-Event `Issues` in Dev und später Production.
+- **Offen:** GitHub Projects V2 braucht getrennte Project-Berechtigung und eine führende Feld-/Statuszuordnung. Die Issue-Verknüpfung ist implementiert, ersetzt aber keine Project-V2-Synchronisierung.
 - PR, Commit, CI-Lauf, Ergebnis und Blockierungsgrund als strukturierte, auditierbare Referenzen erfassen.
 - Scrum-Begriffe dienen dem Arbeitsfluss; das System erzwingt keine Meetings oder Schätzwerte.
 
@@ -125,8 +132,12 @@ Es wird kein zusätzliches Agentenframework, Message Broker, Graph-/Vektorspeich
 
 1. Task/Run, QA und Organisationsverwaltung in API-Dev mit echtem Modell, PR-Diff, CI-Status, Scope-/Versionskonflikten, Fehler/Stop und Zwei-Browser-Live-Pfad abnehmen.
 2. Isolierte Workstation-/Worktree-Runner evaluieren; parallele Coding-Runs erst nach erfolgreichem Isolation-POC aktivieren.
-3. Work-Items um echte PR-/Commit-/CI-Referenzen und Abhängigkeiten ergänzen.
-4. Product/Planning und Tech-Lead-Rollen mit strukturierten Übergaben umsetzen; zuerst sequenziell und mit Begrenzungen.
-5. Management-/Agent-Detailansichten sowie Kosten- und Delivery-Metriken aus echten Runs ergänzen.
+3. GitHub-Issue-/Project-Integration entscheiden: App-Berechtigungen, führende Felder, Konfliktverhalten und Webhook-Verifikation.
+4. Work-Items um echte Issue-, PR-, Commit-, CI-Referenzen und Abhängigkeiten ergänzen.
+5. Product/Planning und Tech-Lead-Rollen mit strukturierten Übergaben umsetzen; zuerst sequenziell und mit Begrenzungen.
+6. Management-/Agent-Detailansichten sowie Kosten- und Delivery-Metriken aus echten Runs ergänzen.
+6. **Umgesetzt:** Managementseite `/costs` zeigt 30-Tage-Kostenschätzung, Tokens, Aufrufe, Tagesverlauf sowie Aufteilung nach Agent und Modell. Beträge beruhen auf Modellkatalogpreisen und sind keine Rechnungsdaten.
+7. Isolierte Workstation als Sandbox-POC erst nach Workers-Paid-/Container-Budget, Egress-/Credential-Konzept und automatisiertem Cleanup freigeben. Cloudflare Sandboxes benötigen laut aktueller Doku Workers Paid; Container-Durable-Object-Scheduling ist Public Beta.
+8. GitHub Projects V2 anschließen, sobald App-/CLI-Projektberechtigungen gesetzt sind. GraphQL-Queries brauchen `read:project`, Änderungen `project`; V2-Webhooks sind aktuell Public Preview.
 
 Produktionsdaten, Secrets, bezahlte Anbieter und Production-Deployments bleiben getrennte Owner-Entscheidungen gemäß [AGENTS.md](../../../AGENTS.md) und den gültigen ADRs.

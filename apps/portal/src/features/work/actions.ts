@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { agentsApi } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/auth";
 import { agentsApiOrigin } from "@/src/adapters/agents-api";
+import { currentOrganizationAccess } from "@/src/server/organization-access";
 import type { WorkStatus } from "./types";
 
 async function actor(): Promise<string> {
@@ -58,4 +59,14 @@ export async function startWorkReview(formData: FormData): Promise<void> {
   const result = await agentsApi<{ threadId: string }>(`/api/tasks/${id}/review`, await actor(), { method: "POST" });
   revalidatePath("/work");
   redirect(`/chat/${result.threadId}`);
+}
+
+export async function syncWorkTaskToGitHub(formData: FormData): Promise<void> {
+  const id = String(formData.get("id") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("Ungültige Aufgaben-ID.");
+  const access = await currentOrganizationAccess();
+  if (!access.canManage) throw new Error("Nur der Owner darf Aufgaben mit GitHub synchronisieren.");
+  await agentsApi("/api/tasks/" + id + "/github", access.actor, { method: "POST", scopes: ["github:write"] });
+  revalidatePath("/work");
+  redirect("/work");
 }

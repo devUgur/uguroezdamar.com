@@ -35,6 +35,7 @@
     "clean": "turbo clean",
     "ui:add": "pnpm dlx shadcn@latest add -c packages/ui",
     "ui:diff": "pnpm dlx shadcn@latest diff -c packages/ui",
+    "graphify:extract": "graphify extract . --code-only",
     "start": "pnpm --filter @ugur/site start",
     "db:generate": "pnpm ugur db generate",
     "db:check": "pnpm ugur db check",

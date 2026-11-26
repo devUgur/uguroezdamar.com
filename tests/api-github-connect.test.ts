@@ -186,3 +186,37 @@ describe("the webhook receiver", () => {
     expect(db.raw.prepare("SELECT status FROM tenant_installations").get()).toEqual({ status: "active" });
   });
 });
+
+describe("issue webhooks", () => {
+  const deliver = (body: object) => {
+    const raw = JSON.stringify(body);
+    return { raw, auth: false as const, method: "POST", headers: { "x-hub-signature-256": sign(raw, WEBHOOK_SECRET), "x-github-event": "issues", "x-github-delivery": crypto.randomUUID() } };
+  };
+  const issue = (installation: number, title: string, updatedAt = "2026-11-26T20:00:00Z") => ({
+    action: "edited",
+    installation: { id: installation },
+    repository: { full_name: "shared/repo" },
+    issue: { number: 7, title, body: "Beschreibung\n\n### Abnahmekriterien\nGrün", state: "open", html_url: "https://github.com/shared/repo/issues/7", updated_at: updatedAt },
+  });
+
+  it("only changes tasks of the tenant that owns the sending installation", async () => {
+    const { request, db } = apiHarness(app);
+    db.raw.exec(`
+      INSERT INTO tenants (id, name) VALUES ('acme', 'Acme'), ('beta', 'Beta');
+      INSERT INTO tenant_installations (installation_id, tenant_id, account, selection) VALUES (42, 'acme', 'shared', 'all'), (43, 'beta', 'shared', 'all');
+      INSERT INTO projects (id, tenant_id, name, repo, status) VALUES ('p-acme', 'acme', 'repo', 'shared/repo', 'active'), ('p-beta', 'beta', 'repo', 'shared/repo', 'active');
+      INSERT INTO tasks (id, tenant_id, project_id, title, status, github_issue_number) VALUES ('t-acme', 'acme', 'p-acme', 'alt', 'backlog', 7), ('t-beta', 'beta', 'p-beta', 'alt', 'backlog', 7);
+    `);
+    const result = await request("/webhooks/github", deliver(issue(42, "Neu von Acme")));
+    expect(result.body).toMatchObject({ synced: 1 });
+    const titles = db.raw.prepare("SELECT id, title, acceptance_criteria FROM tasks ORDER BY id").all();
+    expect(titles).toEqual([
+      { id: "t-acme", title: "Neu von Acme", acceptance_criteria: "Grün" },
+      { id: "t-beta", title: "alt", acceptance_criteria: null },
+    ]);
+    // An older update than the stored one changes nothing.
+    expect((await request("/webhooks/github", deliver(issue(42, "veraltet", "2026-11-26T19:00:00Z")))).body).toMatchObject({ ignored: "stale_issue_update" });
+    // An installation nobody connected does not reach another tenant's tasks.
+    expect((await request("/webhooks/github", deliver(issue(99, "fremd")))).body).toMatchObject({ ignored: "unlinked_issue" });
+  });
+});

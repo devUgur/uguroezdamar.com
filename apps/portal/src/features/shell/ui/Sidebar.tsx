@@ -19,6 +19,9 @@ export function Sidebar() {
         <Link href="/work" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Aufgaben
         </Link>
+        <Link href="/costs" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
+          Kosten
+        </Link>
         <Link href="/usage" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Verbrauch
         </Link>
@@ -26,7 +29,10 @@ export function Sidebar() {
           Organisation
         </Link>
         <Link href="/projects" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
-          Repositorys
+          Repositories
+        </Link>
+        <Link href="/portfolio" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
+          Portfolio
         </Link>
         <Link href="/chat" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Chat

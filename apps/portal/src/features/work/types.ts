@@ -22,6 +22,7 @@ export interface WorkTask {
   completionNote: string | null;
   completedBy: string | null;
   completedAt: number | null;
+  githubIssue: { number: number; url: string | null; state: string | null } | null;
   latestReview: {
     id: string;
     status: "running" | "completed" | "failed" | "cancelled";

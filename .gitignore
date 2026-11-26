@@ -152,3 +152,4 @@ package-lock.json
 .vercel
 .env*
 !.env.example
+graphify-out/
