@@ -1,9 +1,9 @@
 import "server-only";
 
 import { redirect } from "next/navigation";
-import { agentsApi, agentsApiOrigin, isAgentsApiId } from "@/src/adapters/agents-api";
+import { AgentsApiError, agentsApi, agentsApiOrigin, isAgentsApiId } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/auth";
-import type { AgentSummary, ModelCatalog, Thread, ThreadDetail } from "./types";
+import type { AgentSummary, ModelCatalog, OfficeSnapshot, Thread, ThreadDetail } from "./types";
 
 /** Every chat read runs as the signed-in admin; without a session the portal login takes over. */
 export async function requireActor(): Promise<string> {
@@ -33,6 +33,31 @@ export async function getModelCatalog(): Promise<ModelCatalog> {
 
 export async function listAgents(): Promise<AgentSummary[]> {
   return agentsApi<AgentSummary[]>("/api/agents", await requireActor());
+}
+
+/** Loads the office's first authoritative frame on the server to avoid a local-preview jump at hydration. */
+export async function loadAgentOffice(): Promise<{
+  agents: AgentSummary[];
+  presence: OfficeSnapshot | null;
+  presenceError: string | null;
+}> {
+  const actor = await requireActor();
+  const [agents, officeResult] = await Promise.all([
+    agentsApi<AgentSummary[]>("/api/agents", actor),
+    agentsApi<OfficeSnapshot>("/api/office/state", actor).then(
+      (snapshot) => ({ snapshot, error: null as string | null }),
+      (error: unknown) => ({ snapshot: null, error: officeError(error) }),
+    ),
+  ]);
+  return { agents, presence: officeResult.snapshot, presenceError: officeResult.error };
+}
+
+function officeError(error: unknown): string {
+  if (!(error instanceof AgentsApiError)) return "Der Bürostatus konnte nicht geladen werden.";
+  if (error.status === 404) return "Der API-Worker kennt den Büro-Endpunkt noch nicht. Bitte API-Dev aktualisieren.";
+  if (error.status === 401 || error.status === 403) return "Die API hat den Bürostatus-Zugriff abgelehnt. API-Zugang prüfen.";
+  if (error.status === 502 || error.status === 503) return error.message;
+  return `Bürostatus konnte nicht geladen werden (HTTP ${error.status}).`;
 }
 
 export function liveOrigin(): string | null {

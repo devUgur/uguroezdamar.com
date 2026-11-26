@@ -17,6 +17,7 @@ interface Figure3DProps {
   seat: Vec2;
   desk: Vec2;
   motion?: OfficeMotion;
+  localPreview: boolean;
   serverOffsetMs: number;
   activity: AgentActivity;
   selected: boolean;
@@ -37,9 +38,13 @@ export function Figure3D(props: Figure3DProps) {
   const body = useRef<Group>(null);
   const legs = [useRef<Group>(null), useRef<Group>(null)] as const;
   const arms = [useRef<Group>(null), useRef<Group>(null)] as const;
+  const initialPosition = useRef(props.motion ? motionPosition(props.motion, Date.now() + props.serverOffsetMs) : props.seat).current;
   const motion = useRef({
-    position: { ...props.seat },
-    yaw: yawToward(props.seat, props.desk),
+    position: { ...initialPosition },
+    yaw: yawToward(initialPosition, props.desk),
+    wasPreview: props.localPreview,
+    correction: { x: 0, z: 0 },
+    correctionStartedAt: 0,
   });
   const [hovered, setHovered] = useState(false);
   useCursor(hovered);
@@ -55,14 +60,26 @@ export function Figure3D(props: Figure3DProps) {
   }, [id, props.registry]);
 
   useFrame((_, delta) => {
-    const { seat, desk, activity: state, reducedMotion, serverOffsetMs } = latest.current;
+    const { seat, desk, activity: state, reducedMotion, serverOffsetMs, localPreview } = latest.current;
     const m = motion.current;
     const seconds = Math.min(delta, 0.1);
     const now = Date.now() + serverOffsetMs;
     const sharedMotion = latest.current.motion;
     const busy = state !== "idle";
     const previous = m.position;
-    const position = sharedMotion ? (reducedMotion ? sharedMotion.target : motionPosition(sharedMotion, now)) : seat;
+    let position = sharedMotion ? (reducedMotion ? sharedMotion.target : motionPosition(sharedMotion, now)) : seat;
+    if (m.wasPreview && !localPreview) {
+      m.correction = { x: m.position.x - position.x, z: m.position.z - position.z };
+      m.correctionStartedAt = now;
+    }
+    m.wasPreview = localPreview;
+    const correctionProgress = Math.min(1, Math.max(0, (now - m.correctionStartedAt) / 400));
+    if (!localPreview && correctionProgress < 1) {
+      position = {
+        x: position.x + m.correction.x * (1 - correctionProgress),
+        z: position.z + m.correction.z * (1 - correctionProgress),
+      };
+    }
     const walking = sharedMotion ? !reducedMotion && motionIsWalking(sharedMotion, now) : false;
     m.position = position;
     const seated = busy && distance(position, seat) < 0.06;
@@ -93,7 +110,7 @@ export function Figure3D(props: Figure3DProps) {
   return (
     <group
       ref={root}
-      position={[props.seat.x, 0, props.seat.z]}
+      position={[initialPosition.x, 0, initialPosition.z]}
       onClick={(event) => {
         event.stopPropagation();
         props.onSelect();

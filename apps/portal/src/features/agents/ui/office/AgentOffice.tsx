@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@ugur/core";
-import type { AgentSummary } from "../../types";
+import type { AgentSummary, OfficeSnapshot } from "../../types";
 import { AgentChatDialog } from "./AgentChatDialog";
 import { AgentConfigSheet } from "./AgentConfigSheet";
 import { OfficeStage } from "./OfficeStage";
@@ -11,11 +11,13 @@ import { useOfficeLive } from "./useOfficeLive";
 interface AgentOfficeProps {
   agents: AgentSummary[];
   liveOrigin: string | null;
+  initialPresence: OfficeSnapshot | null;
+  initialPresenceError: string | null;
 }
 
 /** /agents: every configured agent in one room, live. A click opens its configuration; from there into a chat. */
-export function AgentOffice({ agents, liveOrigin }: AgentOfficeProps) {
-  const { states, connected, presence, presenceError, serverOffsetMs } = useOfficeLive(agents, liveOrigin);
+export function AgentOffice({ agents, liveOrigin, initialPresence, initialPresenceError }: AgentOfficeProps) {
+  const { states, connected, presence, presenceError, serverOffsetMs } = useOfficeLive(agents, liveOrigin, initialPresence, initialPresenceError);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [chat, setChat] = useState<{ agent: AgentSummary; fresh: boolean } | null>(null);
   const selected = agents.find((agent) => agent.id === selectedId) ?? null;

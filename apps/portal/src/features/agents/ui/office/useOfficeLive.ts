@@ -10,15 +10,20 @@ import { activityOf, bubbleOf, type AgentLiveState } from "./agentState";
 const BUBBLE_MS = 8000;
 
 /** Live state per agent id, starting from each agent's last stored event. */
-export function useOfficeLive(agents: AgentSummary[], origin: string | null) {
+export function useOfficeLive(
+  agents: AgentSummary[],
+  origin: string | null,
+  initialPresence: OfficeSnapshot | null,
+  initialPresenceError: string | null,
+) {
   const [states, setStates] = useState<Record<string, AgentLiveState>>(() =>
     Object.fromEntries(agents.map((agent) => [agent.id, { activity: activityOf(agent.lastEvent), bubble: "" }])),
   );
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
-  const [presence, setPresence] = useState<OfficeSnapshot | null>(null);
-  const [presenceError, setPresenceError] = useState<string | null>(null);
-  const [serverOffsetMs, setServerOffsetMs] = useState(0);
-  const snapshotRef = useRef<OfficeSnapshot | null>(null);
+  const [presence, setPresence] = useState<OfficeSnapshot | null>(initialPresence);
+  const [presenceError, setPresenceError] = useState<string | null>(initialPresenceError);
+  const [serverOffsetMs, setServerOffsetMs] = useState(() => initialPresence ? initialPresence.serverTime - Date.now() : 0);
+  const snapshotRef = useRef<OfficeSnapshot | null>(initialPresence);
   const latestEventIds = useRef<Record<string, number>>({});
 
   const applySnapshot = useCallback((snapshot: OfficeSnapshot) => {
@@ -51,7 +56,7 @@ export function useOfficeLive(agents: AgentSummary[], origin: string | null) {
       if (result.ok) applySnapshot(result.snapshot);
       else if (!snapshotRef.current) setPresenceError(result.error);
     };
-    void refresh();
+    if (!snapshotRef.current) void refresh();
     const retry = setInterval(() => {
       if (!snapshotRef.current) void refresh();
     }, 10_000);

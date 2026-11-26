@@ -18,6 +18,7 @@ interface OfficeScene3DProps {
   agents: AgentSummary[];
   states: Record<string, AgentLiveState>;
   presence: OfficeSnapshot | null;
+  localPreview: boolean;
   serverOffsetMs: number;
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -44,7 +45,7 @@ function CameraRig({ halfWidth, depth, target }: { halfWidth: number; depth: num
  * The 3D office. It draws what the events say and decides nothing: busy agents sit at their desk,
  * free ones walk, waiting ones raise a hand. Colors come from the portal's design tokens.
  */
-export default function OfficeScene3D({ agents, states, presence, serverOffsetMs, selectedId, onSelect, anchors }: OfficeScene3DProps) {
+export default function OfficeScene3D({ agents, states, presence, localPreview, serverOffsetMs, selectedId, onSelect, anchors }: OfficeScene3DProps) {
   const colors = useThemeColors();
   const reducedMotion = useMemo(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches, []);
   const { placements, halfWidth, depth } = useMemo(() => buildOffice(agents.map((agent) => agent.desk)), [agents]);
@@ -93,6 +94,7 @@ export default function OfficeScene3D({ agents, states, presence, serverOffsetMs
                 seat={placement.seat}
                 desk={placement.desk}
                 motion={presence.agents[agent.id]}
+                localPreview={localPreview}
                 serverOffsetMs={serverOffsetMs}
                 activity={activity}
                 selected={selectedId === agent.id}

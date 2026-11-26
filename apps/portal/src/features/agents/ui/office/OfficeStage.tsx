@@ -132,7 +132,7 @@ export function OfficeStage({ agents, states, presence, serverOffsetMs, selected
                 setView("2d");
               }}
             >
-            <OfficeScene3D agents={agents} states={states} presence={renderedPresence} serverOffsetMs={serverOffsetMs} selectedId={selectedId} onSelect={onSelect} anchors={anchors} />
+              <OfficeScene3D agents={agents} states={states} presence={renderedPresence} localPreview={!presence} serverOffsetMs={serverOffsetMs} selectedId={selectedId} onSelect={onSelect} anchors={anchors} />
             </SceneBoundary>
             <FigureLabels agents={agents} states={states} anchors={anchors} />
           </div>
