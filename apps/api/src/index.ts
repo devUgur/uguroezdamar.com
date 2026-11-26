@@ -12,6 +12,7 @@ import { officeActivityOf } from "./office/presence.ts";
 import { organizationCatalog } from "./organization/catalog.ts";
 import { handleOrganizationManagement } from "./organization/manage.ts";
 import { SubrequestBudget } from "./runtime/budget.ts";
+import { officeObjectName, threadObjectName } from "./tenancy.ts";
 import { toolByName } from "./tools/registry.ts";
 import { handleTasks } from "./work/tasks.ts";
 
@@ -43,8 +44,8 @@ async function body<T>(request: Request): Promise<Partial<T>> {
   }
 }
 
-function threadStub(env: Env, threadId: string) {
-  return env.AGENTS.get(env.AGENTS.idFromName(`thread:${threadId}`));
+function threadStub(env: Env, tenantId: string, threadId: string) {
+  return env.AGENTS.get(env.AGENTS.idFromName(threadObjectName(tenantId, threadId)));
 }
 
 interface ThreadRow {
@@ -75,21 +76,23 @@ function toThread(row: ThreadRow) {
   };
 }
 
-async function loadThread(env: Env, id: string): Promise<ThreadRow | null> {
-  return env.DB.prepare("SELECT * FROM threads WHERE id = ? AND archived = 0").bind(id).first<ThreadRow>();
+async function loadThread(env: Env, tenantId: string, id: string): Promise<ThreadRow | null> {
+  return env.DB.prepare("SELECT * FROM threads WHERE tenant_id = ? AND id = ? AND archived = 0").bind(tenantId, id).first<ThreadRow>();
 }
 
-async function officeSnapshot(env: Env) {
+async function officeSnapshot(env: Env, tenantId: string) {
   const { results } = await env.DB.prepare(
     `SELECT a.id, a.desk_x, a.desk_y,
-            (SELECT e.type FROM events e WHERE e.agent_id = a.id ORDER BY e.id DESC LIMIT 1) AS last_event,
-            (SELECT e.id FROM events e WHERE e.agent_id = a.id ORDER BY e.id DESC LIMIT 1) AS last_event_id
+            (SELECT e.type FROM events e WHERE e.tenant_id = ?1 AND e.agent_id = a.id ORDER BY e.id DESC LIMIT 1) AS last_event,
+            (SELECT e.id FROM events e WHERE e.tenant_id = ?1 AND e.agent_id = a.id ORDER BY e.id DESC LIMIT 1) AS last_event_id
        FROM agents a WHERE a.active = 1 ORDER BY a.created_at`,
-  ).all<{ id: string; desk_x: number | null; desk_y: number | null; last_event: string | null; last_event_id: number | null }>();
+  )
+    .bind(tenantId)
+    .all<{ id: string; desk_x: number | null; desk_y: number | null; last_event: string | null; last_event_id: number | null }>();
   const active = results.filter((row) => AGENTS[row.id]);
   const layout = buildOfficeLayout(active.map((row) => ({ id: row.id, deskX: Number(row.desk_x ?? 0), deskY: Number(row.desk_y ?? 0) })));
   const byId = new Map(active.map((row) => [row.id, row]));
-  const snapshot = await env.OFFICE.get(env.OFFICE.idFromName("main")).configure({
+  const snapshot = await env.OFFICE.get(env.OFFICE.idFromName(officeObjectName(tenantId))).configure({
     bounds: layout.bounds,
     agents: layout.agents.map((placement) => {
       const row = byId.get(placement.agentId);
@@ -115,13 +118,13 @@ interface ApprovalRow {
   created_at: number;
 }
 
-async function pendingApprovals(env: Env, threadId?: string) {
+async function pendingApprovals(env: Env, tenantId: string, threadId?: string) {
   const { results } = await env.DB.prepare(
     `SELECT id, agent_id, thread_id, action, summary, risk, warnings, expires_at, created_at FROM approvals
-      WHERE status = 'pending' AND (expires_at IS NULL OR expires_at > unixepoch()) AND (? IS NULL OR thread_id = ?)
+      WHERE tenant_id = ? AND status = 'pending' AND (expires_at IS NULL OR expires_at > unixepoch()) AND (? IS NULL OR thread_id = ?)
       ORDER BY created_at DESC LIMIT 50`,
   )
-    .bind(threadId ?? null, threadId ?? null)
+    .bind(tenantId, threadId ?? null, threadId ?? null)
     .all<Record<string, unknown>>();
   return results.map((row) => ({
     id: String(row.id),
@@ -136,16 +139,16 @@ async function pendingApprovals(env: Env, threadId?: string) {
 }
 
 async function decideApproval(env: Env, caller: Caller, id: string, approve: boolean): Promise<Response> {
-  const row = await env.DB.prepare("SELECT * FROM approvals WHERE id = ?").bind(id).first<ApprovalRow>();
+  const row = await env.DB.prepare("SELECT * FROM approvals WHERE tenant_id = ? AND id = ?").bind(caller.tenantId, id).first<ApprovalRow>();
   if (!row) return json({ error: "Freigabe nicht gefunden" }, 404);
   if (row.status !== "pending") return json({ error: `Bereits entschieden: ${row.status}` }, 409);
   if (row.expires_at && row.expires_at * 1000 < Date.now()) {
-    await env.DB.prepare("UPDATE approvals SET status = 'expired' WHERE id = ? AND status = 'pending'").bind(id).run();
+    await env.DB.prepare("/* tenant:parent */ UPDATE approvals SET status = 'expired' WHERE id = ? AND status = 'pending'").bind(id).run();
     return json({ error: "Freigabe abgelaufen; der Agent muss sie neu vorschlagen." }, 410);
   }
 
   // Claim it first so a double click cannot run the action twice.
-  const claimed = await env.DB.prepare("UPDATE approvals SET status = ?, decided_at = unixepoch() WHERE id = ? AND status = 'pending'")
+  const claimed = await env.DB.prepare("/* tenant:parent */ UPDATE approvals SET status = ?, decided_at = unixepoch() WHERE id = ? AND status = 'pending'")
     .bind(approve ? "approved" : "rejected", id)
     .run();
   if (!claimed.meta.changes) return json({ error: "Bereits entschieden" }, 409);
@@ -158,16 +161,17 @@ async function decideApproval(env: Env, caller: Caller, id: string, approve: boo
     try {
       if (!tool) throw new Error(`Werkzeug ${row.action} existiert nicht mehr.`);
       const budget = new SubrequestBudget();
-      const result = await tool.run(details.args, { env, agentId: row.agent_id, projectId: details.projectId, repo: details.repo, budget });
+      const result = await tool.run(details.args, { env, tenantId: caller.tenantId, agentId: row.agent_id, projectId: details.projectId, repo: details.repo, budget });
       outcome = JSON.stringify(result);
       ok = true;
     } catch (error) {
       outcome = `Fehler: ${error instanceof Error ? error.message : String(error)}`;
-      await env.DB.prepare("UPDATE approvals SET status = 'failed' WHERE id = ?").bind(id).run();
+      await env.DB.prepare("/* tenant:parent */ UPDATE approvals SET status = 'failed' WHERE id = ?").bind(id).run();
     }
   }
 
   await emit(env, {
+    tenantId: caller.tenantId,
     agentId: row.agent_id,
     threadId: row.thread_id ?? undefined,
     taskId: row.task_id ?? undefined,
@@ -177,7 +181,8 @@ async function decideApproval(env: Env, caller: Caller, id: string, approve: boo
   });
 
   if (row.thread_id) {
-    await threadStub(env, row.thread_id).resume({
+    await threadStub(env, caller.tenantId, row.thread_id).resume({
+      tenantId: caller.tenantId,
       threadId: row.thread_id,
       agentId: row.agent_id,
       projectId: details.projectId,
@@ -197,8 +202,10 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
   if (path === "/api/threads" && method === "GET") {
     const { results } = await env.DB.prepare(
       `SELECT t.*, (SELECT type FROM events e WHERE e.thread_id = t.id ORDER BY e.id DESC LIMIT 1) AS last_event
-         FROM threads t WHERE t.archived = 0 ORDER BY t.updated_at DESC LIMIT 100`,
-    ).all<ThreadRow>();
+         FROM threads t WHERE t.tenant_id = ? AND t.archived = 0 ORDER BY t.updated_at DESC LIMIT 100`,
+    )
+      .bind(caller.tenantId)
+      .all<ThreadRow>();
     return json(results.map(toThread));
   }
 
@@ -208,14 +215,14 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
     const activeAgent = await env.DB.prepare("SELECT 1 FROM agents WHERE id = ? AND active = 1").bind(agentId).first();
     if (!activeAgent) return json({ error: "Der ausgewählte Agent ist nicht aktiv." }, 409);
     if (input.projectId) {
-      const project = await env.DB.prepare("SELECT 1 FROM projects WHERE id = ? AND status = 'active'").bind(input.projectId).first();
+      const project = await env.DB.prepare("SELECT 1 FROM projects WHERE tenant_id = ? AND id = ? AND status = 'active'").bind(caller.tenantId, input.projectId).first();
       if (!project) return json({ error: "Unbekanntes oder entferntes Projekt" }, 400);
     }
     const id = crypto.randomUUID();
-    await env.DB.prepare("INSERT INTO threads (id, agent_id, project_id, title, model, created_by) VALUES (?, ?, ?, ?, ?, ?)")
-      .bind(id, agentId, input.projectId ?? DEFAULT_PROJECT, input.title?.slice(0, 120) ?? null, input.model ? JSON.stringify(input.model) : null, caller.actor)
+    await env.DB.prepare("INSERT INTO threads (id, tenant_id, agent_id, project_id, title, model, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .bind(id, caller.tenantId, agentId, input.projectId ?? DEFAULT_PROJECT, input.title?.slice(0, 120) ?? null, input.model ? JSON.stringify(input.model) : null, caller.actor)
       .run();
-    const row = await loadThread(env, id);
+    const row = await loadThread(env, caller.tenantId, id);
     return json(row ? toThread(row) : { id }, 201);
   }
 
@@ -223,21 +230,23 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
   if (!match) return null;
   const threadId = match[1] ?? "";
   const action = match[2];
-  const thread = await loadThread(env, threadId);
+  const thread = await loadThread(env, caller.tenantId, threadId);
   if (!thread) return json({ error: "Thread nicht gefunden" }, 404);
-  const stub = threadStub(env, threadId);
+  const stub = threadStub(env, caller.tenantId, threadId);
 
   if (!action && method === "GET") {
-    const [messages, status, approvals] = await Promise.all([stub.history(), stub.status(), pendingApprovals(env, threadId)]);
-    const events = await recentEvents(env, { threadId, limit: 200 });
-    const { results: projects } = await env.DB.prepare("SELECT id, name, repo, visibility FROM projects WHERE status = 'active' ORDER BY name").all();
+    const [messages, status, approvals] = await Promise.all([stub.history(), stub.status(), pendingApprovals(env, caller.tenantId, threadId)]);
+    const events = await recentEvents(env, { tenantId: caller.tenantId, threadId, limit: 200 });
+    const { results: projects } = await env.DB.prepare("SELECT id, name, repo, visibility FROM projects WHERE tenant_id = ? AND status = 'active' ORDER BY name")
+      .bind(caller.tenantId)
+      .all();
     return json({ thread: toThread(thread), messages, status, approvals, events, projects });
   }
 
   if (!action && method === "PATCH") {
     const input = await body<{ title: string; projectId: string; model: { provider: string; model: string } | null }>(request);
     if (input.projectId !== undefined) {
-      const project = await env.DB.prepare("SELECT 1 FROM projects WHERE id = ? AND status = 'active'").bind(input.projectId).first();
+      const project = await env.DB.prepare("SELECT 1 FROM projects WHERE tenant_id = ? AND id = ? AND status = 'active'").bind(caller.tenantId, input.projectId).first();
       if (!project) return json({ error: "Unbekanntes oder entferntes Projekt" }, 400);
       if ((await stub.status()).running) return json({ error: "Das Projekt lässt sich nicht wechseln, solange der Agent arbeitet." }, 409);
     }
@@ -247,16 +256,16 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
       await router.warmUp(input.model);
     }
     await env.DB.prepare(
-      `UPDATE threads SET title = COALESCE(?, title), project_id = COALESCE(?, project_id), model = CASE WHEN ? THEN ? ELSE model END, updated_at = unixepoch() WHERE id = ?`,
+      `/* tenant:parent */ UPDATE threads SET title = COALESCE(?, title), project_id = COALESCE(?, project_id), model = CASE WHEN ? THEN ? ELSE model END, updated_at = unixepoch() WHERE id = ?`,
     )
       .bind(input.title?.slice(0, 120) ?? null, input.projectId ?? null, input.model !== undefined ? 1 : 0, input.model ? JSON.stringify(input.model) : null, threadId)
       .run();
-    return json(toThread((await loadThread(env, threadId)) ?? thread));
+    return json(toThread((await loadThread(env, caller.tenantId, threadId)) ?? thread));
   }
 
   if (!action && method === "DELETE") {
     await stub.stop();
-    await env.DB.prepare("UPDATE threads SET archived = 1, updated_at = unixepoch() WHERE id = ?").bind(threadId).run();
+    await env.DB.prepare("/* tenant:parent */ UPDATE threads SET archived = 1, updated_at = unixepoch() WHERE id = ?").bind(threadId).run();
     return json({ ok: true });
   }
 
@@ -267,11 +276,11 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
     const activeAgent = await env.DB.prepare("SELECT 1 FROM agents WHERE id = ? AND active = 1").bind(thread.agent_id).first();
     if (!activeAgent) return json({ error: "Der Agent dieser Unterhaltung ist deaktiviert." }, 409);
     // The first message names the thread.
-    await env.DB.prepare("UPDATE threads SET title = COALESCE(title, ?), updated_at = unixepoch() WHERE id = ?")
+    await env.DB.prepare("/* tenant:parent */ UPDATE threads SET title = COALESCE(title, ?), updated_at = unixepoch() WHERE id = ?")
       .bind(text.replace(/\s+/g, " ").slice(0, 80), threadId)
       .run();
     return json(
-      await stub.chat({ threadId, agentId: thread.agent_id, projectId: thread.project_id ?? DEFAULT_PROJECT, taskId: thread.task_id ?? undefined, text: text.slice(0, 20_000) }),
+      await stub.chat({ tenantId: caller.tenantId, threadId, agentId: thread.agent_id, projectId: thread.project_id ?? DEFAULT_PROJECT, taskId: thread.task_id ?? undefined, text: text.slice(0, 20_000) }),
     );
   }
 
@@ -298,7 +307,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     return json({ ticket: await env.HUB.get(env.HUB.idFromName("main")).issueTicket() });
   }
 
-  if (path === "/api/office/state" && method === "GET") return json(await officeSnapshot(env));
+  if (path === "/api/office/state" && method === "GET") return json(await officeSnapshot(env, caller.tenantId));
   if (path === "/api/organization" || path.startsWith("/api/organization/")) {
     const managed = await handleOrganizationManagement(request, env, caller, path);
     if (managed) return managed;
@@ -313,7 +322,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 
   const configMatch = path.match(/^\/api\/agents\/([a-z0-9-]{1,40})\/config$/);
   if (configMatch && method === "GET") {
-    const description = await describeAgent(env, configMatch[1] ?? "");
+    const description = await describeAgent(env, caller.tenantId, configMatch[1] ?? "");
     return description ? json(description) : json({ error: "Unbekannter Agent" }, 404);
   }
 
@@ -321,11 +330,13 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     // Everything the office view needs per agent: who it is, where it sits, what it did last.
     const { results } = await env.DB.prepare(
       `SELECT a.id, a.name, a.role, a.model_alias, a.daily_budget_usd, a.desk_x, a.desk_y,
-              (SELECT type FROM events e WHERE e.agent_id = a.id ORDER BY e.id DESC LIMIT 1) AS last_event,
-              (SELECT ts FROM events e WHERE e.agent_id = a.id ORDER BY e.id DESC LIMIT 1) AS last_event_at,
-              (SELECT id FROM threads t WHERE t.agent_id = a.id AND t.archived = 0 ORDER BY t.updated_at DESC LIMIT 1) AS last_thread_id
+              (SELECT type FROM events e WHERE e.tenant_id = ?1 AND e.agent_id = a.id ORDER BY e.id DESC LIMIT 1) AS last_event,
+              (SELECT ts FROM events e WHERE e.tenant_id = ?1 AND e.agent_id = a.id ORDER BY e.id DESC LIMIT 1) AS last_event_at,
+              (SELECT id FROM threads t WHERE t.tenant_id = ?1 AND t.agent_id = a.id AND t.archived = 0 ORDER BY t.updated_at DESC LIMIT 1) AS last_thread_id
          FROM agents a WHERE a.active = 1 ORDER BY a.created_at`,
-    ).all<Record<string, unknown>>();
+    )
+      .bind(caller.tenantId)
+      .all<Record<string, unknown>>();
     return json(
       results
         .filter((row) => AGENTS[String(row.id)])
@@ -355,6 +366,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   if (path === "/api/events" && method === "GET") {
     return json(
       await recentEvents(env, {
+        tenantId: caller.tenantId,
         sinceId: Number(url.searchParams.get("since") ?? 0) || undefined,
         threadId: url.searchParams.get("thread") ?? undefined,
         limit: Number(url.searchParams.get("limit") ?? 150),
@@ -363,7 +375,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   }
 
   if (path === "/api/approvals" && method === "GET") {
-    return json(await pendingApprovals(env, url.searchParams.get("thread") ?? undefined));
+    return json(await pendingApprovals(env, caller.tenantId, url.searchParams.get("thread") ?? undefined));
   }
 
   const approvalMatch = path.match(new RegExp(`^/api/approvals/(${ID})$`));
@@ -376,8 +388,10 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   if (path === "/api/projects" && method === "GET") {
     const { results } = await env.DB.prepare(
       `SELECT id, name, repo, domain, status, visibility, default_branch AS defaultBranch, write_mode AS writeMode
-         FROM projects WHERE status = 'active' ORDER BY name`,
-    ).all();
+         FROM projects WHERE tenant_id = ? AND status = 'active' ORDER BY name`,
+    )
+      .bind(caller.tenantId)
+      .all();
     return json(results);
   }
 
@@ -394,7 +408,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   // Repositories GitHub shows to the app and the token, so the owner can pick which ones become projects.
   if (path === "/api/github/repositories" && method === "GET") {
     try {
-      return json(await listRepositories(env));
+      return json(await listRepositories(env, caller.tenantId));
     } catch (error) {
       return projectFailure(error);
     }
@@ -403,7 +417,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   if (path === "/api/projects" && method === "POST") {
     const { repo } = await body<{ repo: string }>(request);
     try {
-      const result = await registerProject(env, String(repo ?? "").trim());
+      const result = await registerProject(env, caller.tenantId, String(repo ?? "").trim());
       return json(result, result.created ? 201 : 200);
     } catch (error) {
       return projectFailure(error);
@@ -413,7 +427,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   const projectMatch = path.match(/^\/api\/projects\/([a-z0-9-]{1,40})$/);
   if (projectMatch && method === "DELETE") {
     try {
-      return (await unregisterProject(env, projectMatch[1] ?? "")) ? json({ ok: true }) : json({ error: "Projekt nicht gefunden" }, 404);
+      return (await unregisterProject(env, caller.tenantId, projectMatch[1] ?? "")) ? json({ ok: true }) : json({ error: "Projekt nicht gefunden" }, 404);
     } catch (error) {
       return projectFailure(error);
     }

@@ -11,8 +11,10 @@ const listProjects: Tool = {
   },
   async run(_args, context) {
     const { results } = await context.env.DB.prepare(
-      "SELECT id, name, repo, domain, visibility, default_branch AS defaultBranch, write_mode AS writeMode FROM projects WHERE status = 'active' ORDER BY name",
-    ).all();
+      "SELECT id, name, repo, domain, visibility, default_branch AS defaultBranch, write_mode AS writeMode FROM projects WHERE tenant_id = ? AND status = 'active' ORDER BY name",
+    )
+      .bind(context.tenantId)
+      .all();
     return { count: results.length, projects: results };
   },
 };
@@ -25,7 +27,7 @@ const listGithubRepositories: Tool = {
     parameters: { type: "object", properties: {} },
   },
   async run(_args, context) {
-    const repositories = (await listRepositories(context.env, () => context.budget.take())).filter((repo) => !repo.archived);
+    const repositories = (await listRepositories(context.env, context.tenantId, () => context.budget.take())).filter((repo) => !repo.archived);
     const privateCount = repositories.filter((repo) => repo.private).length;
     // The names go to the model next: from here on this thread only runs on models that do not evaluate requests.
     if (privateCount) await context.markPrivate?.();
@@ -48,7 +50,7 @@ const registerProjectTool: Tool = {
     parameters: { type: "object", properties: { repo: { type: "string", description: "owner/name" } }, required: ["repo"] },
   },
   async run(args, context) {
-    const result = await registerProject(context.env, str(args, "repo").trim());
+    const result = await registerProject(context.env, context.tenantId, str(args, "repo").trim());
     return {
       projectId: result.id,
       created: result.created,
@@ -75,7 +77,7 @@ const createRepositoryTool: Tool = {
     },
   },
   async run(args, context) {
-    return createRepository(context.env, {
+    return createRepository(context.env, context.tenantId, {
       name: str(args, "name").trim(),
       description: typeof args.description === "string" ? args.description : undefined,
       private: args.private !== false,
@@ -91,17 +93,17 @@ const remember: Tool = {
   },
   async run(args, context) {
     const id = crypto.randomUUID();
-    await context.env.DB.prepare("INSERT INTO memories (id, agent_id, project_id, content) VALUES (?, ?, ?, ?)")
-      .bind(id, context.agentId, context.projectId, str(args, "content"))
+    await context.env.DB.prepare("INSERT INTO memories (id, tenant_id, agent_id, project_id, content) VALUES (?, ?, ?, ?, ?)")
+      .bind(id, context.tenantId, context.agentId, context.projectId, str(args, "content"))
       .run();
     return { saved: id };
   },
 };
 
-export async function projectMemories(db: D1Database, projectId: string, limit = 30): Promise<string[]> {
+export async function projectMemories(db: D1Database, tenantId: string, projectId: string, limit = 30): Promise<string[]> {
   const { results } = await db
-    .prepare("SELECT content FROM memories WHERE project_id = ? ORDER BY created_at DESC LIMIT ?")
-    .bind(projectId, limit)
+    .prepare("SELECT content FROM memories WHERE tenant_id = ? AND project_id = ? ORDER BY created_at DESC LIMIT ?")
+    .bind(tenantId, projectId, limit)
     .all<{ content: string }>();
   return results.map((row) => row.content);
 }

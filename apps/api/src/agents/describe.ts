@@ -58,7 +58,7 @@ function inputsOf(parameters: Record<string, unknown>): { name: string; required
 }
 
 /** Everything the portal's configuration sheet shows for one agent. Read-only. */
-export async function describeAgent(env: Env, agentId: string) {
+export async function describeAgent(env: Env, tenantId: string, agentId: string) {
   const definition = AGENTS[agentId];
   if (!definition) return null;
 
@@ -67,15 +67,15 @@ export async function describeAgent(env: Env, agentId: string) {
     env.DB.prepare("SELECT role, daily_budget_usd, desk_x, desk_y FROM agents WHERE id = ?")
       .bind(agentId)
       .first<{ role: string; daily_budget_usd: number; desk_x: number | null; desk_y: number | null }>(),
-    env.DB.prepare("SELECT id, name, repo FROM projects WHERE id = ?")
-      .bind(DEFAULT_PROJECT)
+    env.DB.prepare("SELECT id, name, repo FROM projects WHERE tenant_id = ? AND id = ?")
+      .bind(tenantId, DEFAULT_PROJECT)
       .first<{ id: string; name: string; repo: string | null }>(),
-    spentToday(env, agentId),
-    count(env, "SELECT COUNT(*) AS n FROM threads WHERE agent_id = ? AND archived = 0", agentId),
-    count(env, "SELECT COUNT(*) AS n FROM approvals WHERE agent_id = ? AND status = 'pending' AND (expires_at IS NULL OR expires_at > unixepoch())", agentId),
-    count(env, "SELECT COUNT(*) AS n FROM memories WHERE project_id = ?", DEFAULT_PROJECT),
-    env.DB.prepare("SELECT COUNT(*) AS events, COALESCE(SUM(cost_usd), 0) AS cost FROM events WHERE agent_id = ?")
-      .bind(agentId)
+    spentToday(env, tenantId, agentId),
+    count(env, "SELECT COUNT(*) AS n FROM threads WHERE tenant_id = ? AND agent_id = ? AND archived = 0", tenantId, agentId),
+    count(env, "SELECT COUNT(*) AS n FROM approvals WHERE tenant_id = ? AND agent_id = ? AND status = 'pending' AND (expires_at IS NULL OR expires_at > unixepoch())", tenantId, agentId),
+    count(env, "SELECT COUNT(*) AS n FROM memories WHERE tenant_id = ? AND project_id = ?", tenantId, DEFAULT_PROJECT),
+    env.DB.prepare("SELECT COUNT(*) AS events, COALESCE(SUM(cost_usd), 0) AS cost FROM events WHERE tenant_id = ? AND agent_id = ?")
+      .bind(tenantId, agentId)
       .first<{ events: number; cost: number }>(),
     env.DB.prepare(
       `SELECT a.definition_id, d.runtime_key, d.version AS definition_version, r.id AS role_id, r.name AS role_name,
@@ -88,15 +88,15 @@ export async function describeAgent(env: Env, agentId: string) {
     )
       .bind(agentId)
       .first<OrganizationRow>(),
-    env.DB.prepare("SELECT status, COUNT(*) AS n FROM tasks WHERE agent_id = ? GROUP BY status")
-      .bind(agentId)
+    env.DB.prepare("SELECT status, COUNT(*) AS n FROM tasks WHERE tenant_id = ? AND agent_id = ? GROUP BY status")
+      .bind(tenantId, agentId)
       .all<{ status: string; n: number }>(),
     env.DB.prepare(
       `SELECT t.id, t.title, t.status, t.priority, t.updated_at,
               (SELECT th.id FROM threads th WHERE th.task_id = t.id AND th.archived = 0 ORDER BY th.updated_at DESC LIMIT 1) AS thread_id
-         FROM tasks t WHERE t.agent_id = ? AND t.status IN ${ACTIVE_TASKS} ORDER BY t.updated_at DESC LIMIT 5`,
+         FROM tasks t WHERE t.tenant_id = ? AND t.agent_id = ? AND t.status IN ${ACTIVE_TASKS} ORDER BY t.updated_at DESC LIMIT 5`,
     )
-      .bind(agentId)
+      .bind(tenantId, agentId)
       .all<WorkRow>(),
   ]);
 

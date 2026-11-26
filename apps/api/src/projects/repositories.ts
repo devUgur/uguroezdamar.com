@@ -1,6 +1,7 @@
 import type { Env } from "../env.ts";
 import { appConfigured, GithubAccessError, installations } from "../github/app.ts";
 import { githubToken, personalToken } from "../github/credentials.ts";
+import { OWNER_TENANT } from "../tenancy.ts";
 
 const API = "https://api.github.com";
 const REPO_NAME = /^[A-Za-z0-9._-]{1,100}\/[A-Za-z0-9._-]{1,100}$/;
@@ -85,7 +86,7 @@ function ownerAllowed(env: Env, owner: string): boolean {
  * owners, with the project each one is registered as. `beforeFetch` runs before every GitHub call, so callers
  * inside an agent run can count it against their subrequest budget.
  */
-export async function listRepositories(env: Env, beforeFetch?: () => void) {
+export async function listRepositories(env: Env, tenantId: string, beforeFetch?: () => void) {
   const found = new Map<string, GithubRepo>();
   const add = (batch: GithubRepo[]) => batch.forEach((repo) => found.has(repo.full_name.toLowerCase()) || found.set(repo.full_name.toLowerCase(), repo));
   if (!appConfigured(env) && !env.AGENT_GITHUB_TOKEN) personalToken(env);
@@ -115,7 +116,9 @@ export async function listRepositories(env: Env, beforeFetch?: () => void) {
     }
   }
   const repos = [...found.values()];
-  const { results } = await env.DB.prepare("SELECT id, repo FROM projects WHERE repo IS NOT NULL AND status = 'active'").all<{ id: string; repo: string }>();
+  const { results } = await env.DB.prepare("SELECT id, repo FROM projects WHERE tenant_id = ? AND repo IS NOT NULL AND status = 'active'")
+    .bind(tenantId)
+    .all<{ id: string; repo: string }>();
   const registered = new Map(results.map((row) => [row.repo.toLowerCase(), row.id]));
   return repos
     .filter((repo) => ownerAllowed(env, repo.owner.login))
@@ -138,7 +141,7 @@ function slug(name: string): string {
 }
 
 /** Makes a repository a project. Checks owner, access and archive state against GitHub, never trusting the client. */
-export async function registerProject(env: Env, fullName: string): Promise<{ id: string; created: boolean }> {
+export async function registerProject(env: Env, tenantId: string, fullName: string): Promise<{ id: string; created: boolean }> {
   if (!REPO_NAME.test(fullName)) throw new ProjectError("Repository im Format owner/name angeben.", 400);
   const owner = fullName.split("/")[0] ?? "";
   if (!ownerAllowed(env, owner)) throw new ProjectError(`Der Besitzer „${owner}“ ist nicht freigegeben.`, 403);
@@ -147,9 +150,11 @@ export async function registerProject(env: Env, fullName: string): Promise<{ id:
   if (repo.archived) throw new ProjectError("Das Repository ist archiviert; dort kann nicht geschrieben werden.", 409);
 
   const visibility = repo.private ? "private" : "public";
-  const existing = await env.DB.prepare("SELECT id FROM projects WHERE lower(repo) = lower(?)").bind(repo.full_name).first<{ id: string }>();
+  const existing = await env.DB.prepare("SELECT id FROM projects WHERE tenant_id = ? AND lower(repo) = lower(?)")
+    .bind(tenantId, repo.full_name)
+    .first<{ id: string }>();
   if (existing) {
-    await env.DB.prepare("UPDATE projects SET status = 'active', visibility = ?, default_branch = ? WHERE id = ?")
+    await env.DB.prepare("/* tenant:parent */ UPDATE projects SET status = 'active', visibility = ?, default_branch = ? WHERE id = ?")
       .bind(visibility, repo.default_branch, existing.id)
       .run();
     return { id: existing.id, created: false };
@@ -158,10 +163,11 @@ export async function registerProject(env: Env, fullName: string): Promise<{ id:
   const base = slug(repo.name);
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const id = attempt === 0 ? base : `${base}-${attempt + 1}`;
-    const taken = await env.DB.prepare("SELECT 1 FROM projects WHERE id = ?").bind(id).first();
+    // Project ids are unique across all tenants (they are the primary key), so this lookup is deliberately not scoped.
+    const taken = await env.DB.prepare("/* tenant:platform */ SELECT 1 FROM projects WHERE id = ?").bind(id).first();
     if (taken) continue;
-    await env.DB.prepare("INSERT INTO projects (id, name, repo, status, visibility, default_branch, write_mode) VALUES (?, ?, ?, 'active', ?, ?, 'pr-only')")
-      .bind(id, repo.name, repo.full_name, visibility, repo.default_branch)
+    await env.DB.prepare("INSERT INTO projects (id, tenant_id, name, repo, status, visibility, default_branch, write_mode) VALUES (?, ?, ?, ?, 'active', ?, ?, 'pr-only')")
+      .bind(id, tenantId, repo.name, repo.full_name, visibility, repo.default_branch)
       .run();
     return { id, created: true };
   }
@@ -176,6 +182,7 @@ const NEW_REPO_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
  */
 export async function createRepository(
   env: Env,
+  tenantId: string,
   input: { name: string; description?: string; private?: boolean },
 ): Promise<{ fullName: string; private: boolean; projectId: string }> {
   if (!NEW_REPO_NAME.test(input.name) || input.name.endsWith(".git")) {
@@ -187,13 +194,13 @@ export async function createRepository(
     personal: true,
     post: { name: input.name, description: input.description?.slice(0, 300), private: input.private !== false, auto_init: true },
   });
-  const { id } = await registerProject(env, created.full_name);
+  const { id } = await registerProject(env, tenantId, created.full_name);
   return { fullName: created.full_name, private: created.private, projectId: id };
 }
 
 /** Takes a project out of use. Rows stay for the history of threads and tasks; this repository's project cannot be removed. */
-export async function unregisterProject(env: Env, id: string): Promise<boolean> {
-  if (id === "uguroezdamar") throw new ProjectError("Das Hauptprojekt lässt sich nicht entfernen.", 409);
-  const result = await env.DB.prepare("UPDATE projects SET status = 'archived' WHERE id = ? AND status = 'active'").bind(id).run();
+export async function unregisterProject(env: Env, tenantId: string, id: string): Promise<boolean> {
+  if (tenantId === OWNER_TENANT && id === "uguroezdamar") throw new ProjectError("Das Hauptprojekt lässt sich nicht entfernen.", 409);
+  const result = await env.DB.prepare("UPDATE projects SET status = 'archived' WHERE tenant_id = ? AND id = ? AND status = 'active'").bind(tenantId, id).run();
   return Boolean(result.meta.changes);
 }

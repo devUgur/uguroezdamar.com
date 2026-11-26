@@ -8,6 +8,7 @@ import type { ChatMessage } from "../models/port.ts";
  * (live hub), so a long task never blocks the HTTP request.
  */
 export interface ChatInput {
+  tenantId: string;
   threadId: string;
   agentId: string;
   projectId: string;
@@ -16,6 +17,7 @@ export interface ChatInput {
 }
 
 export interface ResumeInput {
+  tenantId: string;
   threadId: string;
   agentId: string;
   projectId: string;

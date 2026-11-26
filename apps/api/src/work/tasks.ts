@@ -1,3 +1,4 @@
+import { threadObjectName } from "../tenancy.ts";
 import type { Caller } from "../auth.ts";
 import type { Env } from "../env.ts";
 import { emit } from "../events.ts";
@@ -108,7 +109,7 @@ async function parseBody(request: Request): Promise<Record<string, unknown> | nu
   }
 }
 
-async function loadTask(env: Env, id: string): Promise<TaskRow | null> {
+async function loadTask(env: Env, tenantId: string, id: string): Promise<TaskRow | null> {
   return env.DB.prepare(
     `SELECT t.*, a.name AS agent_name, a.role AS agent_role,
        (SELECT id FROM threads WHERE task_id = t.id AND archived = 0 ORDER BY updated_at DESC LIMIT 1) AS thread_id,
@@ -121,12 +122,13 @@ async function loadTask(env: Env, id: string): Promise<TaskRow | null> {
        (SELECT error FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_error,
        (SELECT thread_id FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_thread_id,
        (SELECT created_at FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_created_at
-       FROM tasks t LEFT JOIN agents a ON a.id = t.agent_id WHERE t.id = ?`,
-  ).bind(id).first<TaskRow>();
+       FROM tasks t LEFT JOIN agents a ON a.id = t.agent_id WHERE t.tenant_id = ? AND t.id = ?`,
+  ).bind(tenantId, id).first<TaskRow>();
 }
 
 async function publish(env: Env, caller: Caller, task: TaskRow, type: "task_created" | "task_updated") {
   await emit(env, {
+    tenantId: caller.tenantId,
     taskId: task.id,
     projectId: task.project_id ?? undefined,
     type,
@@ -150,12 +152,12 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
       (SELECT thread_id FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_thread_id,
       (SELECT created_at FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_created_at
       FROM tasks t
-      LEFT JOIN agents a ON a.id = t.agent_id ${projectId ? "WHERE t.project_id = ?" : ""}
+      LEFT JOIN agents a ON a.id = t.agent_id WHERE t.tenant_id = ? ${projectId ? "AND t.project_id = ?" : ""}
       ORDER BY CASE t.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END,
       t.updated_at DESC LIMIT 300`;
     const result = projectId
-      ? await env.DB.prepare(query).bind(projectId).all<TaskRow>()
-      : await env.DB.prepare(query).all<TaskRow>();
+      ? await env.DB.prepare(query).bind(caller.tenantId, projectId).all<TaskRow>()
+      : await env.DB.prepare(query).bind(caller.tenantId).all<TaskRow>();
     return json(result.results.map(asTask));
   }
 
@@ -171,14 +173,14 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
     const storyPoints = input.storyPoints === undefined || input.storyPoints === null || input.storyPoints === "" ? null : Number(input.storyPoints);
     if (storyPoints !== null && (!Number.isFinite(storyPoints) || storyPoints < 0.5 || storyPoints > 100)) return json({ error: "Story Points müssen zwischen 0,5 und 100 liegen." }, 400);
     const projectId = typeof input.projectId === "string" && input.projectId ? input.projectId : "uguroezdamar";
-    const project = await env.DB.prepare("SELECT 1 FROM projects WHERE id = ? AND status = 'active'").bind(projectId).first();
+    const project = await env.DB.prepare("SELECT 1 FROM projects WHERE tenant_id = ? AND id = ? AND status = 'active'").bind(caller.tenantId, projectId).first();
     if (!project) return json({ error: "Projekt nicht gefunden oder nicht aktiv." }, 400);
     const id = crypto.randomUUID();
     await env.DB.prepare(
-      `INSERT INTO tasks (id, project_id, title, input, description, acceptance_criteria, priority, story_points, created_by, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'backlog')`,
-    ).bind(id, projectId, title, description.slice(0, 10_000) || null, acceptanceCriteria.slice(0, 5_000) || null, priority ?? "normal", storyPoints, caller.actor).run();
-    const task = await loadTask(env, id);
+      `INSERT INTO tasks (id, tenant_id, project_id, title, input, description, acceptance_criteria, priority, story_points, created_by, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'backlog')`,
+    ).bind(id, caller.tenantId, projectId, title, description.slice(0, 10_000) || null, acceptanceCriteria.slice(0, 5_000) || null, priority ?? "normal", storyPoints, caller.actor).run();
+    const task = await loadTask(env, caller.tenantId, id);
     if (!task) return json({ error: "Aufgabe konnte nicht geladen werden." }, 500);
     await publish(env, caller, task, "task_created");
     return json(asTask(task), 201);
@@ -187,7 +189,7 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
   const match = path.match(/^\/api\/tasks\/([0-9a-f-]{36})(?:\/(run|review))?$/);
   if (!match || (match[2] ? request.method !== "POST" : request.method !== "PATCH")) return null;
   const id = match[1] ?? "";
-  const existing = await loadTask(env, id);
+  const existing = await loadTask(env, caller.tenantId, id);
   if (!existing) return json({ error: "Aufgabe nicht gefunden." }, 404);
   if (match[2] === "run") return startTaskRun(env, caller, existing);
   if (match[2] === "review") return startTaskReview(env, caller, existing);
@@ -211,7 +213,7 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
     }
     if (next === "done") {
       const approved = await env.DB.prepare(
-        `SELECT 1 FROM task_reviews WHERE task_id = ? AND status = 'completed' AND verdict = 'pass'
+        `/* tenant:parent */ SELECT 1 FROM task_reviews WHERE task_id = ? AND status = 'completed' AND verdict = 'pass'
           AND id = (SELECT id FROM task_reviews WHERE task_id = ? ORDER BY created_at DESC, id DESC LIMIT 1) LIMIT 1`,
       ).bind(id, id).first();
       if (!approved && (typeof input.completionNote !== "string" || input.completionNote.trim().length < 20)) {
@@ -236,7 +238,7 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
   const agentId = input.agentId === undefined ? existing.agent_id : input.agentId as string | null;
 
   const updated = await env.DB.prepare(
-    `UPDATE tasks SET title = ?, description = ?, acceptance_criteria = ?, status = ?, priority = ?, story_points = ?, agent_id = ?,
+    `/* tenant:parent */ UPDATE tasks SET title = ?, description = ?, acceptance_criteria = ?, status = ?, priority = ?, story_points = ?, agent_id = ?,
        completion_note = CASE WHEN ? = 'done' THEN ? ELSE completion_note END,
        completed_by = CASE WHEN ? = 'done' THEN ? ELSE completed_by END,
        completed_at = CASE WHEN ? = 'done' THEN unixepoch() ELSE completed_at END,
@@ -258,7 +260,7 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
     existing.status,
   ).run();
   if (!updated.meta.changes) return json({ error: "Aufgabe wurde gleichzeitig geändert. Bitte neu laden." }, 409);
-  const task = await loadTask(env, id);
+  const task = await loadTask(env, caller.tenantId, id);
   if (!task) return json({ error: "Aufgabe konnte nicht geladen werden." }, 500);
   await publish(env, caller, task, "task_updated");
   return json(asTask(task));
@@ -275,22 +277,22 @@ async function startTaskReview(env: Env, caller: Caller, task: TaskRow): Promise
   const reviewId = crypto.randomUUID();
   const threadId = crypto.randomUUID();
   const claimed = await env.DB.prepare(
-    "UPDATE tasks SET status = 'qa', updated_at = unixepoch() WHERE id = ? AND status = 'review' AND EXISTS (SELECT 1 FROM agents WHERE id = ? AND active = 1)",
+    "/* tenant:parent */ UPDATE tasks SET status = 'qa', updated_at = unixepoch() WHERE id = ? AND status = 'review' AND EXISTS (SELECT 1 FROM agents WHERE id = ? AND active = 1)",
   ).bind(task.id, reviewerId).run();
   if (!claimed.meta.changes) return json({ error: "Aufgabe wurde bereits geändert. Bitte neu laden." }, 409);
 
   try {
-    await env.DB.prepare("INSERT INTO threads (id, agent_id, project_id, task_id, title, created_by) VALUES (?, ?, ?, ?, ?, ?)")
-      .bind(threadId, reviewerId, task.project_id, task.id, `QA: ${task.title}`.slice(0, 120), caller.actor).run();
-    await env.DB.prepare("INSERT INTO task_reviews (id, task_id, reviewer_agent_id, thread_id) VALUES (?, ?, ?, ?)")
-      .bind(reviewId, task.id, reviewerId, threadId).run();
+    await env.DB.prepare("INSERT INTO threads (id, tenant_id, agent_id, project_id, task_id, title, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .bind(threadId, caller.tenantId, reviewerId, task.project_id, task.id, `QA: ${task.title}`.slice(0, 120), caller.actor).run();
+    await env.DB.prepare("INSERT INTO task_reviews (id, tenant_id, task_id, reviewer_agent_id, thread_id) VALUES (?, ?, ?, ?, ?)")
+      .bind(reviewId, caller.tenantId, task.id, reviewerId, threadId).run();
   } catch (error) {
-    await env.DB.prepare("UPDATE tasks SET status = 'review', updated_at = unixepoch() WHERE id = ? AND status = 'qa'").bind(task.id).run();
-    await env.DB.prepare("UPDATE threads SET archived = 1, updated_at = unixepoch() WHERE id = ?").bind(threadId).run();
+    await env.DB.prepare("/* tenant:parent */ UPDATE tasks SET status = 'review', updated_at = unixepoch() WHERE id = ? AND status = 'qa'").bind(task.id).run();
+    await env.DB.prepare("/* tenant:parent */ UPDATE threads SET archived = 1, updated_at = unixepoch() WHERE id = ?").bind(threadId).run();
     throw error;
   }
 
-  const claimedTask = await loadTask(env, task.id);
+  const claimedTask = await loadTask(env, caller.tenantId, task.id);
   const taskPrompt = [
     `Unabhängige QA-Prüfung für Task ${task.id}: ${task.title}`,
     task.description ? `Beschreibung:\n${task.description}` : "",
@@ -301,8 +303,9 @@ async function startTaskReview(env: Env, caller: Caller, task: TaskRow): Promise
 
   try {
     if (claimedTask) await publish(env, caller, claimedTask, "task_updated");
-    await emit(env, { agentId: reviewerId, threadId, taskId: task.id, projectId: task.project_id ?? undefined, type: "task_review_started", data: { reviewId, by: caller.actor } });
-    const accepted = await env.AGENTS.get(env.AGENTS.idFromName(`thread:${threadId}`)).chat({
+    await emit(env, { tenantId: caller.tenantId, agentId: reviewerId, threadId, taskId: task.id, projectId: task.project_id ?? undefined, type: "task_review_started", data: { reviewId, by: caller.actor } });
+    const accepted = await env.AGENTS.get(env.AGENTS.idFromName(threadObjectName(caller.tenantId, threadId))).chat({
+      tenantId: caller.tenantId,
       threadId,
       agentId: reviewerId,
       projectId: task.project_id ?? "uguroezdamar",
@@ -313,9 +316,9 @@ async function startTaskReview(env: Env, caller: Caller, task: TaskRow): Promise
     return json({ taskId: task.id, reviewId, threadId, accepted: accepted.accepted, busy: accepted.busy ?? false }, 202);
   } catch {
     await env.DB.batch([
-      env.DB.prepare("UPDATE task_reviews SET status = 'failed', error = 'QA-Lauf konnte nicht gestartet werden.', completed_at = unixepoch() WHERE id = ? AND status = 'running'").bind(reviewId),
-      env.DB.prepare("UPDATE tasks SET status = 'review', updated_at = unixepoch() WHERE id = ? AND status = 'qa'").bind(task.id),
-      env.DB.prepare("UPDATE threads SET archived = 1, updated_at = unixepoch() WHERE id = ?").bind(threadId),
+      env.DB.prepare("/* tenant:parent */ UPDATE task_reviews SET status = 'failed', error = 'QA-Lauf konnte nicht gestartet werden.', completed_at = unixepoch() WHERE id = ? AND status = 'running'").bind(reviewId),
+      env.DB.prepare("/* tenant:parent */ UPDATE tasks SET status = 'review', updated_at = unixepoch() WHERE id = ? AND status = 'qa'").bind(task.id),
+      env.DB.prepare("/* tenant:parent */ UPDATE threads SET archived = 1, updated_at = unixepoch() WHERE id = ?").bind(threadId),
     ]);
     return json({ error: "QA-Lauf konnte nicht gestartet werden." }, 502);
   }
@@ -337,22 +340,23 @@ async function startTaskRun(env: Env, caller: Caller, task: TaskRow): Promise<Re
   ].filter(Boolean).join("\n\n");
 
   const claim = await env.DB.prepare(
-    "UPDATE tasks SET agent_id = ?, status = 'in_progress', updated_at = unixepoch() WHERE id = ? AND status = 'ready' AND EXISTS (SELECT 1 FROM agents WHERE id = ? AND active = 1)",
+    "/* tenant:parent */ UPDATE tasks SET agent_id = ?, status = 'in_progress', updated_at = unixepoch() WHERE id = ? AND status = 'ready' AND EXISTS (SELECT 1 FROM agents WHERE id = ? AND active = 1)",
   ).bind(agentId, task.id, agentId).run();
   if (!claim.meta.changes) return json({ error: "Aufgabe wurde bereits geändert oder gestartet." }, 409);
   try {
-    await env.DB.prepare("INSERT INTO threads (id, agent_id, project_id, task_id, title, created_by) VALUES (?, ?, ?, ?, ?, ?)")
-      .bind(threadId, agentId, task.project_id, task.id, task.title.slice(0, 120), caller.actor).run();
+    await env.DB.prepare("INSERT INTO threads (id, tenant_id, agent_id, project_id, task_id, title, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .bind(threadId, caller.tenantId, agentId, task.project_id, task.id, task.title.slice(0, 120), caller.actor).run();
   } catch (error) {
-    await env.DB.prepare("UPDATE tasks SET agent_id = ?, status = 'ready', updated_at = unixepoch() WHERE id = ? AND status = 'in_progress'")
+    await env.DB.prepare("/* tenant:parent */ UPDATE tasks SET agent_id = ?, status = 'ready', updated_at = unixepoch() WHERE id = ? AND status = 'in_progress'")
       .bind(task.agent_id, task.id).run();
     throw error;
   }
-  const assigned = await loadTask(env, task.id);
+  const assigned = await loadTask(env, caller.tenantId, task.id);
   if (assigned) await publish(env, caller, assigned, "task_updated");
 
   try {
-    const accepted = await env.AGENTS.get(env.AGENTS.idFromName(`thread:${threadId}`)).chat({
+    const accepted = await env.AGENTS.get(env.AGENTS.idFromName(threadObjectName(caller.tenantId, threadId))).chat({
+      tenantId: caller.tenantId,
       threadId,
       agentId,
       projectId: task.project_id ?? "uguroezdamar",
@@ -363,11 +367,11 @@ async function startTaskRun(env: Env, caller: Caller, task: TaskRow): Promise<Re
     return json({ taskId: task.id, threadId, accepted: accepted.accepted, busy: accepted.busy ?? false }, 202);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Agentenlauf konnte nicht gestartet werden.";
-    await env.DB.prepare("UPDATE tasks SET status = 'blocked', output = ?, updated_at = unixepoch() WHERE id = ? AND status = 'in_progress'")
+    await env.DB.prepare("/* tenant:parent */ UPDATE tasks SET status = 'blocked', output = ?, updated_at = unixepoch() WHERE id = ? AND status = 'in_progress'")
       .bind(`Startfehler: ${message}`.slice(0, 5_000), task.id).run();
-    const blocked = await loadTask(env, task.id);
+    const blocked = await loadTask(env, caller.tenantId, task.id);
     if (blocked) await publish(env, caller, blocked, "task_updated");
-    await env.DB.prepare("UPDATE threads SET archived = 1, updated_at = unixepoch() WHERE id = ?").bind(threadId).run();
+    await env.DB.prepare("/* tenant:parent */ UPDATE threads SET archived = 1, updated_at = unixepoch() WHERE id = ?").bind(threadId).run();
     return json({ error: "Agentenlauf konnte nicht gestartet werden." }, 502);
   }
 }

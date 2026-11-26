@@ -1,4 +1,5 @@
 import type { Env } from "./env.ts";
+import { hubObjectName, officeObjectName } from "./tenancy.ts";
 
 /** Everything an agent does becomes an event: the portal chat, the office view and cost reports read these. */
 export type EventType =
@@ -21,6 +22,8 @@ export type EventType =
   | "organization_updated";
 
 export interface AgentEvent {
+  /** The tenant the event belongs to. Required: an event without it would silently land with the owner. */
+  tenantId: string;
   agentId?: string;
   threadId?: string;
   taskId?: string;
@@ -54,10 +57,11 @@ interface EventRow {
 /** Writes the event to D1, then pushes it to every open portal chat. */
 export async function emit(env: Env, event: AgentEvent): Promise<StoredEvent> {
   const row = await env.DB.prepare(
-    `INSERT INTO events (agent_id, thread_id, task_id, project_id, type, data, tokens_in, tokens_out, cost_usd)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, ts`,
+    `INSERT INTO events (tenant_id, agent_id, thread_id, task_id, project_id, type, data, tokens_in, tokens_out, cost_usd)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, ts`,
   )
     .bind(
+      event.tenantId,
       event.agentId ?? null,
       event.threadId ?? null,
       event.taskId ?? null,
@@ -73,7 +77,7 @@ export async function emit(env: Env, event: AgentEvent): Promise<StoredEvent> {
   const stored: StoredEvent = { ...event, id: row?.id ?? 0, ts: row?.ts ?? Date.now() };
   if (stored.agentId && stored.id) {
     try {
-      await env.OFFICE.get(env.OFFICE.idFromName("main")).recordEvent({
+      await env.OFFICE.get(env.OFFICE.idFromName(officeObjectName(event.tenantId))).recordEvent({
         agentId: stored.agentId,
         type: stored.type,
         id: stored.id,
@@ -83,7 +87,7 @@ export async function emit(env: Env, event: AgentEvent): Promise<StoredEvent> {
     }
   }
   try {
-    await env.HUB.get(env.HUB.idFromName("main")).broadcast(JSON.stringify({ type: "event", event: stored }));
+    await env.HUB.get(env.HUB.idFromName(hubObjectName(event.tenantId))).broadcast(JSON.stringify({ type: "event", event: stored }));
   } catch (error) {
     console.error("live hub broadcast failed", error);
   }
@@ -92,11 +96,11 @@ export async function emit(env: Env, event: AgentEvent): Promise<StoredEvent> {
 
 export async function recentEvents(
   env: Env,
-  options: { sinceId?: number; agentId?: string; threadId?: string; limit?: number },
+  options: { tenantId: string; sinceId?: number; agentId?: string; threadId?: string; limit?: number },
 ): Promise<StoredEvent[]> {
   const limit = Math.min(Math.max(options.limit ?? 100, 1), 500);
   const conditions: string[] = [];
-  const params: (string | number)[] = [];
+  const params: (string | number)[] = [options.tenantId];
   if (options.sinceId) {
     conditions.push("id > ?");
     params.push(options.sinceId);
@@ -109,11 +113,12 @@ export async function recentEvents(
     conditions.push("thread_id = ?");
     params.push(options.threadId);
   }
-  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-  const { results } = await env.DB.prepare(`SELECT * FROM events ${where} ORDER BY id DESC LIMIT ?`)
+  const more = conditions.map((condition) => ` AND ${condition}`).join("");
+  const { results } = await env.DB.prepare(`SELECT * FROM events WHERE tenant_id = ?${more} ORDER BY id DESC LIMIT ?`)
     .bind(...params, limit)
     .all<EventRow>();
   return results.reverse().map((row) => ({
+    tenantId: options.tenantId,
     id: row.id,
     ts: row.ts,
     agentId: row.agent_id ?? undefined,
@@ -128,12 +133,12 @@ export async function recentEvents(
   }));
 }
 
-/** Spend of one agent since 00:00 UTC, for the budget guard. */
-export async function spentToday(env: Env, agentId: string): Promise<number> {
+/** Spend of one agent for one tenant since 00:00 UTC, for the budget guard. */
+export async function spentToday(env: Env, tenantId: string, agentId: string): Promise<number> {
   const startOfDay = new Date();
   startOfDay.setUTCHours(0, 0, 0, 0);
-  const row = await env.DB.prepare("SELECT COALESCE(SUM(cost_usd), 0) AS spent FROM events WHERE agent_id = ? AND ts >= ?")
-    .bind(agentId, startOfDay.getTime())
+  const row = await env.DB.prepare("SELECT COALESCE(SUM(cost_usd), 0) AS spent FROM events WHERE tenant_id = ? AND agent_id = ? AND ts >= ?")
+    .bind(tenantId, agentId, startOfDay.getTime())
     .first<{ spent: number }>();
   return row?.spent ?? 0;
 }

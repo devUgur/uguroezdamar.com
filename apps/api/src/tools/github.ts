@@ -27,8 +27,8 @@ const policies = new WeakMap<ToolContext, Promise<RepoPolicy>>();
 function policyOf(context: ToolContext): Promise<RepoPolicy> {
   let policy = policies.get(context);
   if (!policy) {
-    policy = context.env.DB.prepare("SELECT default_branch, write_mode FROM projects WHERE repo = ? AND status = 'active'")
-      .bind(context.repo)
+    policy = context.env.DB.prepare("SELECT default_branch, write_mode FROM projects WHERE tenant_id = ? AND repo = ? AND status = 'active'")
+      .bind(context.tenantId, context.repo)
       .first<{ default_branch: string; write_mode: string }>()
       .then((row) => ({ defaultBranch: row?.default_branch ?? "main", writeMode: row?.write_mode === "dev-first" ? "dev-first" : "pr-only" }));
     policies.set(context, policy);

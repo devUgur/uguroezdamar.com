@@ -5,6 +5,7 @@ import type { Env } from "./env.ts";
 import { emit, spentToday } from "./events.ts";
 import type { ChatMessage, ToolCall } from "./models/port.ts";
 import { ModelRouter, type PinnedModel } from "./models/router.ts";
+import { OWNER_TENANT } from "./tenancy.ts";
 import { SubrequestBudget } from "./runtime/budget.ts";
 import { DELTA_FLUSH_MS, HISTORY_LIMIT, MAX_STEPS, STALE_RUN_MS } from "./runtime/limits.ts";
 import { runAgentLoop, type LoopEvent } from "./runtime/loop.ts";
@@ -34,6 +35,7 @@ interface ProjectRow {
 }
 
 interface RunState {
+  tenantId: string;
   threadId: string;
   agentId: string;
   projectId: string;
@@ -141,6 +143,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
 
   async chat(input: ChatInput): Promise<Accepted> {
     await emit(this.env, {
+      tenantId: input.tenantId,
       threadId: input.threadId,
       agentId: input.agentId,
       projectId: input.projectId,
@@ -148,7 +151,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       type: "user_message",
       data: { text: input.text },
     });
-    return this.enqueue(input.threadId, input.agentId, input.projectId, input.text, input.taskId);
+    return this.enqueue(input.tenantId, input.threadId, input.agentId, input.projectId, input.text, input.taskId);
   }
 
   /** Called after Ugur decided on an approval: the agent learns the outcome and carries on. */
@@ -156,7 +159,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     const note = `[System] Freigabe ${input.approvalId} für ${input.tool} wurde ${
       input.approved ? "erteilt und ausgeführt" : "abgelehnt"
     }. Ergebnis: ${input.outcome}`;
-    return this.enqueue(input.threadId, input.agentId, input.projectId, note, input.taskId);
+    return this.enqueue(input.tenantId, input.threadId, input.agentId, input.projectId, note, input.taskId);
   }
 
   async stop(): Promise<void> {
@@ -164,7 +167,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     await this.ctx.storage.delete([RUN, INBOX]);
     await this.ctx.storage.deleteAlarm();
     if (run) {
-      await emit(this.env, { threadId: run.threadId, agentId: run.agentId, projectId: run.projectId, taskId: run.taskId, type: "stopped", data: { steps: run.steps } });
+      await emit(this.env, { tenantId: run.tenantId, threadId: run.threadId, agentId: run.agentId, projectId: run.projectId, taskId: run.taskId, type: "stopped", data: { steps: run.steps } });
       if (run.taskId) await this.finishTaskRun(run, "cancelled", "Agentenlauf gestoppt. Die Aufgabe kann nach Prüfung erneut gestartet werden.");
     }
   }
@@ -185,7 +188,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
   }
 
   /** Messages wait in the inbox until a stage boundary, so tool-call sequences stay intact. */
-  private async enqueue(threadId: string, agentId: string, projectId: string, text: string, taskId?: string): Promise<Accepted> {
+  private async enqueue(tenantId: string, threadId: string, agentId: string, projectId: string, text: string, taskId?: string): Promise<Accepted> {
     const inbox = (await this.ctx.storage.get<string[]>(INBOX)) ?? [];
     inbox.push(text);
     await this.ctx.storage.put(INBOX, inbox);
@@ -193,7 +196,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       return { accepted: true, busy: true, message: "Ich arbeite gerade; dein Hinweis fließt in den nächsten Schritt ein." };
     }
     const now = Date.now();
-    await this.ctx.storage.put<RunState>(RUN, { threadId, agentId, projectId, taskId, steps: 0, stages: 0, startedAt: now, touchedAt: now });
+    await this.ctx.storage.put<RunState>(RUN, { tenantId, threadId, agentId, projectId, taskId, steps: 0, stages: 0, startedAt: now, touchedAt: now });
     await this.ctx.storage.setAlarm(now);
     return { accepted: true };
   }
@@ -211,7 +214,9 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
   override async alarm(): Promise<void> {
     const run = await this.ctx.storage.get<RunState>(RUN);
     if (!run) return;
-    const base = { threadId: run.threadId, agentId: run.agentId, projectId: run.projectId, taskId: run.taskId };
+    // A run stored before tenants existed belongs to the owner.
+    run.tenantId ??= OWNER_TENANT;
+    const base = { tenantId: run.tenantId, threadId: run.threadId, agentId: run.agentId, projectId: run.projectId, taskId: run.taskId };
     try {
       const inbox = (await this.ctx.storage.get<string[]>(INBOX)) ?? [];
       if (inbox.length) {
@@ -246,16 +251,16 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
 
   /** One stage of the loop; updates run.steps in place. */
   private async stage(run: RunState): Promise<{ kind: "paused" } | { kind: "done" | "failed"; reply: string }> {
-    const { threadId, agentId, projectId } = run;
-    const base = { threadId, agentId, projectId, taskId: run.taskId };
+    const { tenantId, threadId, agentId, projectId } = run;
+    const base = { tenantId, threadId, agentId, projectId, taskId: run.taskId };
     const definition = AGENTS[agentId];
     if (!definition) throw new Error(`Unbekannter Agent "${agentId}"`);
 
     const [project, budgetRow, spent, thread] = await Promise.all([
-      this.env.DB.prepare("SELECT id, name, repo, status, visibility FROM projects WHERE id = ?").bind(projectId).first<ProjectRow>(),
-      this.env.DB.prepare("SELECT daily_budget_usd FROM agents WHERE id = ?").bind(agentId).first<{ daily_budget_usd: number }>(),
-      spentToday(this.env, agentId),
-      this.env.DB.prepare("SELECT model FROM threads WHERE id = ?").bind(threadId).first<{ model: string | null }>(),
+      this.env.DB.prepare("SELECT id, name, repo, status, visibility FROM projects WHERE tenant_id = ? AND id = ?").bind(tenantId, projectId).first<ProjectRow>(),
+      this.env.DB.prepare("/* tenant:platform */ SELECT daily_budget_usd FROM agents WHERE id = ?").bind(agentId).first<{ daily_budget_usd: number }>(),
+      spentToday(this.env, tenantId, agentId),
+      this.env.DB.prepare("SELECT model FROM threads WHERE tenant_id = ? AND id = ?").bind(tenantId, threadId).first<{ model: string | null }>(),
     ]);
     const dailyBudget = budgetRow?.daily_budget_usd ?? 0.5;
     if (spent >= dailyBudget) {
@@ -282,6 +287,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     const privateContent = () => tainted || project?.visibility === "private" || Boolean(pinned && router.keepsContentPrivate(pinned));
     const context: ToolContext = {
       env: this.env,
+      tenantId,
       agentId,
       projectId,
       repo,
@@ -299,7 +305,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
         content: definition.systemPrompt({
           repo,
           projectName: project?.name ?? projectId,
-          memories: definition.useProjectMemory === false ? [] : await projectMemories(this.env.DB, projectId),
+          memories: definition.useProjectMemory === false ? [] : await projectMemories(this.env.DB, tenantId, projectId),
         }),
       },
       history: { recent: () => this.recent(HISTORY_LIMIT), append: (message) => this.append(message) },
@@ -325,11 +331,12 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
         const approvalId = crypto.randomUUID();
         const description = describeApproval(tool, args);
         await this.env.DB.prepare(
-          `INSERT INTO approvals (id, agent_id, thread_id, task_id, action, details, summary, risk, warnings, expires_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch() + ?)`,
+          `INSERT INTO approvals (id, tenant_id, agent_id, thread_id, task_id, action, details, summary, risk, warnings, expires_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch() + ?)`,
         )
           .bind(
             approvalId,
+            tenantId,
             agentId,
             threadId,
             run.taskId ?? null,
@@ -356,7 +363,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
 
   private async finishTaskRun(run: RunState, outcome: "done" | "failed" | "cancelled", output: string): Promise<void> {
     if (!run.taskId) return;
-    const review = await this.env.DB.prepare("SELECT id FROM task_reviews WHERE thread_id = ? AND status = 'running'")
+    const review = await this.env.DB.prepare("/* tenant:parent */ SELECT id FROM task_reviews WHERE thread_id = ? AND status = 'running'")
       .bind(run.threadId).first<{ id: string }>();
     if (review) {
       await this.finishTaskReview(run, review.id, outcome, output);
@@ -364,10 +371,11 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     }
     const status = outcome === "done" ? "review" : "blocked";
     const result = await this.env.DB.prepare(
-      "UPDATE tasks SET status = ?, output = ?, updated_at = unixepoch() WHERE id = ? AND status = 'in_progress'",
+      "/* tenant:parent */ UPDATE tasks SET status = ?, output = ?, updated_at = unixepoch() WHERE id = ? AND status = 'in_progress'",
     ).bind(status, output.slice(0, 5_000), run.taskId).run();
     if (!result.meta.changes) return;
     await emit(this.env, {
+      tenantId: run.tenantId,
       taskId: run.taskId,
       projectId: run.projectId,
       type: "task_updated",
@@ -379,9 +387,9 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     let result = outcome === "done" ? parseReviewResult(output) : null;
     if (result?.verdict === "pass") {
       const [review, events] = await Promise.all([
-        this.env.DB.prepare("SELECT t.acceptance_criteria FROM task_reviews r JOIN tasks t ON t.id = r.task_id WHERE r.id = ? AND r.thread_id = ?")
+        this.env.DB.prepare("/* tenant:parent */ SELECT t.acceptance_criteria FROM task_reviews r JOIN tasks t ON t.id = r.task_id WHERE r.id = ? AND r.thread_id = ?")
           .bind(reviewId, run.threadId).first<{ acceptance_criteria: string | null }>(),
-        this.env.DB.prepare("SELECT type, data FROM events WHERE thread_id = ? AND type = 'tool_result' ORDER BY id")
+        this.env.DB.prepare("/* tenant:parent */ SELECT type, data FROM events WHERE thread_id = ? AND type = 'tool_result' ORDER BY id")
           .bind(run.threadId).all<{ type: string; data: string | null }>(),
       ]);
       if (!reviewHasPassingEvidence(review?.acceptance_criteria ?? null, events.results, result.evidence)) {
@@ -397,13 +405,13 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     const nextTaskStatus = outcome !== "done" ? "blocked" : verdict === "changes_requested" ? "in_progress" : "qa";
     const statements = await this.env.DB.batch([
       this.env.DB.prepare(
-        `UPDATE tasks SET status = ?, updated_at = unixepoch()
+        `/* tenant:parent */ UPDATE tasks SET status = ?, updated_at = unixepoch()
           WHERE id = ? AND status = 'qa' AND EXISTS (
             SELECT 1 FROM task_reviews WHERE id = ? AND status = 'running'
           )`,
       ).bind(nextTaskStatus, run.taskId, reviewId),
       this.env.DB.prepare(
-        `UPDATE task_reviews SET status = ?, verdict = ?, summary = ?, findings = ?, evidence = ?, raw_output = ?, error = ?, completed_at = unixepoch()
+        `/* tenant:parent */ UPDATE task_reviews SET status = ?, verdict = ?, summary = ?, findings = ?, evidence = ?, raw_output = ?, error = ?, completed_at = unixepoch()
           WHERE id = ? AND status = 'running'`,
       ).bind(
         status,
@@ -418,6 +426,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     ]);
     if (!statements[1]?.meta.changes) return;
     await emit(this.env, {
+      tenantId: run.tenantId,
       agentId: run.agentId,
       threadId: run.threadId,
       taskId: run.taskId,
@@ -426,6 +435,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       data: { reviewId, status, verdict, findings: result?.findings ?? [] },
     });
     await emit(this.env, {
+      tenantId: run.tenantId,
       threadId: run.threadId,
       taskId: run.taskId,
       projectId: run.projectId,

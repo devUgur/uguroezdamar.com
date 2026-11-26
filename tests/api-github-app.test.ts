@@ -22,7 +22,7 @@ function envWith(extra: Record<string, unknown> = {}) {
   const config = kv();
   const env = {
     CONFIG: config,
-    DB: { prepare: () => ({ all: async () => ({ results: [] }) }) },
+    DB: { prepare: () => ({ bind: () => ({ all: async () => ({ results: [] }) }) }) },
     AGENT_GH_APP_ID: "123",
     AGENT_GH_APP_PRIVATE_KEY: pkcs1,
     GITHUB_OWNERS: "devUgur",
@@ -132,7 +132,7 @@ describe("listing repositories through the app", () => {
   it("lists the installation's repositories with the installation token and adds the token's extras once", async () => {
     const calls = stubGithub();
     const { env } = envWith({ AGENT_GITHUB_TOKEN: "pat" });
-    const names = (await listRepositories(env)).map((repo) => repo.fullName).sort();
+    const names = (await listRepositories(env, "owner")).map((repo) => repo.fullName).sort();
     expect(names).toEqual(["devUgur/a", "devUgur/b", "devUgur/c"]);
     expect(calls.find((call) => call.url.includes("/installation/repositories"))?.authorization).toBe("Bearer ghs_install");
     expect(calls.find((call) => call.url.includes("/user/repos"))?.authorization).toBe("Bearer pat");
@@ -141,6 +141,6 @@ describe("listing repositories through the app", () => {
   it("works with the app alone", async () => {
     stubGithub();
     const { env } = envWith();
-    expect((await listRepositories(env)).map((repo) => repo.fullName)).toEqual(["devUgur/a", "devUgur/b"]);
+    expect((await listRepositories(env, "owner")).map((repo) => repo.fullName)).toEqual(["devUgur/a", "devUgur/b"]);
   });
 });

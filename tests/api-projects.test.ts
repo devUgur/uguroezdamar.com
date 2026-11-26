@@ -9,6 +9,7 @@ import type { Env } from "../apps/api/src/env.ts";
 import type { ToolContext } from "../apps/api/src/tools/port.ts";
 
 interface ProjectRow {
+  tenant_id?: string;
   id: string;
   repo: string;
   status: string;
@@ -16,6 +17,8 @@ interface ProjectRow {
   default_branch: string;
   write_mode: string;
 }
+
+const tenantOf = (row: ProjectRow): string => row.tenant_id ?? "owner";
 
 /** In-memory stand-in for the few D1 queries these modules run; it dispatches on the SQL text. */
 function fakeDb(projects: ProjectRow[]) {
@@ -28,25 +31,26 @@ function fakeDb(projects: ProjectRow[]) {
           args = values;
           return statement;
         },
-        all: async () => ({ results: sql.includes("SELECT id, repo FROM projects") ? projects.filter((row) => row.status === "active") : [] }),
+        all: async () => ({
+          results: sql.includes("SELECT id, repo FROM projects") ? projects.filter((row) => row.status === "active" && tenantOf(row) === args[0]) : [],
+        }),
         first: async () => {
-          if (sql.includes("WHERE lower(repo)")) return projects.find((row) => row.repo.toLowerCase() === String(args[0]).toLowerCase()) ?? null;
-          if (sql.includes("SELECT visibility FROM projects WHERE id")) return projects.find((row) => row.id === args[0]) ?? null;
+          if (sql.includes("lower(repo)")) return projects.find((row) => tenantOf(row) === args[0] && row.repo.toLowerCase() === String(args[1]).toLowerCase()) ?? null;
           if (sql.includes("SELECT 1 FROM projects WHERE id")) return projects.find((row) => row.id === args[0]) ?? null;
           if (sql.includes("SELECT default_branch, write_mode")) {
-            const row = projects.find((entry) => entry.repo === args[0] && entry.status === "active");
+            const row = projects.find((entry) => tenantOf(entry) === args[0] && entry.repo === args[1] && entry.status === "active");
             return row ? { default_branch: row.default_branch, write_mode: row.write_mode } : null;
           }
           return null;
         },
         run: async () => {
           if (sql.startsWith("INSERT INTO projects")) {
-            const [id, , repo, visibility, defaultBranch] = args as string[];
-            projects.push({ id: id ?? "", repo: repo ?? "", status: "active", visibility: visibility ?? "", default_branch: defaultBranch ?? "", write_mode: "pr-only" });
+            const [id, tenant, , repo, visibility, defaultBranch] = args as string[];
+            projects.push({ id: id ?? "", tenant_id: tenant, repo: repo ?? "", status: "active", visibility: visibility ?? "", default_branch: defaultBranch ?? "", write_mode: "pr-only" });
             return { meta: { changes: 1 } };
           }
           if (sql.includes("SET status = 'archived'")) {
-            const row = projects.find((entry) => entry.id === args[0] && entry.status === "active");
+            const row = projects.find((entry) => tenantOf(entry) === args[0] && entry.id === args[1] && entry.status === "active");
             if (row) row.status = "archived";
             return { meta: { changes: row ? 1 : 0 } };
           }
@@ -105,7 +109,7 @@ describe("registering repositories as projects", () => {
   it("lists only repositories of allowed owners and marks registered ones", async () => {
     stubGithub(() => [repoJson(), repoJson({ full_name: "viralsync-app/platform", name: "platform", owner: { login: "viralsync-app" } })]);
     const { env } = envWith([{ id: "notes", repo: "devUgur/notes", status: "active", visibility: "private", default_branch: "main", write_mode: "pr-only" }]);
-    const repos = await listRepositories(env);
+    const repos = await listRepositories(env, "owner");
     expect(repos.map((repo) => repo.fullName)).toEqual(["devUgur/notes"]);
     expect(repos[0]?.projectId).toBe("notes");
   });
@@ -113,37 +117,37 @@ describe("registering repositories as projects", () => {
   it("refuses malformed names and owners that are not allowed, without calling GitHub", async () => {
     const calls = stubGithub(() => repoJson());
     const { env } = envWith();
-    await expect(registerProject(env, "no-slash")).rejects.toMatchObject({ status: 400 });
-    await expect(registerProject(env, "viralsync-app/platform")).rejects.toMatchObject({ status: 403 });
-    await expect(registerProject(env, "devUgur/../x")).rejects.toBeInstanceOf(ProjectError);
+    await expect(registerProject(env, "owner", "no-slash")).rejects.toMatchObject({ status: 400 });
+    await expect(registerProject(env, "owner", "viralsync-app/platform")).rejects.toMatchObject({ status: 403 });
+    await expect(registerProject(env, "owner", "devUgur/../x")).rejects.toBeInstanceOf(ProjectError);
     expect(calls).toHaveLength(0);
   });
 
   it("takes visibility and default branch from GitHub, not from the caller, and refuses archived repositories", async () => {
     const { env, db } = envWith();
     stubGithub(() => repoJson({ private: true, default_branch: "trunk" }));
-    const created = await registerProject(env, "devUgur/notes");
+    const created = await registerProject(env, "owner", "devUgur/notes");
     expect(created).toEqual({ id: "notes", created: true });
     expect(db.projects[0]).toMatchObject({ visibility: "private", default_branch: "trunk", write_mode: "pr-only" });
 
     stubGithub(() => repoJson({ archived: true }));
-    await expect(registerProject(env, "devUgur/other")).rejects.toMatchObject({ status: 409 });
+    await expect(registerProject(env, "owner", "devUgur/other")).rejects.toMatchObject({ status: 409 });
   });
 
   it("registers the same repository only once and never removes the main project", async () => {
     const { env, db } = envWith();
     stubGithub(() => repoJson());
-    await registerProject(env, "devUgur/notes");
-    expect(await registerProject(env, "devUgur/notes")).toEqual({ id: "notes", created: false });
+    await registerProject(env, "owner", "devUgur/notes");
+    expect(await registerProject(env, "owner", "devUgur/notes")).toEqual({ id: "notes", created: false });
     expect(db.projects).toHaveLength(1);
-    expect(await unregisterProject(env, "notes")).toBe(true);
-    expect(await unregisterProject(env, "notes")).toBe(false);
-    await expect(unregisterProject(env, "uguroezdamar")).rejects.toMatchObject({ status: 409 });
+    expect(await unregisterProject(env, "owner", "notes")).toBe(true);
+    expect(await unregisterProject(env, "owner", "notes")).toBe(false);
+    await expect(unregisterProject(env, "owner", "uguroezdamar")).rejects.toMatchObject({ status: 409 });
   });
 
   it("explains a missing token instead of failing silently", async () => {
     const { env } = envWith([], { AGENT_GITHUB_TOKEN: undefined });
-    await expect(listRepositories(env)).rejects.toMatchObject({ status: 503 });
+    await expect(listRepositories(env, "owner")).rejects.toMatchObject({ status: 503 });
   });
 });
 
@@ -187,7 +191,7 @@ describe("write rules per project", () => {
     const { env } = envWith([
       { id: "p", repo: "devUgur/notes", status: "active", visibility: "private", default_branch: "main", write_mode: "pr-only", ...row },
     ]);
-    return { env, agentId: "chef", projectId: "p", repo: "devUgur/notes", budget: new SubrequestBudget() };
+    return { env, tenantId: "owner", agentId: "chef", projectId: "p", repo: "devUgur/notes", budget: new SubrequestBudget() };
   }
 
   it("lets pr-only projects write to agent branches only, never to dev or the default branch", async () => {
@@ -206,7 +210,7 @@ describe("write rules per project", () => {
 
   it("treats a repository without a registered project like the strictest case", async () => {
     const { env } = envWith();
-    const context: ToolContext = { env, agentId: "chef", projectId: "x", repo: "devUgur/unknown", budget: new SubrequestBudget() };
+    const context: ToolContext = { env, tenantId: "owner", agentId: "chef", projectId: "x", repo: "devUgur/unknown", budget: new SubrequestBudget() };
     await expect(commit?.run(args("dev"), context)).rejects.toThrow(/agent\//);
   });
 });
@@ -227,7 +231,7 @@ describe("answering questions about repositories", () => {
     stubRepos();
     const { env } = envWith(rows("public"));
     const marked = vi.fn(async () => undefined);
-    const context: ToolContext = { env, agentId: "chef", projectId: "p", repo: "devUgur/open", budget: new SubrequestBudget(), markPrivate: marked };
+    const context: ToolContext = { env, tenantId: "owner", agentId: "chef", projectId: "p", repo: "devUgur/open", budget: new SubrequestBudget(), markPrivate: marked };
     const result = (await tool("github_repositories_list")?.run({}, context)) as { total: number; private: number; registered: number; repositories: { fullName: string }[] };
     expect(result).toMatchObject({ total: 2, private: 1, registered: 1 });
     expect(result.repositories.map((repo) => repo.fullName)).toEqual(["devUgur/open", "devUgur/secret-client"]);
@@ -238,7 +242,7 @@ describe("answering questions about repositories", () => {
     stubGithub(() => [repoJson({ full_name: "devUgur/open", name: "open", private: false })]);
     const { env } = envWith(rows("public"));
     const marked = vi.fn(async () => undefined);
-    await tool("github_repositories_list")?.run({}, { env, agentId: "chef", projectId: "p", repo: "devUgur/open", budget: new SubrequestBudget(), markPrivate: marked });
+    await tool("github_repositories_list")?.run({}, { env, tenantId: "owner", agentId: "chef", projectId: "p", repo: "devUgur/open", budget: new SubrequestBudget(), markPrivate: marked });
     expect(marked).not.toHaveBeenCalled();
   });
 
@@ -246,7 +250,7 @@ describe("answering questions about repositories", () => {
     stubRepos();
     const { env } = envWith(rows("public"));
     const budget = new SubrequestBudget();
-    await tool("github_repositories_list")?.run({}, { env, agentId: "chef", projectId: "p", repo: "devUgur/open", budget });
+    await tool("github_repositories_list")?.run({}, { env, tenantId: "owner", agentId: "chef", projectId: "p", repo: "devUgur/open", budget });
     expect(budget.spent).toBe(1);
   });
 });
@@ -268,7 +272,7 @@ describe("reading other repositories of the account", () => {
   const base = (): ProjectRow[] => [{ id: "p", repo: "devUgur/main", status: "active", visibility: "public", default_branch: "main", write_mode: "dev-first" }];
   const contextFor = (marked = vi.fn(async () => undefined)) => {
     const { env } = envWith(base());
-    return { context: { env, agentId: "chef", projectId: "p", repo: "devUgur/main", budget: new SubrequestBudget(), markPrivate: marked } as ToolContext, marked };
+    return { context: { env, tenantId: "owner", agentId: "chef", projectId: "p", repo: "devUgur/main", budget: new SubrequestBudget(), markPrivate: marked } as ToolContext, marked };
   };
   const stubRepo = (isPrivate: boolean) =>
     stubGithub((url) => {
@@ -336,7 +340,7 @@ describe("registering and creating repositories through approvals", () => {
   it("creates a private repository on the own account and registers it as a pr-only project", async () => {
     const calls = stubAccount("devUgur");
     const { env, db } = envWith();
-    const result = await createRepository(env, { name: "neues-projekt", description: "Test" });
+    const result = await createRepository(env, "owner", { name: "neues-projekt", description: "Test" });
     expect(result).toMatchObject({ fullName: "devUgur/neues-projekt", private: true, projectId: "neues-projekt" });
     expect(calls.find((call) => call.method === "POST")?.body).toMatchObject({ name: "neues-projekt", private: true, auto_init: true });
     expect(db.projects[0]).toMatchObject({ repo: "devUgur/neues-projekt", write_mode: "pr-only", status: "active" });
@@ -345,15 +349,15 @@ describe("registering and creating repositories through approvals", () => {
   it("refuses accounts that are not allowed and bad names before creating anything", async () => {
     const calls = stubAccount("fremd");
     const { env } = envWith();
-    await expect(createRepository(env, { name: "x" })).rejects.toThrow(/nicht freigegeben/);
-    await expect(createRepository(env, { name: "../boese" })).rejects.toThrow(/Ungültiger/);
+    await expect(createRepository(env, "owner", { name: "x" })).rejects.toThrow(/nicht freigegeben/);
+    await expect(createRepository(env, "owner", { name: "../boese" })).rejects.toThrow(/Ungültiger/);
     expect(calls.some((call) => call.method === "POST")).toBe(false);
   });
 
   it("explains the missing token permission instead of a bare GitHub error", async () => {
     stubAccount("devUgur", 403);
     const { env } = envWith();
-    await expect(createRepository(env, { name: "x" })).rejects.toThrow(/Administration/);
+    await expect(createRepository(env, "owner", { name: "x" })).rejects.toThrow(/Administration/);
   });
 
   it("only proposes both actions: they need approval and show as security relevant", () => {
@@ -365,5 +369,40 @@ describe("registering and creating repositories through approvals", () => {
     expect(publicRepo.summary).toContain("öffentlich");
     expect(publicRepo.warnings.join(" ")).toContain("ÖFFENTLICH");
     expect(describeApproval("repo_create", { name: "x" }).summary).toContain("privat");
+  });
+});
+
+describe("two tenants side by side", () => {
+  const ownerProject: ProjectRow = { id: "notes", tenant_id: "owner", repo: "devUgur/notes", status: "active", visibility: "private", default_branch: "main", write_mode: "dev-first" };
+
+  it("registers the same repository for another tenant without touching the owner's project", async () => {
+    const { env, db } = envWith([{ ...ownerProject }]);
+    stubGithub(() => repoJson());
+    const created = await registerProject(env, "acme", "devUgur/notes");
+    expect(created.created).toBe(true);
+    expect(created.id).not.toBe("notes");
+    expect(db.projects.filter((row) => row.tenant_id === "owner")).toEqual([ownerProject]);
+    expect(db.projects.find((row) => row.id === created.id)).toMatchObject({ tenant_id: "acme", write_mode: "pr-only" });
+  });
+
+  it("shows a tenant only its own registrations in the repository list", async () => {
+    const { env } = envWith([{ ...ownerProject }]);
+    stubGithub(() => [repoJson()]);
+    expect((await listRepositories(env, "owner"))[0]?.projectId).toBe("notes");
+    expect((await listRepositories(env, "acme"))[0]?.projectId).toBeNull();
+  });
+
+  it("does not let one tenant remove another tenant's project", async () => {
+    const { env, db } = envWith([{ ...ownerProject }]);
+    expect(await unregisterProject(env, "acme", "notes")).toBe(false);
+    expect(db.projects[0]?.status).toBe("active");
+  });
+
+  it("treats a repository registered by another tenant as unregistered: the strictest write rule applies", async () => {
+    const { env } = envWith([{ ...ownerProject }]);
+    const context: ToolContext = { env, tenantId: "acme", agentId: "chef", projectId: "x", repo: "devUgur/notes", budget: new SubrequestBudget() };
+    const commit = githubTools.find((tool) => tool.spec.name === "repo_commit_files");
+    // The owner's project is dev-first, which would allow dev; for acme the repository is unknown, so only agent/ branches pass.
+    await expect(commit?.run({ branch: "dev", message: "m", files: [{ path: "a.txt", content: "x" }] }, context)).rejects.toThrow(/agent\//);
   });
 });

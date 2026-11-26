@@ -1,8 +1,11 @@
 import type { Env } from "./env.ts";
+import { OWNER_TENANT } from "./tenancy.ts";
 
 export interface Caller {
   /** Email of the portal admin on whose behalf the portal calls; for audit only. */
   actor: string;
+  /** The customer this call is for. Until customers sign in (ADR 0032, stage 3) every call is the owner's. */
+  tenantId: string;
   /** Narrow capabilities asserted by the trusted portal server after checking its admin session. */
   scopes: readonly string[];
 }
@@ -23,7 +26,7 @@ export async function authorize(request: Request, env: Env): Promise<Caller | nu
     .split(",")
     .map((scope) => scope.trim())
     .filter((scope) => allowedScopes.has(scope));
-  return { actor: (request.headers.get("x-portal-actor") ?? "portal").slice(0, 200), scopes };
+  return { actor: (request.headers.get("x-portal-actor") ?? "portal").slice(0, 200), tenantId: OWNER_TENANT, scopes };
 }
 
 async function constantTimeEqual(a: string, b: string): Promise<boolean> {

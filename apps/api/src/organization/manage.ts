@@ -111,7 +111,7 @@ async function createRole(env: Env, caller: Caller, request: Request): Promise<R
       "INSERT INTO organization_audit (id, actor, scope, action, entity_id, before_state, after_state) VALUES (?, ?, 'role', 'created', ?, NULL, ?)",
     ).bind(auditId, caller.actor, id, JSON.stringify(after)),
   ]);
-  await emit(env, { type: "organization_updated", data: { scope: "role", action: "created", entityId: id, version: 1, by: caller.actor } }).catch((error) => console.error("organization event failed", error));
+  await emit(env, { tenantId: caller.tenantId, type: "organization_updated", data: { scope: "role", action: "created", entityId: id, version: 1, by: caller.actor } }).catch((error) => console.error("organization event failed", error));
   return json(after, 201);
 }
 
@@ -143,7 +143,7 @@ async function updateRole(env: Env, caller: Caller, id: string, request: Request
     ).bind(mutationId, caller.actor, id, JSON.stringify(before), JSON.stringify(after), id, mutationId),
   ]);
   if (!results[0]?.meta.changes || !results[1]?.meta.changes) return json({ error: "Das Rollenprofil wurde zwischenzeitlich geändert. Bitte neu laden." }, 409);
-  await emit(env, { type: "organization_updated", data: { scope: "role", action: "updated", entityId: id, version: after.version, by: caller.actor } }).catch((error) => console.error("organization event failed", error));
+  await emit(env, { tenantId: caller.tenantId, type: "organization_updated", data: { scope: "role", action: "updated", entityId: id, version: after.version, by: caller.actor } }).catch((error) => console.error("organization event failed", error));
   return json(after);
 }
 
@@ -167,7 +167,7 @@ async function updateInstance(env: Env, caller: Caller, id: string, request: Req
   if (id === "chef" && !active) return json({ error: "Der einzige ausführbare Umsetzungsagent kann nicht deaktiviert werden." }, 409);
   if (existing.active === 1 && !active) {
     const busy = await env.DB.prepare(
-      `SELECT 1 FROM tasks WHERE agent_id = ? AND status IN ('in_progress', 'review', 'qa')
+      `/* tenant:platform */ SELECT 1 FROM tasks WHERE agent_id = ? AND status IN ('in_progress', 'review', 'qa')
        UNION ALL SELECT 1 FROM task_reviews WHERE reviewer_agent_id = ? AND status = 'running' LIMIT 1`,
     ).bind(id, id).first();
     if (busy) return json({ error: "Die Instanz bearbeitet noch eine Aufgabe oder Prüfung und kann deshalb nicht deaktiviert werden." }, 409);
@@ -176,8 +176,9 @@ async function updateInstance(env: Env, caller: Caller, id: string, request: Req
   const before = asInstance(existing);
   const after = { ...before, name, active, desk: { x: deskX, y: deskY }, version: existing.version + 1 };
   const mutationId = crypto.randomUUID();
+  // The staff is shared by all tenants, so a worker counts as busy for any tenant's task (tenant:platform).
   const workloadGuard = active ? "1 = 1" : `NOT EXISTS (
-    SELECT 1 FROM tasks WHERE agent_id = agents.id AND status IN ('in_progress', 'review', 'qa')
+    /* tenant:platform */ SELECT 1 FROM tasks WHERE agent_id = agents.id AND status IN ('in_progress', 'review', 'qa')
   ) AND NOT EXISTS (
     SELECT 1 FROM task_reviews WHERE reviewer_agent_id = agents.id AND status = 'running'
   )`;
@@ -192,7 +193,7 @@ async function updateInstance(env: Env, caller: Caller, id: string, request: Req
     ).bind(mutationId, caller.actor, id, JSON.stringify(before), JSON.stringify(after), id, mutationId),
   ]);
   if (!results[0]?.meta.changes || !results[1]?.meta.changes) return json({ error: "Die Instanz wurde zwischenzeitlich geändert. Bitte neu laden." }, 409);
-  await emit(env, { agentId: id, type: "organization_updated", data: { scope: "instance", action: "updated", entityId: id, version: after.version, by: caller.actor } }).catch((error) => console.error("organization event failed", error));
+  await emit(env, { tenantId: caller.tenantId, agentId: id, type: "organization_updated", data: { scope: "instance", action: "updated", entityId: id, version: after.version, by: caller.actor } }).catch((error) => console.error("organization event failed", error));
   return json(after);
 }
 

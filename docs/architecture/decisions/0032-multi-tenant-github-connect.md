@@ -1,6 +1,6 @@
 # ADR 0032: Mandantenfähigkeit und One-Click-Verbindung zu GitHub
 
-- Status: proposed (Entwurf zur Entscheidung des Owners, noch kein Code)
+- Status: accepted als Richtung; Stufe 1 umgesetzt, Stufen 2 bis 4 offen
 - Datum: 2026-11-26
 - Beteiligte: Projektverantwortlicher
 - Baut auf: [ADR 0024](0024-agent-platform-on-cloudflare.md), [ADR 0029](0029-projects-as-repository-access.md), [ADR 0031](0031-github-app-access.md)
@@ -70,6 +70,24 @@ Der Empfänger `POST /webhooks/github` prüft die Signatur (HMAC-SHA256, `x-hub-
 | 4 | Abrechnung, Marketplace, Rechtstexte, Betrieb (Alarme, Backups) | Öffentliches Angebot |
 
 Jede Stufe ist einzeln auslieferbar und bricht die vorige nicht.
+
+## Umsetzung Stufe 1 (Stand 2026-11-26)
+
+Gebaut ist die Grundlage; für den Owner ändert sich nichts Sichtbares.
+
+- Migration `0011_tenants.sql`: Tabellen `tenants` (mit dem Mandanten `owner`) und `tenant_installations` (noch leer) sowie `tenant_id` in `projects`, `threads`, `tasks`, `task_reviews`, `approvals`, `events`, `memories`. Alle bestehenden Zeilen gehören über den Spaltenstandard dem Owner.
+- `Caller.tenantId` (heute immer `owner`), `ToolContext.tenantId`, `ChatInput.tenantId`, `RunState.tenantId`. Bei Ereignissen ist `tenantId` ein Pflichtfeld, damit ein vergessenes Feld beim Kompilieren auffällt und nicht still beim Owner landet.
+- Alle Abfragen auf Mandantentabellen filtern oder schreiben `tenant_id`: Projekte (Liste, Registrieren, Entfernen, Schreibregel im Werkzeug), Threads, Aufgaben, Freigaben, Ereignisse, Notizen, Tagesausgaben je Mandant und Agent.
+- Namensräume: Der Owner behält `thread:<id>`, `main` für Hub und Büro, damit vorhandene Threads und ihr Verlauf erreichbar bleiben. Andere Mandanten bekommen `t:<id>:…`.
+- Wächter: `tests/api-tenancy.test.ts` liest alle SQL-Zeichenketten der API und verlangt in jeder Anweisung auf einer Mandantentabelle `tenant_id` oder die Kennzeichnung `/* tenant:parent */` (nur über eine schon mandantengeprüfte Elternzeile) bzw. `/* tenant:platform */` (bewusst mandantenübergreifend). Eine neue Abfrage ohne eines von beidem lässt den Test scheitern.
+- Tests mit zwei Mandanten (`tests/api-projects.test.ts`): gleiches Repository für zwei Mandanten, getrennte Listen, kein Entfernen über Mandantengrenzen, strengste Schreibregel für fremde Registrierungen.
+
+Bewusst noch nicht mandantenfähig (Stufen 2 und 3):
+
+- Das Personal (`agents`, Organisationskatalog, Tagesbudget je Agent) ist für alle Mandanten gemeinsam. Mandanteneigene Agentenzeilen und Budgets kommen mit den Grenzen je Mandant.
+- Projekt-Ids sind global eindeutig (Primärschlüssel); bei Namenskollision bekommt die ID ein Suffix. Eine zusammengesetzte Eindeutigkeit folgt, wenn es zweite Mandanten gibt.
+- Der Live-Hub und die Ticketausgabe laufen für den Owner auf `main`; ein Hub je Mandant mit signiertem Zugangs-Token kommt mit der Kundenanmeldung.
+- `GITHUB_OWNERS` gilt noch global; die Ableitung aus `tenant_installations` folgt im Verbinden-Fluss.
 
 ## Alternativen
 

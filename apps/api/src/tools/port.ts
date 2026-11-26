@@ -4,6 +4,8 @@ import type { SubrequestBudget } from "../runtime/budget.ts";
 
 export interface ToolContext {
   env: Env;
+  /** The tenant the run belongs to: tools only see and change this tenant's projects and memories. */
+  tenantId: string;
   agentId: string;
   projectId: string;
   /** owner/name of the repository the project lives in. */
