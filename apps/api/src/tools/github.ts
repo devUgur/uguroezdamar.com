@@ -251,6 +251,47 @@ const listPullRequests: Tool = {
   },
 };
 
+const readPullRequest: Tool = {
+  spec: {
+    name: "repo_read_pull_request",
+    description: "Liest Metadaten, geänderte Dateien und verfügbare Patch-Diffs eines Pull Requests. Ausschließlich lesend; maximal 20 Dateien und begrenzte Patch-Größe.",
+    parameters: { type: "object", properties: { number: { type: "integer", description: "Pull-Request-Nummer" } }, required: ["number"] },
+  },
+  async run(args, context) {
+    const number = Number(args.number);
+    if (!Number.isInteger(number) || number < 1) throw new ToolInputError("Ungültige Pull-Request-Nummer.");
+    const [pull, files] = await Promise.all([
+      gh<{ number: number; title: string; body: string | null; state: string; draft: boolean; head: { ref: string; sha: string }; base: { ref: string } }>(context, `/repos/${context.repo}/pulls/${number}`),
+      gh<{ filename: string; status: string; additions: number; deletions: number; patch?: string }[]>(context, `/repos/${context.repo}/pulls/${number}/files?per_page=21`),
+    ]);
+    let remainingPatchChars = 30_000;
+    const boundedFiles = files.slice(0, 20).map((file) => {
+      const sourcePatch = file.patch ?? "Diff nicht verfügbar.";
+      const patch = sourcePatch.slice(0, Math.max(0, remainingPatchChars));
+      remainingPatchChars -= patch.length;
+      return {
+        path: file.filename,
+        status: file.status,
+        additions: file.additions,
+        deletions: file.deletions,
+        patch,
+        patchTruncated: file.patch === undefined || patch.length < sourcePatch.length,
+      };
+    });
+    return {
+      number: pull.number,
+      title: pull.title,
+      body: (pull.body ?? "").slice(0, 6_000),
+      state: pull.state,
+      draft: pull.draft,
+      base: pull.base.ref,
+      head: { branch: pull.head.ref, sha: pull.head.sha },
+      files: boundedFiles,
+      truncated: files.length > 20 || boundedFiles.some((file) => file.patchTruncated),
+    };
+  },
+};
+
 const checkStatus: Tool = {
   spec: {
     name: "repo_check_status",
@@ -263,7 +304,10 @@ const checkStatus: Tool = {
       context,
       `/repos/${context.repo}/commits/${encodeURIComponent(ref)}/check-runs?per_page=50`,
     );
-    return checks.check_runs.map((run) => ({ name: run.name, status: run.status, conclusion: run.conclusion, url: run.html_url }));
+    return {
+      ref,
+      checks: checks.check_runs.map((run) => ({ name: run.name, status: run.status, conclusion: run.conclusion, url: run.html_url })),
+    };
   },
 };
 
@@ -274,5 +318,6 @@ export const githubTools: Tool[] = [
   commitFiles,
   openPullRequest,
   listPullRequests,
+  readPullRequest,
   checkStatus,
 ];

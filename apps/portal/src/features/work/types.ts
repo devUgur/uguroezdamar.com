@@ -19,4 +19,18 @@ export interface WorkTask {
   createdBy: string | null;
   createdAt: number;
   updatedAt: number;
+  completionNote: string | null;
+  completedBy: string | null;
+  completedAt: number | null;
+  latestReview: {
+    id: string;
+    status: "running" | "completed" | "failed" | "cancelled";
+    verdict: "pass" | "changes_requested" | "needs_human" | null;
+    summary: string | null;
+    findings: string[];
+    evidence: string[];
+    error: string | null;
+    threadId: string | null;
+    createdAt: number;
+  } | null;
 }

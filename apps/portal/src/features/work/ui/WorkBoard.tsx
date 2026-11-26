@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createWorkTask, startWorkTask, updateWorkTask } from "../actions";
+import { createWorkTask, startWorkReview, startWorkTask, updateWorkTask } from "../actions";
 import type { WorkStatus, WorkTask } from "../types";
 import { WorkLiveStatus } from "./WorkLiveStatus";
 
@@ -11,13 +11,26 @@ const COLUMNS: { id: WorkStatus; label: string; next: WorkStatus[] }[] = [
   { id: "backlog", label: "Backlog", next: ["ready", "blocked"] },
   { id: "ready", label: "Ready", next: ["backlog", "blocked"] },
   { id: "in_progress", label: "In Progress", next: ["ready", "review", "blocked"] },
-  { id: "review", label: "Code Review", next: ["in_progress", "qa", "blocked"] },
-  { id: "qa", label: "QA / Testing", next: ["in_progress", "done", "blocked"] },
-  { id: "blocked", label: "Blocked", next: ["backlog", "ready", "review", "qa"] },
+  { id: "review", label: "Code Review", next: ["in_progress", "blocked"] },
+  { id: "qa", label: "QA / Testing", next: ["in_progress", "blocked"] },
+  { id: "blocked", label: "Blocked", next: ["backlog", "ready", "review"] },
   { id: "done", label: "Done", next: ["backlog"] },
 ];
 
 const PRIORITIES: Record<WorkTask["priority"], string> = { low: "Niedrig", normal: "Normal", high: "Hoch", urgent: "Dringend" };
+const REVIEW_LABEL: Record<Exclude<NonNullable<WorkTask["latestReview"]>["verdict"], null> | "running" | "failed" | "cancelled", string> = {
+  pass: "QA bestanden · Owner-Abnahme offen",
+  changes_requested: "Änderungen erforderlich",
+  needs_human: "Manuelle Prüfung erforderlich",
+  running: "QA läuft",
+  failed: "QA-Lauf fehlgeschlagen",
+  cancelled: "QA-Lauf abgebrochen",
+};
+
+function reviewLabel(review: NonNullable<WorkTask["latestReview"]>): string {
+  if (review.status !== "completed") return REVIEW_LABEL[review.status];
+  return review.verdict ? REVIEW_LABEL[review.verdict] : "Prüfergebnis unvollständig";
+}
 
 function TaskCard({ task, next }: { task: WorkTask; next: WorkStatus[] }) {
   return (
@@ -35,8 +48,12 @@ function TaskCard({ task, next }: { task: WorkTask; next: WorkStatus[] }) {
         </details>
       ) : null}
       {task.output ? <details className="text-sm"><summary className="cursor-pointer text-muted-foreground">Letztes Agentenergebnis</summary><p className="mt-2 whitespace-pre-wrap">{task.output}</p></details> : null}
+      {task.completionNote ? <details className="text-sm"><summary className="cursor-pointer text-muted-foreground">Owner-Abnahme</summary><p className="mt-2 whitespace-pre-wrap">{task.completionNote}</p>{task.completedBy ? <p className="mt-1 text-xs text-muted-foreground">Abgenommen von {task.completedBy}</p> : null}</details> : null}
+      {task.latestReview ? <details className="text-sm" open={task.latestReview.status === "running"}><summary className="cursor-pointer text-muted-foreground">QA: {reviewLabel(task.latestReview)}</summary><div className="mt-2 space-y-2"><p>{task.latestReview.summary ?? task.latestReview.error ?? "Prüfung läuft."}</p>{task.latestReview.findings.length ? <ul className="list-inside list-disc">{task.latestReview.findings.map((finding, index) => <li key={`${index}-${finding}`}>{finding}</li>)}</ul> : null}{task.latestReview.evidence.length ? <ul className="list-inside list-disc text-muted-foreground">{task.latestReview.evidence.map((evidence, index) => <li key={`${index}-${evidence}`}>{evidence}</li>)}</ul> : null}{task.latestReview.threadId ? <Link href={`/chat/${task.latestReview.threadId}`} className="inline-block underline underline-offset-4">QA-Thread öffnen</Link> : null}</div></details> : null}
       {task.threadId ? <Link href={`/chat/${task.threadId}`} className="inline-block text-sm underline underline-offset-4">Agenten-Thread öffnen</Link> : null}
       {task.status === "ready" ? <form action={startWorkTask}><input type="hidden" name="id" value={task.id} /><button className="w-full rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground">An Chef-Agent übergeben</button></form> : null}
+      {task.status === "review" ? <form action={startWorkReview}><input type="hidden" name="id" value={task.id} /><button className="w-full rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground">Unabhängige QA starten</button></form> : null}
+      {task.status === "qa" ? <form action={updateWorkTask} className="space-y-2 border-t border-border pt-3"><input type="hidden" name="id" value={task.id} /><input type="hidden" name="status" value="done" /><label className="block space-y-1 text-xs">Owner-Abnahme / manuelle Verifikation <textarea name="completionNote" required minLength={20} maxLength={2000} rows={3} className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm" placeholder="Prüfungen, Befunde und Abschlussentscheidung dokumentieren …" /></label><button className="w-full rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground">Nach Prüfung abschließen</button></form> : null}
       {next.length ? (
         <form action={updateWorkTask} className="flex flex-wrap gap-2 border-t border-border pt-3">
           <input type="hidden" name="id" value={task.id} />
@@ -86,7 +103,7 @@ export function WorkBoard({ tasks, error, liveOrigin }: { tasks: WorkTask[]; err
         </form>
       </section>
 
-      <p className="text-xs text-muted-foreground">Das Board bildet gespeicherte Arbeit ab. Automatische Sprintplanung, Agentenübergaben und Workspace-Bereitstellung werden erst aktiviert, wenn die jeweilige Runtime-Funktion tatsächlich angebunden ist.</p>
+      <p className="text-xs text-muted-foreground">QA ist eine getrennte, read-only Prüfung von Pull Request, Diff und CI. Nur nach bestandenem Prüfergebnis kann der Owner die Aufgabe auf Done setzen. Sprintplanung und isolierte Workspaces folgen später.</p>
 
       <div className="flex gap-4 overflow-x-auto pb-3" aria-label="Aufgabenstatus">
         {COLUMNS.map((column) => {

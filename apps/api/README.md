@@ -12,11 +12,12 @@ Agenten-Backend des Admin-Portals: Threads, Agentenschleife, Modelle, Werkzeuge,
 | `src/hub.ts` | `LiveHub`: verteilt Events und gestreamten Text per WebSocket, Einmal-Tickets |
 | `src/events.ts` | Event-Log in D1, Tagesbudget |
 | `src/models/` | `ModelPort`, Router mit Fallback und Modellwahl je Thread, Katalog, Adapter (OpenAI-kompatibel, Workers AI) |
-| `src/tools/` | `ToolPort`, GitHub-Werkzeuge, Projekt- und Notiz-Werkzeuge |
+| `src/tools/` | `ToolPort`, GitHub-Werkzeuge, Projekt- und Notiz-Werkzeuge; PR-Diff lesen ist nur dem read-only QA-Reviewer freigegeben |
 | `src/agents/registry.ts` | die Agenten: Prompt, Modell-Alias, Werkzeuge |
 | `src/agents/describe.ts` | Konfigurationsansicht eines Agenten für das Portal |
 | `src/runtime/limits.ts` | Grenzwerte eines Laufs, von Laufzeit und Ansicht gemeinsam genutzt |
-| `migrations/` | D1-Schema |
+| `src/organization/` | read-only Organisationskatalog über die D1-Control-Plane |
+| `migrations/` | D1-Schema für Organisation, Work-Items und Review-Audit |
 | `modal/llm.py` | eigene Open-Weight-Modelle auf Modal (vLLM, OpenAI-kompatibel), nicht Teil des Worker-Bundles |
 
 ## API
@@ -26,6 +27,7 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 | Route | Zweck |
 | --- | --- |
 | `GET /api/agents` | Agenten mit Rolle, Modell-Alias, letztem Event und neuestem Thread (für das Büro) |
+| `GET /api/organization` | geschützter, read-only Katalog von Abteilungen, Rollen, Definitionen und Instanzen |
 | `GET /api/agents/:id/config` | Konfiguration eines Agenten, nur lesend: Modell-Kette mit Verfügbarkeit, Werkzeuge, Systemprompt, Grenzen, Speicher (D1, KV, R2), Schutzregeln, Zugangsdaten (nur ob gesetzt) |
 | `GET /api/threads`, `POST /api/threads` | Threads auflisten, anlegen |
 | `GET/PATCH/DELETE /api/threads/:id` | Verlauf, Status, offene Freigaben und Events; Titel oder Modell ändern; archivieren |
@@ -34,6 +36,10 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 | `GET /api/approvals`, `POST /api/approvals/:id` | offene Freigaben; `{ "decision": "approve" \| "reject" }` |
 | `GET /api/events?thread=…&since=…` | Events nachladen |
 | `POST /api/live-ticket`, `GET /api/live?ticket=…` | Einmal-Ticket, dann WebSocket für Events und `delta` |
+| `GET/POST /api/tasks`, `PATCH /api/tasks/:id` | persistente Tasks, validierte Statusübergänge und Owner-Abnahme |
+| `POST /api/tasks/:id/run`, `POST /api/tasks/:id/review` | Chef-Ausführung bzw. getrennte, read-only QA-Übergabe |
+
+`task_reviews` speichert Ergebnis und Evidence jedes Prüflaufs. `Done` wird nie durch das Modell gesetzt; ein Owner muss eine Abschlussnotiz hinterlegen. Der QA-Reviewer kann weder Commits noch Pull Requests erzeugen.
 
 ## Ablauf eines Auftrags
 

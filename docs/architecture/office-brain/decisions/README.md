@@ -1,6 +1,6 @@
 # Office Brain – geplante Architekturentscheidungen
 
-Diese Liste ist ein Entscheidungsbacklog, kein Beschluss. Die Agentenlaufzeit, gemeinsame Bürobewegung und Agentenarbeit im API-Control-Plane sind in [ADR 0024](../../decisions/0024-agent-platform-on-cloudflare.md), [ADR 0025](../../decisions/0025-synchronisierte-agentenpraesenz.md) und [ADR 0026](../../decisions/0026-agent-work-management.md) entschieden.
+Diese Liste ist ein Entscheidungsbacklog, kein Beschluss. Die Agentenlaufzeit, gemeinsame Bürobewegung, Agentenarbeit, Organisationskatalog und unabhängige QA im API-Control-Plane sind in [ADR 0024](../../decisions/0024-agent-platform-on-cloudflare.md), [ADR 0025](../../decisions/0025-synchronisierte-agentenpraesenz.md), [ADR 0026](../../decisions/0026-agent-work-management.md), [ADR 0027](../../decisions/0027-agent-organization-catalog.md) und [ADR 0028](../../decisions/0028-independent-agent-qa.md) entschieden.
 
 ## Offene Entscheidungen
 

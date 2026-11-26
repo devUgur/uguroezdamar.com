@@ -8,6 +8,8 @@
 - Jeder menschliche Zugriff bleibt an die bestehende Admin-Session und serverseitige Portal-Rolle gebunden.
 - Ein Agent erhält einen eigenen technischen Ausführungskontext, aber keine Admin-Session und keine pauschalen Zugangsdaten.
 - Werkzeuge sind serverseitig registriert und erlauben nur benannte Operationen. Versteckte UI-Schaltflächen sind keine Rechteprüfung.
+- Der QA-Reviewer besitzt nur Repo-/PR-/CI-Lesewerkzeuge. Seine Allowlist enthält weder Commit, PR-Erstellung, Memory-Schreibzugriff noch Statusänderungen.
+- QA startet nur über `POST /api/tasks/:id/review`; `qa` kann nicht per Task-PATCH gesetzt werden. Ungültiges oder fehlendes Prüfergebnis wird `needs_human`; ausschließlich eine menschliche Owner-Aktion setzt `done`.
 - Jeder Tool-Aufruf prüft Rolle, Ressource, Scope, Status, Limits und Freigabepflicht.
 - Lesen, Entwurf und Ausführen sind getrennte Berechtigungsstufen.
 - Menschen geben Aktionen mit Außenwirkung ausdrücklich frei. Freigabe wird an konkrete, unveränderliche Tool-Argumente und einen Run gebunden; eine spätere Änderung erfordert eine neue Freigabe.

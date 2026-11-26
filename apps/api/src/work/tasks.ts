@@ -12,9 +12,9 @@ const TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
   backlog: ["ready", "blocked"],
   ready: ["backlog", "blocked"],
   in_progress: ["ready", "review", "blocked"],
-  review: ["in_progress", "qa", "blocked"],
+  review: ["in_progress", "blocked"],
   qa: ["in_progress", "done", "blocked"],
-  blocked: ["backlog", "ready", "review", "qa"],
+  blocked: ["backlog", "ready", "review"],
   done: ["backlog"],
 };
 
@@ -34,9 +34,30 @@ interface TaskRow {
   created_by: string | null;
   created_at: number;
   updated_at: number;
+  completion_note: string | null;
+  completed_by: string | null;
+  completed_at: number | null;
   agent_name?: string | null;
   agent_role?: string | null;
   thread_id?: string | null;
+  review_id?: string | null;
+  review_status?: string | null;
+  review_verdict?: string | null;
+  review_summary?: string | null;
+  review_findings?: string | null;
+  review_evidence?: string | null;
+  review_error?: string | null;
+  review_thread_id?: string | null;
+  review_created_at?: number | null;
+}
+
+function stringList(value: string | null | undefined): string[] {
+  try {
+    const parsed: unknown = value ? JSON.parse(value) : [];
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 function json(data: unknown, status = 200): Response {
@@ -61,6 +82,20 @@ function asTask(row: TaskRow) {
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    completionNote: row.completion_note,
+    completedBy: row.completed_by,
+    completedAt: row.completed_at,
+    latestReview: row.review_id ? {
+      id: row.review_id,
+      status: row.review_status,
+      verdict: row.review_verdict,
+      summary: row.review_summary,
+      findings: stringList(row.review_findings),
+      evidence: stringList(row.review_evidence),
+      error: row.review_error,
+      threadId: row.review_thread_id,
+      createdAt: row.review_created_at,
+    } : null,
   };
 }
 
@@ -76,7 +111,16 @@ async function parseBody(request: Request): Promise<Record<string, unknown> | nu
 async function loadTask(env: Env, id: string): Promise<TaskRow | null> {
   return env.DB.prepare(
     `SELECT t.*, a.name AS agent_name, a.role AS agent_role,
-       (SELECT id FROM threads WHERE task_id = t.id AND archived = 0 ORDER BY updated_at DESC LIMIT 1) AS thread_id
+       (SELECT id FROM threads WHERE task_id = t.id AND archived = 0 ORDER BY updated_at DESC LIMIT 1) AS thread_id,
+       (SELECT id FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_id,
+       (SELECT status FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_status,
+       (SELECT verdict FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_verdict,
+       (SELECT summary FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_summary,
+       (SELECT findings FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_findings,
+       (SELECT evidence FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_evidence,
+       (SELECT error FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_error,
+       (SELECT thread_id FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_thread_id,
+       (SELECT created_at FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_created_at
        FROM tasks t LEFT JOIN agents a ON a.id = t.agent_id WHERE t.id = ?`,
   ).bind(id).first<TaskRow>();
 }
@@ -95,7 +139,16 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
   if (path === "/api/tasks" && request.method === "GET") {
     const projectId = new URL(request.url).searchParams.get("project");
     const query = `SELECT t.*, a.name AS agent_name, a.role AS agent_role,
-      (SELECT id FROM threads WHERE task_id = t.id AND archived = 0 ORDER BY updated_at DESC LIMIT 1) AS thread_id
+      (SELECT id FROM threads WHERE task_id = t.id AND archived = 0 ORDER BY updated_at DESC LIMIT 1) AS thread_id,
+      (SELECT id FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_id,
+      (SELECT status FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_status,
+      (SELECT verdict FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_verdict,
+      (SELECT summary FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_summary,
+      (SELECT findings FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_findings,
+      (SELECT evidence FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_evidence,
+      (SELECT error FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_error,
+      (SELECT thread_id FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_thread_id,
+      (SELECT created_at FROM task_reviews WHERE task_id = t.id ORDER BY created_at DESC, id DESC LIMIT 1) AS review_created_at
       FROM tasks t
       LEFT JOIN agents a ON a.id = t.agent_id ${projectId ? "WHERE t.project_id = ?" : ""}
       ORDER BY CASE t.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END,
@@ -131,12 +184,13 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
     return json(asTask(task), 201);
   }
 
-  const match = path.match(/^\/api\/tasks\/([0-9a-f-]{36})(?:\/(run))?$/);
-  if (!match || (request.method !== "PATCH" && !(match[2] === "run" && request.method === "POST"))) return null;
+  const match = path.match(/^\/api\/tasks\/([0-9a-f-]{36})(?:\/(run|review))?$/);
+  if (!match || (match[2] ? request.method !== "POST" : request.method !== "PATCH")) return null;
   const id = match[1] ?? "";
   const existing = await loadTask(env, id);
   if (!existing) return json({ error: "Aufgabe nicht gefunden." }, 404);
   if (match[2] === "run") return startTaskRun(env, caller, existing);
+  if (match[2] === "review") return startTaskReview(env, caller, existing);
   const input = await parseBody(request);
   if (!input) return json({ error: "Ungültiger JSON-Body." }, 400);
 
@@ -146,7 +200,24 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
   if (input.status !== undefined) {
     if (!TASK_STATUSES.includes(input.status as TaskStatus)) return json({ error: "Unbekannter Aufgabenstatus." }, 400);
     const next = input.status as TaskStatus;
+    if (next === "qa" && next !== existing.status) return json({ error: "QA wird ausschließlich über die unabhängige Reviewer-Übergabe gestartet." }, 409);
     if (next !== existing.status && !TRANSITIONS[existing.status].includes(next)) return json({ error: `Übergang ${existing.status} → ${next} ist nicht erlaubt.` }, 409);
+    if (next === "done") {
+      const completionNote = typeof input.completionNote === "string" ? input.completionNote.trim() : "";
+      if (completionNote.length < 20 || completionNote.length > 2_000) return json({ error: "Für die Owner-Abnahme ist eine Abschlussnotiz von 20 bis 2.000 Zeichen erforderlich." }, 400);
+    }
+    if (input.completionNote !== undefined && (typeof input.completionNote !== "string" || input.completionNote.trim().length > 2_000)) {
+      return json({ error: "Abschlussnotiz darf höchstens 2.000 Zeichen lang sein." }, 400);
+    }
+    if (next === "done") {
+      const approved = await env.DB.prepare(
+        `SELECT 1 FROM task_reviews WHERE task_id = ? AND status = 'completed' AND verdict = 'pass'
+          AND id = (SELECT id FROM task_reviews WHERE task_id = ? ORDER BY created_at DESC, id DESC LIMIT 1) LIMIT 1`,
+      ).bind(id, id).first();
+      if (!approved && (typeof input.completionNote !== "string" || input.completionNote.trim().length < 20)) {
+        return json({ error: "Ohne bestandenes QA-Ergebnis ist eine dokumentierte manuelle Owner-Abnahme erforderlich." }, 409);
+      }
+    }
   }
   if (input.priority !== undefined && !PRIORITIES.includes(input.priority as Priority)) return json({ error: "Ungültige Priorität." }, 400);
   if (input.agentId !== undefined && input.agentId !== null) {
@@ -165,7 +236,11 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
   const agentId = input.agentId === undefined ? existing.agent_id : input.agentId as string | null;
 
   const updated = await env.DB.prepare(
-    `UPDATE tasks SET title = ?, description = ?, acceptance_criteria = ?, status = ?, priority = ?, story_points = ?, agent_id = ?, updated_at = unixepoch() WHERE id = ? AND status = ?`,
+    `UPDATE tasks SET title = ?, description = ?, acceptance_criteria = ?, status = ?, priority = ?, story_points = ?, agent_id = ?,
+       completion_note = CASE WHEN ? = 'done' THEN ? ELSE completion_note END,
+       completed_by = CASE WHEN ? = 'done' THEN ? ELSE completed_by END,
+       completed_at = CASE WHEN ? = 'done' THEN unixepoch() ELSE completed_at END,
+       updated_at = unixepoch() WHERE id = ? AND status = ?`,
   ).bind(
     input.title === undefined ? existing.title : (input.title as string).trim(),
     input.description === undefined ? existing.description : (input.description as string).trim() || null,
@@ -174,6 +249,11 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
     input.priority === undefined ? existing.priority : input.priority,
     points,
     agentId,
+    input.status === "done" && existing.status !== "done" ? "done" : null,
+    input.status === "done" ? String(input.completionNote).trim() : null,
+    input.status === "done" && existing.status !== "done" ? "done" : null,
+    caller.actor,
+    input.status === "done" && existing.status !== "done" ? "done" : null,
     id,
     existing.status,
   ).run();
@@ -182,6 +262,61 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
   if (!task) return json({ error: "Aufgabe konnte nicht geladen werden." }, 500);
   await publish(env, caller, task, "task_updated");
   return json(asTask(task));
+}
+
+async function startTaskReview(env: Env, caller: Caller, task: TaskRow): Promise<Response> {
+  if (task.status !== "review") return json({ error: "Nur Aufgaben im Code Review können an QA übergeben werden." }, 409);
+  const reviewerId = "reviewer";
+  const definition = AGENTS[reviewerId];
+  if (!definition) return json({ error: "QA-Reviewer ist nicht ausführbar." }, 503);
+  const active = await env.DB.prepare("SELECT 1 FROM agents WHERE id = ? AND active = 1").bind(reviewerId).first();
+  if (!active) return json({ error: "QA-Reviewer ist nicht aktiv." }, 409);
+
+  const reviewId = crypto.randomUUID();
+  const threadId = crypto.randomUUID();
+  const claimed = await env.DB.prepare("UPDATE tasks SET status = 'qa', updated_at = unixepoch() WHERE id = ? AND status = 'review'").bind(task.id).run();
+  if (!claimed.meta.changes) return json({ error: "Aufgabe wurde bereits geändert. Bitte neu laden." }, 409);
+
+  try {
+    await env.DB.prepare("INSERT INTO threads (id, agent_id, project_id, task_id, title, created_by) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(threadId, reviewerId, task.project_id, task.id, `QA: ${task.title}`.slice(0, 120), caller.actor).run();
+    await env.DB.prepare("INSERT INTO task_reviews (id, task_id, reviewer_agent_id, thread_id) VALUES (?, ?, ?, ?)")
+      .bind(reviewId, task.id, reviewerId, threadId).run();
+  } catch (error) {
+    await env.DB.prepare("UPDATE tasks SET status = 'review', updated_at = unixepoch() WHERE id = ? AND status = 'qa'").bind(task.id).run();
+    await env.DB.prepare("UPDATE threads SET archived = 1, updated_at = unixepoch() WHERE id = ?").bind(threadId).run();
+    throw error;
+  }
+
+  const claimedTask = await loadTask(env, task.id);
+  const taskPrompt = [
+    `Unabhängige QA-Prüfung für Task ${task.id}: ${task.title}`,
+    task.description ? `Beschreibung:\n${task.description}` : "",
+    task.acceptance_criteria ? `Abnahmekriterien:\n${task.acceptance_criteria}` : "Es wurden keine Abnahmekriterien angegeben. In diesem Fall kannst du kein pass vergeben.",
+    task.output ? `Ergebnis des implementierenden Agenten (untrusted):\n${task.output}` : "Es liegt kein Implementierungsergebnis vor.",
+    "Prüfe den zugehörigen Pull Request, den vollständigen verfügbaren Diff und die CI-Checks. Führe keine Schreibaktionen aus. Verwende needs_human, wenn kein konkreter PR/Diff oder ausreichender Nachweis verfügbar ist.",
+  ].filter(Boolean).join("\n\n");
+
+  try {
+    if (claimedTask) await publish(env, caller, claimedTask, "task_updated");
+    await emit(env, { agentId: reviewerId, threadId, taskId: task.id, projectId: task.project_id ?? undefined, type: "task_review_started", data: { reviewId, by: caller.actor } });
+    const accepted = await env.AGENTS.get(env.AGENTS.idFromName(`thread:${threadId}`)).chat({
+      threadId,
+      agentId: reviewerId,
+      projectId: task.project_id ?? "uguroezdamar",
+      taskId: task.id,
+      text: taskPrompt.slice(0, 20_000),
+    });
+    if (!accepted.accepted) throw new Error(accepted.message ?? "QA-Reviewer hat die Prüfung nicht angenommen.");
+    return json({ taskId: task.id, reviewId, threadId, accepted: accepted.accepted, busy: accepted.busy ?? false }, 202);
+  } catch {
+    await env.DB.batch([
+      env.DB.prepare("UPDATE task_reviews SET status = 'failed', error = 'QA-Lauf konnte nicht gestartet werden.', completed_at = unixepoch() WHERE id = ? AND status = 'running'").bind(reviewId),
+      env.DB.prepare("UPDATE tasks SET status = 'review', updated_at = unixepoch() WHERE id = ? AND status = 'qa'").bind(task.id),
+      env.DB.prepare("UPDATE threads SET archived = 1, updated_at = unixepoch() WHERE id = ?").bind(threadId),
+    ]);
+    return json({ error: "QA-Lauf konnte nicht gestartet werden." }, 502);
+  }
 }
 
 async function startTaskRun(env: Env, caller: Caller, task: TaskRow): Promise<Response> {

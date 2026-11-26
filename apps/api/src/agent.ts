@@ -43,6 +43,77 @@ interface RunState {
 
 const RUN = "run";
 const INBOX = "inbox";
+type ReviewVerdict = "pass" | "changes_requested" | "needs_human";
+
+interface ReviewResult {
+  verdict: ReviewVerdict;
+  summary: string;
+  findings: string[];
+  evidence: string[];
+}
+
+function parseReviewResult(output: string): ReviewResult {
+  const fallback: ReviewResult = {
+    verdict: "needs_human",
+    summary: "Strukturiertes Prüfergebnis fehlt oder ist ungültig; menschliche Prüfung erforderlich.",
+    findings: [],
+    evidence: [],
+  };
+  const candidate = output.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ?? output.slice(output.indexOf("{"), output.lastIndexOf("}") + 1);
+  if (!candidate) return fallback;
+  try {
+    const value: unknown = JSON.parse(candidate);
+    if (!value || typeof value !== "object") return fallback;
+    const record = value as Record<string, unknown>;
+    const verdict = record.verdict;
+    if (verdict !== "pass" && verdict !== "changes_requested" && verdict !== "needs_human") return fallback;
+    const list = (entry: unknown) => Array.isArray(entry)
+      ? entry.filter((item): item is string => typeof item === "string").slice(0, 20).map((item) => item.slice(0, 1_000))
+      : [];
+    return {
+      verdict,
+      summary: typeof record.summary === "string" ? record.summary.slice(0, 2_000) : fallback.summary,
+      findings: list(record.findings),
+      evidence: list(record.evidence),
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function reviewHasPassingEvidence(
+  criteria: string | null,
+  events: { type: string; data: string | null }[],
+  evidence: string[],
+): boolean {
+  if (!criteria?.trim() || !evidence.length) return false;
+  const results = new Map<string, unknown | null>();
+  for (const event of events) {
+    if (event.type !== "tool_result" || !event.data) continue;
+    let tool: string | null = null;
+    try {
+      const data = JSON.parse(event.data) as Record<string, unknown>;
+      tool = typeof data.tool === "string" ? data.tool : null;
+      if (tool === "repo_read_pull_request" || tool === "repo_check_status") {
+        results.set(tool, data.ok === true && typeof data.preview === "string" ? JSON.parse(data.preview) : null);
+      }
+    } catch {
+      // Truncated or malformed tool output is not evidence for an automatic pass.
+      if (tool === "repo_read_pull_request" || tool === "repo_check_status") results.set(tool, null);
+    }
+  }
+  const pull = results.get("repo_read_pull_request") as { truncated?: boolean; head?: { sha?: string }; files?: { patch?: string; patchTruncated?: boolean }[] } | null | undefined;
+  const checkResult = results.get("repo_check_status") as { ref?: string; checks?: unknown[] } | null | undefined;
+  const checks = checkResult?.checks;
+  return Boolean(
+    pull && pull.truncated === false && Array.isArray(pull.files) && pull.files.length > 0 &&
+    pull.files.every((file) => typeof file.patch === "string" && !file.patchTruncated) &&
+    Boolean(pull.head?.sha && checkResult?.ref === pull.head.sha) && Array.isArray(checks) && checks.length > 0 &&
+    checks.every((check) => check && typeof check === "object" &&
+      (check as Record<string, unknown>).status === "completed" &&
+      (check as Record<string, unknown>).conclusion === "success"),
+  );
+}
 
 /**
  * One Durable Object per chat thread (idFromName("thread:<id>")), implementing AgentRuntimePort.
@@ -89,7 +160,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     await this.ctx.storage.deleteAlarm();
     if (run) {
       await emit(this.env, { threadId: run.threadId, agentId: run.agentId, projectId: run.projectId, taskId: run.taskId, type: "stopped", data: { steps: run.steps } });
-      if (run.taskId) await this.updateTask(run, "blocked", "Agentenlauf gestoppt. Die Aufgabe kann nach Prüfung erneut gestartet werden.");
+      if (run.taskId) await this.finishTaskRun(run, "cancelled", "Agentenlauf gestoppt. Die Aufgabe kann nach Prüfung erneut gestartet werden.");
     }
   }
 
@@ -125,7 +196,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     const run = await this.ctx.storage.get<RunState>(RUN);
     if (run && Date.now() - run.touchedAt > STALE_RUN_MS) {
       await this.ctx.storage.delete(RUN);
-      if (run.taskId) await this.updateTask(run, "blocked", "Agentenlauf ist abgelaufen. Bitte Aufgabe prüfen und erneut starten.");
+      if (run.taskId) await this.finishTaskRun(run, "failed", "Agentenlauf ist abgelaufen. Bitte Aufgabe prüfen und erneut starten.");
       return undefined;
     }
     return run;
@@ -150,7 +221,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
         return;
       }
       const hasQueuedMessage = ((await this.ctx.storage.get<string[]>(INBOX)) ?? []).length > 0;
-      if (run.taskId && !hasQueuedMessage) await this.updateTask(run, outcome.kind === "done" ? "review" : "blocked", outcome.reply);
+      if (run.taskId && !hasQueuedMessage) await this.finishTaskRun(run, outcome.kind === "done" ? "done" : "failed", outcome.reply);
       await this.ctx.storage.delete(RUN);
       // Something arrived while the run was finishing: start the next one right away.
       if (((await this.ctx.storage.get<string[]>(INBOX)) ?? []).length) {
@@ -162,7 +233,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       // No rethrow: a retried alarm would repeat side effects. Report and end the run.
       await this.ctx.storage.delete(RUN);
       const message = error instanceof Error ? error.message : String(error);
-      if (run.taskId) await this.updateTask(run, "blocked", message).catch(() => undefined);
+      if (run.taskId) await this.finishTaskRun(run, "failed", message).catch(() => undefined);
       await emit(this.env, { ...base, type: "error", data: { message } }).catch(() => undefined);
     }
   }
@@ -201,7 +272,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
         content: definition.systemPrompt({
           repo,
           projectName: project?.name ?? projectId,
-          memories: await projectMemories(this.env.DB, projectId),
+          memories: definition.useProjectMemory === false ? [] : await projectMemories(this.env.DB, projectId),
         }),
       },
       history: { recent: () => this.recent(HISTORY_LIMIT), append: (message) => this.append(message) },
@@ -256,8 +327,15 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     return outcome.kind === "done" ? { kind: "done", reply: outcome.reply } : { kind: "failed", reply: outcome.reply };
   }
 
-  private async updateTask(run: RunState, status: "review" | "blocked", output: string): Promise<void> {
+  private async finishTaskRun(run: RunState, outcome: "done" | "failed" | "cancelled", output: string): Promise<void> {
     if (!run.taskId) return;
+    const review = await this.env.DB.prepare("SELECT id FROM task_reviews WHERE thread_id = ? AND status = 'running'")
+      .bind(run.threadId).first<{ id: string }>();
+    if (review) {
+      await this.finishTaskReview(run, review.id, outcome, output);
+      return;
+    }
+    const status = outcome === "done" ? "review" : "blocked";
     const result = await this.env.DB.prepare(
       "UPDATE tasks SET status = ?, output = ?, updated_at = unixepoch() WHERE id = ? AND status = 'in_progress'",
     ).bind(status, output.slice(0, 5_000), run.taskId).run();
@@ -267,6 +345,65 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       projectId: run.projectId,
       type: "task_updated",
       data: { status, agentId: run.agentId, threadId: run.threadId, source: "agent-runtime" },
+    });
+  }
+
+  private async finishTaskReview(run: RunState, reviewId: string, outcome: "done" | "failed" | "cancelled", output: string): Promise<void> {
+    let result = outcome === "done" ? parseReviewResult(output) : null;
+    if (result?.verdict === "pass") {
+      const [review, events] = await Promise.all([
+        this.env.DB.prepare("SELECT t.acceptance_criteria FROM task_reviews r JOIN tasks t ON t.id = r.task_id WHERE r.id = ? AND r.thread_id = ?")
+          .bind(reviewId, run.threadId).first<{ acceptance_criteria: string | null }>(),
+        this.env.DB.prepare("SELECT type, data FROM events WHERE thread_id = ? AND type = 'tool_result' ORDER BY id")
+          .bind(run.threadId).all<{ type: string; data: string | null }>(),
+      ]);
+      if (!reviewHasPassingEvidence(review?.acceptance_criteria ?? null, events.results, result.evidence)) {
+        result = {
+          ...result,
+          verdict: "needs_human",
+          summary: "Ein automatisches Bestehen ist nicht ausreichend belegt: Abnahmekriterien, vollständiger PR-Diff oder erfolgreiche abgeschlossene CI-Checks fehlen.",
+        };
+      }
+    }
+    const status = outcome === "done" ? "completed" : outcome;
+    const verdict = result?.verdict ?? null;
+    const nextTaskStatus = outcome !== "done" ? "blocked" : verdict === "changes_requested" ? "in_progress" : "qa";
+    const statements = await this.env.DB.batch([
+      this.env.DB.prepare(
+        `UPDATE tasks SET status = ?, updated_at = unixepoch()
+          WHERE id = ? AND status = 'qa' AND EXISTS (
+            SELECT 1 FROM task_reviews WHERE id = ? AND status = 'running'
+          )`,
+      ).bind(nextTaskStatus, run.taskId, reviewId),
+      this.env.DB.prepare(
+        `UPDATE task_reviews SET status = ?, verdict = ?, summary = ?, findings = ?, evidence = ?, raw_output = ?, error = ?, completed_at = unixepoch()
+          WHERE id = ? AND status = 'running'`,
+      ).bind(
+        status,
+        verdict,
+        result?.summary ?? (outcome === "done" ? "Prüfergebnis nicht lesbar; menschliche Prüfung erforderlich." : null),
+        JSON.stringify(result?.findings ?? []),
+        JSON.stringify(result?.evidence ?? []),
+        output.slice(0, 12_000),
+        outcome === "done" ? null : output.slice(0, 2_000),
+        reviewId,
+      ),
+    ]);
+    if (!statements[1]?.meta.changes) return;
+    await emit(this.env, {
+      agentId: run.agentId,
+      threadId: run.threadId,
+      taskId: run.taskId,
+      projectId: run.projectId,
+      type: "task_review_completed",
+      data: { reviewId, status, verdict, findings: result?.findings ?? [] },
+    });
+    await emit(this.env, {
+      threadId: run.threadId,
+      taskId: run.taskId,
+      projectId: run.projectId,
+      type: "task_updated",
+      data: { status: nextTaskStatus, reviewerId: run.agentId, reviewId, verdict, source: "qa-runtime" },
     });
   }
 

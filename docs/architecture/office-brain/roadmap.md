@@ -10,17 +10,17 @@ Diese Roadmap gilt für `uguroezdamar.com`. Sie übernimmt keine Repository-Befu
 
 Ein menschlicher Owner steuert Anforderungen über das Portal. Ein klar begrenzter Control Plane verwaltet Organisation, Aufgaben, Zuweisungen, Runs, Ereignisse und Freigaben. Agenten-Runtimes sind austauschbare Ausführungsadapter. Office- und Management-Ansichten lesen dieselben gespeicherten Daten; die 3D-Ansicht ist niemals Runtime oder Datenquelle.
 
-Der erste Betriebsumfang bleibt klein: ein Owner, die vorhandene Chef-Agent-Definition und echte Aufgaben. Rollenprofile und weitere Worker kommen erst hinzu, wenn sie eigene Fähigkeiten, Berechtigungen, Prompts, Limits und Abnahmekriterien haben.
+Der erste Betriebsumfang bleibt klein: ein Owner, der Chef-Agent für Umsetzung und ein read-only QA-Reviewer für unabhängige Prüfung. Planungsrollen sind im Katalog sichtbar, aber noch nicht ausführbar.
 
 ## Bestehende Bausteine
 
 | Bereich | Implementiert | Grenze |
 | --- | --- | --- |
 | Portalzugang | Admin-Session und geschützte Portalrouten | Browser erhält nie das API-Service-Token |
-| Agentenruntime | `apps/api`, D1, Durable Objects, Model-/Tool-Ports, Freigaben | Nur der registrierte Chef-Agent ist derzeit ausführbar |
-| Chat | `/chat`, Threads, Live-Streaming, Stop und Approval | Keine automatische Delegation an andere Rollen |
+| Agentenruntime | `apps/api`, D1, Durable Objects, Model-/Tool-Ports, Freigaben | Chef-Agent und read-only QA-Reviewer sind registriert; Planungsrollen führen keine Runs aus |
+| Chat | `/chat`, Threads, Live-Streaming, Stop und Approval | Keine freie oder automatische Delegation; Task-Review ist ein expliziter eigener Start |
 | Office | `/agents`, 2D/3D, serverautoritatives Präsenzmodell und individuelle Kamera | Visualisierung spiegelt Laufzeit und ersetzt sie nicht |
-| Work | `/work`, persistente Tasks, Priorität, Abnahmekriterien, Statusübergänge und Live-Events; Start aus Ready erzeugt verknüpften Chef-Agent-Thread | Noch keine Sprintplanung, Multi-Agent-Delegation oder isolierte Workstation |
+| Work | `/work`, persistente Tasks, Priorität, Abnahmekriterien, Statusübergänge, Owner-Abnahmen und Live-Events; Ready startet Chef, Review startet read-only QA mit eigener Historie | Noch keine Sprintplanung, parallele Developer-Delegation oder isolierte Workstation |
 
 Die Aufgaben liegen bei Agentenarbeit gemäß [ADR 0026](../decisions/0026-agent-work-management.md) in D1, zusammen mit den Agentenreferenzen und Events. Neon bleibt für die bestehenden Portal-Domänen zuständig. Es gibt keine zweite Kopie derselben Aufgaben.
 
@@ -33,6 +33,7 @@ Die Aufgaben liegen bei Agentenarbeit gemäß [ADR 0026](../decisions/0026-agent
 - **Umgesetzt:** D1 führt Abteilungen, versionierte Rollenprofile, versionierte Agent-Definitionen und Agent-Instanzen getrennt; `/api/organization` ist geschützt.
 - **Umgesetzt:** `/organization` zeigt read-only Rollenprofile und echte Instanzen. Nur Definitionen mit bekanntem Registry-Key werden als ausführbar ausgewiesen.
 - **Umgesetzt:** Chef ist als `chef-v1` dem stabilen Rollenprofil `chief` zugeordnet; weitere Profile erzeugen weder Instanzen noch Office-Avatare.
+- **Umgesetzt:** `reviewer` ist als `qa-reviewer-v1` mit separater Agenteninstanz registriert; nur explizite Lese-Werkzeuge, eigener Thread und Budget.
 - Als Nächstes: Owner-geschützte Verwaltung mit expliziten Scopes, Audit-Events und Änderungsversionen; Instanz-/Desk-Lifecycle ohne Verlust historischer Runs.
 - Stabilen Vertrag für `department`, `role`, `reportsTo`, `capabilities`, Policy-Version und Agent-Definition erweitern, sobald echte Delegation die Beziehungen benötigt.
 - Definition und Instanz unterscheiden: Definition enthält Prompt-/Tool-/Modell-Policy; Instanz ist ein aktiver Runtime-Akteur mit Limits und Desk.
@@ -48,6 +49,8 @@ Die Aufgaben liegen bei Agentenarbeit gemäß [ADR 0026](../decisions/0026-agent
 - **Umgesetzt:** `/work` liest und schreibt Tasks über die geschützte Agenten-API; D1 ist maßgeblich.
 - **Umgesetzt:** Statusübergänge werden im API-Layer validiert und als `task_created`/`task_updated` gespeichert und live verteilt.
 - **Umgesetzt:** Eine bereite Aufgabe kann an den registrierten Chef-Agenten übergeben werden. Task, Thread, Approval und Agenten-Events tragen dieselbe Task-ID; Erfolg geht in Review, Fehler/Stop in Blocked.
+- **Umgesetzt:** `review` kann ausschließlich über die QA-Route an einen eigenen Reviewer-Thread übergeben werden. Review-Ausgaben, Findings, Evidence und Task-Referenzen werden persistiert.
+- **Umgesetzt:** QA kann weder `Done` setzen noch `qa` vortäuschen. Owner-Abschluss benötigt eine begründete Notiz; bei fehlender QA-Evidenz ist manuelle Abnahme möglich.
 - **Als Nächstes:** Zuweisungs- und Abhängigkeitsregeln, Epic-/Story-Beziehungen, Sprint-Ziel und Kapazität ergänzen.
 - PR, Commit, CI-Lauf, Ergebnis und Blockierungsgrund als strukturierte, auditierbare Referenzen erfassen.
 - Scrum-Begriffe dienen dem Arbeitsfluss; das System erzwingt keine Meetings oder Schätzwerte.
@@ -58,7 +61,7 @@ Die Aufgaben liegen bei Agentenarbeit gemäß [ADR 0026](../decisions/0026-agent
 
 **Ergebnis:** ein Auftrag kann nach expliziten Regeln von Intake zu Planung, Umsetzung, unabhängiger Prüfung und Rückmeldung laufen.
 
-- Chief koordiniert; Product/Planner klären Anforderungen; Engineering Lead zerlegt Arbeit; Developer führen zugewiesene Tasks aus; Reviewer/QA prüfen unabhängig.
+- **Umgesetzt, begrenzter Ablauf:** Chef implementiert, dann startet der Owner explizit den read-only Reviewer. Product/Planner, Engineering Lead und weitere Developer sind noch nicht ausführbar.
 - Beginne sequenziell mit einem einzigen ausführbaren Agenten. Delegation/Fan-out wird erst nach messbarem Vorteil aktiviert.
 - Jeder Run referenziert Task, Definition-/Prompt-Version, Modellprofil, Tool-Allowlist, Budget und Ergebnis.
 - Zustandsmaschine: `queued → running ↔ waiting_approval → succeeded | failed | cancelled`; Retries sind begrenzt und idempotent.
@@ -119,10 +122,10 @@ Es wird kein zusätzliches Agentenframework, Message Broker, Graph-/Vektorspeich
 
 ## Nächste Reihenfolge
 
-1. Task-Board und Task-zu-Thread-Ausführung im Dev-Portal auf echte Modellannahme, Statusänderungen, zwei Browser und WebSocket-Reconnect abnehmen.
+1. Task/Run und QA-Übergabe in API-Dev mit echtem Modell, PR-Diff, CI-Status, Fehler/Stop und Zwei-Browser-Live-Pfad abnehmen.
 2. Owner-geschützte Schreibverwaltung für Profile und Instanzen mit Berechtigungsscopes und Audit-Ereignissen bauen.
-3. Reviewer-/QA-Handoff und unabhängige Abnahme ergänzen.
-4. Workstation-/Worktree-Runner isoliert evaluieren; erst nach erfolgreichem POC persistente Orchestrierung erweitern.
-5. Management- und Agent-Detailansicht sowie dynamische Abteilungen aus den bestätigten Datenverträgen bauen.
+3. Isolierte Workstation-/Worktree-Runner evaluieren; parallele Coding-Runs erst nach erfolgreichem Isolation-POC aktivieren.
+4. Product/Planning und Tech-Lead-Rollen mit strukturierten Übergaben umsetzen; zuerst sequenziell und mit Begrenzungen.
+5. Management-/Agent-Detailansichten sowie Kosten- und Delivery-Metriken aus echten Runs ergänzen.
 
 Produktionsdaten, Secrets, bezahlte Anbieter und Production-Deployments bleiben getrennte Owner-Entscheidungen gemäß [AGENTS.md](../../../AGENTS.md) und den gültigen ADRs.

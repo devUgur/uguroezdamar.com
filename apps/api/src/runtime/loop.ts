@@ -56,9 +56,9 @@ export type LoopOutcome =
   | { kind: "step_limit"; reply: string; steps: number }
   | { kind: "failed"; reply: string; steps: number };
 
-export function preview(value: unknown): string {
+export function preview(value: unknown, maxChars = PREVIEW_CHARS): string {
   const text = typeof value === "string" ? value : JSON.stringify(value);
-  return text.length > PREVIEW_CHARS ? `${text.slice(0, PREVIEW_CHARS)}…` : text;
+  return text.length > maxChars ? `${text.slice(0, maxChars)}…` : text;
 }
 
 export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
@@ -142,7 +142,10 @@ async function runTool(call: ToolCall, deps: LoopDeps): Promise<string> {
 
   try {
     const result = await tool.run(args, deps.context);
-    await deps.emit({ type: "tool_result", data: { tool: call.name, ok: true, preview: preview(result) } });
+    const resultPreview = call.name === "repo_read_pull_request" || call.name === "repo_check_status"
+      ? preview(result, 40_000)
+      : preview(result);
+    await deps.emit({ type: "tool_result", data: { tool: call.name, ok: true, preview: resultPreview } });
     return JSON.stringify(result);
   } catch (error) {
     const message = error instanceof BudgetExhausted

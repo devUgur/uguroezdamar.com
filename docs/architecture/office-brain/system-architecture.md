@@ -46,8 +46,9 @@ Die Next.js-Seite ruft Queries und Actions ihres eigenen Features auf. UI-Code g
 2. Die geschützte API prüft den aktuellen Status und startet sie derzeit ausschließlich beim registrierten Chef-Agenten. Sie erzeugt einen Thread mit `task_id` und wechselt atomar per bedingtem Update nach `in_progress`.
 3. Titel, Beschreibung und Abnahmekriterien bilden den Arbeitsauftrag; die Agent-Definition beschränkt Modellprofil, Werkzeuge, Budget und Freigaben.
 4. Der Durable-Object-Thread führt begrenzte Etappen aus. Task-ID, Events, Freigaben und Thread sind verknüpft; Stop oder Fehler blockieren die Aufgabe.
-5. Schreibende/externe Aktionen warten auf Freigabe. Ein erfolgreicher Agentenlauf verschiebt die Aufgabe nach `review`; der Mensch prüft und führt sie durch QA zu `done`.
-6. Ergebnis, Event-Spur und Endstatus werden aus D1 im Board angezeigt. Eine automatische Delegation oder QA-Runtime ist noch nicht aktiv.
+5. Schreibende/externe Aktionen warten auf Freigabe. Ein erfolgreicher Coding-Lauf verschiebt die Aufgabe nach `review`. Der Owner startet explizit den separaten QA-Reviewer, der PR-Diff und CI read-only prüft.
+6. Reviewer-Ergebnis, Findings und Evidence werden als `task_reviews` gespeichert. Fehlende/abgeschnittene Evidenz wird `needs_human`; konkrete Mängel fordern Änderungen an. Reviewer kann nie `done` setzen.
+7. Der Owner setzt den Task nach Prüfung auf `done` und hinterlegt eine Abschlussnotiz. Bei QA-`pass` bleibt die Owner-Abnahme trotzdem separat.
 
 Ein Modell darf Vorschläge liefern, aber weder seine eigene Berechtigung erweitern noch die Autorisierung oder den Statusübergang selbst festlegen.
 
@@ -74,7 +75,9 @@ Eine Quelle besitzt Eigentümer, Herkunft, Zeitstempel, Version, Datenklasse, Um
 
 ## Persistierter Organisationskatalog
 
-ADR 0027 bildet Abteilungen, Rollenprofile, Agent-Definitionen und Agent-Instanzen als getrennte D1-Entitäten ab. Rollen beschreiben fachliche Verantwortung und Fähigkeiten, nicht Tool-Rechte. Die Definition `chef-v1` verweist auf den bestehenden Registry-Key `chef`; weitere Profile sind noch nicht ausführbar. Die Office-Ansicht rendert weiterhin nur aktive Runtime-Instanzen aus `/api/agents`, nicht jedes Rollenprofil.
+ADR 0027 bildet Abteilungen, Rollenprofile, Agent-Definitionen und Agent-Instanzen als getrennte D1-Entitäten ab. Rollen beschreiben fachliche Verantwortung und Fähigkeiten, nicht Tool-Rechte. `chef-v1` und `qa-reviewer-v1` verweisen auf bekannte Registry-Keys; Planungsprofile sind noch nicht ausführbar. Die Office-Ansicht rendert nur aktive Runtime-Instanzen aus `/api/agents`, nicht jedes Rollenprofil.
+
+ADR 0028 bindet QA-Ergebnisse an Task, Reviewer-Thread und PR-Diff. Der Worker begrenzt den gelesenen Diff; für `pass` prüft der Server zusätzlich vorhandene Abnahmekriterien, vollständige PR-Dateien/Diffs und erfolgreich abgeschlossene Check-Runs anhand protokollierter Tool-Ergebnisse. Fehlende Checks oder abgeschnittene Daten führen nicht zu `pass`. D1 batcht Task- und Reviewabschluss; Events werden erst danach live verteilt. Das Board verifiziert alle Statuswechsel einschließlich Done-Gate.
 
 ## Konzeptionelle Module
 
