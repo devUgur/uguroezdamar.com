@@ -1,4 +1,5 @@
 import type { Tool, ToolContext } from "./port.ts";
+import { allowedOwners } from "../projects/repositories.ts";
 import { str, ToolInputError } from "./port.ts";
 
 const API = "https://api.github.com";
@@ -81,6 +82,42 @@ function decodeBase64(content: string): string {
   return new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0)));
 }
 
+const REPO_FORMAT = /^[A-Za-z0-9._-]{1,100}\/[A-Za-z0-9._-]{1,100}$/;
+const repoParam = {
+  type: "string",
+  description: "owner/name eines anderen Repositories des Kontos; ohne Angabe das Repository dieses Gesprächs. Nur lesend.",
+} as const;
+
+interface RepoMeta {
+  full_name: string;
+  private: boolean;
+  default_branch: string;
+}
+
+const foreignRepos = new WeakMap<ToolContext, Map<string, Promise<RepoMeta>>>();
+
+/**
+ * Which repository a read tool looks at. Reading reaches every repository of an allowed owner, registered
+ * or not; writing stays with the registered project of the chat (ADR 0029). Private content is only
+ * returned after the thread has been marked private, so only models without evaluation see it.
+ */
+async function readTarget(args: Record<string, unknown>, context: ToolContext): Promise<{ repo: string; ref: string }> {
+  const requested = typeof args.repo === "string" ? args.repo.trim() : "";
+  if (!requested || requested.toLowerCase() === context.repo.toLowerCase()) return { repo: context.repo, ref: await readRef(context) };
+  if (!REPO_FORMAT.test(requested)) throw new ToolInputError("Repository im Format owner/name angeben.");
+  const owner = requested.split("/")[0] ?? "";
+  if (!allowedOwners(context.env).includes(owner.toLowerCase())) {
+    throw new ToolInputError(`Auf Repositories von „${owner}“ hat dieser Agent keinen Zugriff.`);
+  }
+  let cache = foreignRepos.get(context);
+  if (!cache) foreignRepos.set(context, (cache = new Map()));
+  let meta = cache.get(requested.toLowerCase());
+  if (!meta) cache.set(requested.toLowerCase(), (meta = gh<RepoMeta>(context, `/repos/${requested}`)));
+  const info = await meta;
+  if (info.private) await context.markPrivate?.();
+  return { repo: info.full_name, ref: info.default_branch };
+}
+
 const listFiles: Tool = {
   spec: {
     name: "repo_list_files",
@@ -89,6 +126,7 @@ const listFiles: Tool = {
     parameters: {
       type: "object",
       properties: {
+        repo: repoParam,
         path: { type: "string", description: "Ordner relativ zur Wurzel, z. B. apps/site" },
         ref: { type: "string", description: "Branch oder Commit, Standard ist dev" },
         recursive: { type: "boolean" },
@@ -96,24 +134,25 @@ const listFiles: Tool = {
     },
   },
   async run(args, context) {
+    const { repo, ref: defaultRef } = await readTarget(args, context);
     const path = str(args, "path", "").replace(/^\/+|\/+$/g, "");
-    const ref = str(args, "ref", await readRef(context));
+    const ref = str(args, "ref", defaultRef);
     if (args.recursive === true) {
       const tree = await gh<{ tree: { path: string; type: string }[]; truncated: boolean }>(
         context,
-        `/repos/${context.repo}/git/trees/${encodeURIComponent(ref)}?recursive=1`,
+        `/repos/${repo}/git/trees/${encodeURIComponent(ref)}?recursive=1`,
       );
       const files = tree.tree
         .filter((entry) => entry.type === "blob" && (!path || entry.path.startsWith(`${path}/`)))
         .map((entry) => entry.path);
-      return { repo: context.repo, ref, count: files.length, files: files.slice(0, 400), truncated: files.length > 400 || tree.truncated };
+      return { repo: repo, ref, count: files.length, files: files.slice(0, 400), truncated: files.length > 400 || tree.truncated };
     }
     const entries = await gh<{ name: string; type: string; size: number }[] | { type: string }>(
       context,
-      `/repos/${context.repo}/contents/${path}?ref=${encodeURIComponent(ref)}`,
+      `/repos/${repo}/contents/${path}?ref=${encodeURIComponent(ref)}`,
     );
-    if (!Array.isArray(entries)) return { repo: context.repo, ref, note: `${path} ist eine Datei, kein Ordner.` };
-    return { repo: context.repo, ref, entries: entries.map((entry) => `${entry.type === "dir" ? "📁" : "📄"} ${entry.name}`) };
+    if (!Array.isArray(entries)) return { repo: repo, ref, note: `${path} ist eine Datei, kein Ordner.` };
+    return { repo: repo, ref, entries: entries.map((entry) => `${entry.type === "dir" ? "📁" : "📄"} ${entry.name}`) };
   },
 };
 
@@ -124,6 +163,7 @@ const readFile: Tool = {
     parameters: {
       type: "object",
       properties: {
+        repo: repoParam,
         path: { type: "string" },
         ref: { type: "string", description: "Branch oder Commit, Standard ist dev" },
       },
@@ -131,18 +171,19 @@ const readFile: Tool = {
     },
   },
   async run(args, context) {
+    const { repo, ref: defaultRef } = await readTarget(args, context);
     const path = str(args, "path").replace(/^\/+/, "");
-    const ref = str(args, "ref", await readRef(context));
+    const ref = str(args, "ref", defaultRef);
     const file = await gh<{ content?: string; encoding?: string; size: number; sha: string; type: string }>(
       context,
-      `/repos/${context.repo}/contents/${path}?ref=${encodeURIComponent(ref)}`,
+      `/repos/${repo}/contents/${path}?ref=${encodeURIComponent(ref)}`,
     );
     if (file.type !== "file" || file.encoding !== "base64" || file.content === undefined) {
       return { path, note: "Keine lesbare Textdatei (Ordner, zu groß oder binär)." };
     }
     const text = decodeBase64(file.content);
     return {
-      repo: context.repo,
+      repo: repo,
       path,
       ref,
       sha: file.sha,
@@ -156,10 +197,11 @@ const searchCode: Tool = {
   spec: {
     name: "repo_search_code",
     description: "Sucht Text im Code (Index des Default-Branches auf GitHub) und liefert die Dateipfade der Treffer.",
-    parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
+    parameters: { type: "object", properties: { repo: repoParam, query: { type: "string" } }, required: ["query"] },
   },
   async run(args, context) {
-    const query = `${str(args, "query")} repo:${context.repo}`;
+    const { repo } = await readTarget(args, context);
+    const query = `${str(args, "query")} repo:${repo}`;
     const result = await gh<{ total_count: number; items: { path: string }[] }>(
       context,
       `/search/code?per_page=30&q=${encodeURIComponent(query)}`,
@@ -282,13 +324,14 @@ const listPullRequests: Tool = {
   spec: {
     name: "repo_list_pull_requests",
     description: "Listet Pull Requests des Repositories mit Status.",
-    parameters: { type: "object", properties: { state: { type: "string", enum: ["open", "closed", "all"] } } },
+    parameters: { type: "object", properties: { repo: repoParam, state: { type: "string", enum: ["open", "closed", "all"] } } },
   },
   async run(args, context) {
+    const { repo } = await readTarget(args, context);
     const state = str(args, "state", "open");
     const pulls = await gh<{ number: number; title: string; head: { ref: string }; html_url: string; draft: boolean }[]>(
       context,
-      `/repos/${context.repo}/pulls?state=${state}&per_page=30`,
+      `/repos/${repo}/pulls?state=${state}&per_page=30`,
     );
     return pulls.map((pull) => ({ number: pull.number, title: pull.title, branch: pull.head.ref, url: pull.html_url }));
   },
@@ -298,14 +341,15 @@ const readPullRequest: Tool = {
   spec: {
     name: "repo_read_pull_request",
     description: "Liest Metadaten, geänderte Dateien und verfügbare Patch-Diffs eines Pull Requests. Ausschließlich lesend; maximal 20 Dateien und begrenzte Patch-Größe.",
-    parameters: { type: "object", properties: { number: { type: "integer", description: "Pull-Request-Nummer" } }, required: ["number"] },
+    parameters: { type: "object", properties: { repo: repoParam, number: { type: "integer", description: "Pull-Request-Nummer" } }, required: ["number"] },
   },
   async run(args, context) {
+    const { repo } = await readTarget(args, context);
     const number = Number(args.number);
     if (!Number.isInteger(number) || number < 1) throw new ToolInputError("Ungültige Pull-Request-Nummer.");
     const [pull, files] = await Promise.all([
-      gh<{ number: number; title: string; body: string | null; state: string; draft: boolean; head: { ref: string; sha: string }; base: { ref: string } }>(context, `/repos/${context.repo}/pulls/${number}`),
-      gh<{ filename: string; status: string; additions: number; deletions: number; patch?: string }[]>(context, `/repos/${context.repo}/pulls/${number}/files?per_page=21`),
+      gh<{ number: number; title: string; body: string | null; state: string; draft: boolean; head: { ref: string; sha: string }; base: { ref: string } }>(context, `/repos/${repo}/pulls/${number}`),
+      gh<{ filename: string; status: string; additions: number; deletions: number; patch?: string }[]>(context, `/repos/${repo}/pulls/${number}/files?per_page=21`),
     ]);
     let remainingPatchChars = 30_000;
     const boundedFiles = files.slice(0, 20).map((file) => {
@@ -339,13 +383,14 @@ const checkStatus: Tool = {
   spec: {
     name: "repo_check_status",
     description: "Zeigt den CI-Status (GitHub Checks) eines Branches oder Commits.",
-    parameters: { type: "object", properties: { ref: { type: "string" } }, required: ["ref"] },
+    parameters: { type: "object", properties: { repo: repoParam, ref: { type: "string" } }, required: ["ref"] },
   },
   async run(args, context) {
+    const { repo } = await readTarget(args, context);
     const ref = str(args, "ref");
     const checks = await gh<{ check_runs: { name: string; status: string; conclusion: string | null; html_url: string }[] }>(
       context,
-      `/repos/${context.repo}/commits/${encodeURIComponent(ref)}/check-runs?per_page=50`,
+      `/repos/${repo}/commits/${encodeURIComponent(ref)}/check-runs?per_page=50`,
     );
     return {
       ref,

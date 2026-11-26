@@ -19,7 +19,7 @@ export function ProjectsView({ projects, projectsError, repositories, repositori
         <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">Control Plane</p>
         <h1 className="font-serif text-3xl">Projekte</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Ein Projekt ist ein GitHub-Repository, an dem die Agenten arbeiten dürfen. Nur registrierte Repositories sind für sie les- und schreibbar. Private Repositories sprechen ausschließlich mit Modellen, die Inhalte nicht auswerten.
+          Die Agenten können jedes Repository deines Kontos lesen. Schreiben dürfen sie nur in registrierten Projekten, auf eigenen Branches und nach deiner Freigabe. Sobald ein privates Repository im Chat vorkommt, antworten ausschließlich Modelle, die Inhalte nicht auswerten.
         </p>
       </header>
 

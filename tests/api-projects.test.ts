@@ -260,3 +260,53 @@ describe("private content follows the model the chat is pinned to", () => {
     expect(router.keepsContentPrivate({ provider: "modal", model: "unbekannt" })).toBe(false);
   });
 });
+
+describe("reading other repositories of the account", () => {
+  const readFile = githubTools.find((tool) => tool.spec.name === "repo_read_file");
+  const listFiles = githubTools.find((tool) => tool.spec.name === "repo_list_files");
+  const base = (): ProjectRow[] => [{ id: "p", repo: "devUgur/main", status: "active", visibility: "public", default_branch: "main", write_mode: "dev-first" }];
+  const contextFor = (marked = vi.fn(async () => undefined)) => {
+    const { env } = envWith(base());
+    return { context: { env, agentId: "chef", projectId: "p", repo: "devUgur/main", budget: new SubrequestBudget(), markPrivate: marked } as ToolContext, marked };
+  };
+  const stubRepo = (isPrivate: boolean) =>
+    stubGithub((url) => {
+      if (url.endsWith("/repos/devUgur/notes")) return repoJson({ private: isPrivate, default_branch: "trunk" });
+      return [{ name: "README.md", type: "file", size: 1 }];
+    });
+
+  it("reads an unregistered repository of an allowed owner from its own default branch", async () => {
+    const calls = stubRepo(false);
+    const { context, marked } = contextFor();
+    const result = (await listFiles?.run({ repo: "devUgur/notes" }, context)) as { repo: string; ref: string };
+    expect(result).toMatchObject({ repo: "devUgur/notes", ref: "trunk" });
+    expect(calls.some((url) => url.includes("/repos/devUgur/notes/contents/?ref=trunk"))).toBe(true);
+    expect(marked).not.toHaveBeenCalled();
+  });
+
+  it("marks the thread private before returning content of a private repository", async () => {
+    stubRepo(true);
+    const order: string[] = [];
+    const { context } = contextFor(vi.fn(async () => void order.push("marked")));
+    await listFiles?.run({ repo: "devUgur/notes" }, context);
+    order.push("returned");
+    expect(order).toEqual(["marked", "returned"]);
+  });
+
+  it("refuses other owners and malformed names without calling GitHub", async () => {
+    const calls = stubRepo(false);
+    const { context } = contextFor();
+    await expect(readFile?.run({ repo: "viralsync-app/platform", path: "a" }, context)).rejects.toThrow(/keinen Zugriff/);
+    await expect(readFile?.run({ repo: "kaputt", path: "a" }, context)).rejects.toThrow(/owner\/name/);
+    expect(calls).toEqual([]);
+  });
+
+  it("keeps writing on the repository of the chat, whatever repo the model names", async () => {
+    const calls = stubGithub(() => ({ object: { sha: "abc" } }));
+    const { context } = contextFor();
+    const commit = githubTools.find((tool) => tool.spec.name === "repo_commit_files");
+    await commit?.run({ repo: "devUgur/notes", branch: "dev", message: "m", files: [{ path: "a.txt", content: "x" }] }, context).catch(() => undefined);
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.every((url) => url.includes("/repos/devUgur/main/"))).toBe(true);
+  });
+});

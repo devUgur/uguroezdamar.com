@@ -18,7 +18,7 @@ Ein feingranularer GitHub-Token hat genau einen Besitzer, also das Konto oder ei
 
 ## Entscheidung
 
-1. **Registrieren statt freigeben.** Ein Projekt (`projects`) ist ein Repository, an dem Agenten arbeiten dürfen. Nur registrierte, aktive Projekte sind les- und schreibbar. Der Token darf mehr sehen als das; die Registrierung entscheidet. Der Owner wählt im Portal (`/projects`) aus den Repositories des Kontos.
+1. **Lesen für alle Repositories des Kontos, Schreiben nur im registrierten Projekt.** Die Lese-Werkzeuge nehmen den Parameter `repo` (owner/name) und lesen jedes Repository eines freigegebenen Besitzers, registriert oder nicht, vom Standardbranch. Ein Projekt (`projects`) ist ein Repository, in dem Agenten schreiben dürfen; es ist das Repository des Threads. Schreibende Werkzeuge ignorieren `repo`. Der Owner registriert im Portal (`/projects`) und wechselt im Chat das Projekt. (Ursprünglich galt auch Lesen nur für Projekte; geändert am selben Tag, weil Ugur alle Repositories einsehen will und Schreiben ohnehin gesperrt bleibt.)
 2. **Besitzer-Freigabe.** Die Variable `GITHUB_OWNERS` (derzeit `devUgur`) nennt die GitHub-Konten, deren Repositories Projekte werden können. Organisationen bleiben ausgeschlossen, bis sie einzeln entschieden werden (ein eigener Token je Organisation oder eine GitHub App). Die API prüft das selbst und vertraut dem Portal nicht.
 3. **Sichtbarkeit und Standardbranch kommen von GitHub**, nie vom Aufrufer. Archivierte Repositories lassen sich nicht registrieren.
 4. **Schreibregel je Projekt** (`write_mode`):
@@ -41,6 +41,7 @@ Ein feingranularer GitHub-Token hat genau einen Besitzer, also das Konto oder ei
 
 - Migration `0009_project_repositories.sql` ergänzt `visibility`, `default_branch` und `write_mode`; das Hauptprojekt wird `public` und `dev-first`.
 - Ein Thread arbeitet im Repository seines Projekts; im Chat lässt sich das Projekt wechseln, solange der Agent nicht läuft. Sieht oder liest der Agent private Repository-Inhalte (Namen aus `github_repositories_list`, Dateien in einem privaten Projekt), wird der Thread dauerhaft „privat“ (`markPrivate`, im Durable Object gespeichert): danach antworten nur Modelle ohne Datenauswertung, ohne Fallback auf einen auswertenden Anbieter. Der Owner muss dafür nichts einstellen; die Schritte vor dem ersten Zugriff enthalten keine privaten Inhalte.
+- Lesen eines privaten Repositories markiert den Thread zuerst als privat (Punkt 5); gelesener Code ist nicht vertrauenswürdig, kann aber ohne Registrierung und Freigabe nirgends schreiben.
 - Ein Thread arbeitet im Repository seines Projekts. Der Chat-Start in `/projects` legt ihn mit dem Projekt an.
 - Die Datenschutzregel ist durch Tests abgesichert, darunter ein Fall, der beim Aushebeln der Filterung scheitert (`tests/api-projects.test.ts`).
 - Das Anlegen von Repositories, die Organisationen sind offen.
