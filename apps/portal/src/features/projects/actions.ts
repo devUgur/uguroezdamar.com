@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { agentsApi, isAgentsApiId } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/auth";
@@ -63,4 +64,25 @@ export async function startProjectChat(formData: FormData): Promise<void> {
     back("error", failure(error));
   }
   redirect(`/chat/${threadId}`);
+}
+
+/**
+ * "GitHub verbinden": the API builds the installation link for the app (with a signed state for this account),
+ * and GitHub sends the browser back to /projects when the installation is done. The address to return to is
+ * this portal's own origin, taken from the request.
+ */
+export async function connectGithub(): Promise<void> {
+  const who = await actor();
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  const protocol = requestHeaders.get("x-forwarded-proto") ?? (host?.startsWith("localhost") ? "http" : "https");
+  if (!host) back("error", "Die eigene Adresse ließ sich nicht bestimmen.");
+  let url: string;
+  try {
+    ({ url } = await agentsApi<{ url: string }>("/api/github/connect", who, { method: "POST", body: { returnTo: `${protocol}://${host}/projects` } }));
+  } catch (error) {
+    back("error", failure(error));
+  }
+  if (!url.startsWith("https://github.com/apps/")) back("error", "Unerwartete Antwort der API.");
+  redirect(url);
 }

@@ -1,6 +1,6 @@
 # ADR 0032: Mandantenfähigkeit und One-Click-Verbindung zu GitHub
 
-- Status: accepted als Richtung; Stufe 1 umgesetzt, Stufen 2 bis 4 offen
+- Status: accepted als Richtung; Stufen 1 und 2 umgesetzt, 3 und 4 offen
 - Datum: 2026-11-26
 - Beteiligte: Projektverantwortlicher
 - Baut auf: [ADR 0024](0024-agent-platform-on-cloudflare.md), [ADR 0029](0029-projects-as-repository-access.md), [ADR 0031](0031-github-app-access.md)
@@ -88,6 +88,24 @@ Bewusst noch nicht mandantenfähig (Stufen 2 und 3):
 - Projekt-Ids sind global eindeutig (Primärschlüssel); bei Namenskollision bekommt die ID ein Suffix. Eine zusammengesetzte Eindeutigkeit folgt, wenn es zweite Mandanten gibt.
 - Der Live-Hub und die Ticketausgabe laufen für den Owner auf `main`; ein Hub je Mandant mit signiertem Zugangs-Token kommt mit der Kundenanmeldung.
 - `GITHUB_OWNERS` gilt noch global; die Ableitung aus `tenant_installations` folgt im Verbinden-Fluss.
+
+## Entscheidungen zu den offenen Fragen (Standard, bis der Owner widerspricht)
+
+1. **Zielgruppe der Beta:** einzelne Entwickler und kleine Teams. Agenturen mit mehreren Kunden-Konten und Organisationen folgen, wenn die Rollen je Mandant fertig sind.
+2. **Anmeldung der Kunden:** „Mit GitHub anmelden“ als Hauptweg, weil das Konto ohnehin mit GitHub verbunden wird; ein eigenes Konto mit E-Mail ist ein späterer Zusatz. (Umsetzung in Stufe 3.)
+3. **Kundendaten an auswertende Anbieter:** nein, ohne Ausnahme (Punkt 5 oben).
+4. **Erste Stufe:** Stufe 1 (Grundlage) und Stufe 2 (Verbinden-Fluss) auf dem Owner-Mandanten, bevor ein zweiter Mandant existiert; ein Testkonto dient als zweiter Mandant.
+
+## Umsetzung Stufe 2 (Stand 2026-11-26)
+
+- **Verbinden:** `POST /api/github/connect` (Dienst-Token, `{ returnTo }`) liefert den Installationslink der App, mit einem signierten `state` (Mandant, Rücksprungadresse, Einmalwert, zehn Minuten gültig; geschlüsselt aus dem Dienst-Token). `GET /api/github/setup` ist die Setup URL der App: Sie prüft den `state`, markiert ihn als benutzt, fragt GitHub nach der Installation (die Id im Link ist nur eine Behauptung), lehnt Installationen ab, die ein anderer Mandant schon hat, trägt sie in `tenant_installations` ein und leitet zum Portal zurück. Rücksprung nur auf https oder lokalen Server.
+- **Webhook:** `POST /webhooks/github` prüft zuerst die Signatur (HMAC-SHA256 über den Rohtext, zeitkonstant; ohne Secret wird alles abgelehnt), verwirft Wiederholungen über `x-github-delivery` und hält `tenant_installations` aktuell (`deleted`, `suspend`, `unsuspend`, geänderte Auswahl) und leert die Caches, sodass ein entzogener Zugang sofort endet. Andere Ereignisse werden angenommen und ignoriert, bis etwas sie nutzt.
+- **Freigegebene Besitzer je Mandant:** `GITHUB_OWNERS` gilt nur noch für den Owner und zusätzlich zu dessen verbundenen Konten. Ein Kunde darf nur die Konten nutzen, die er selbst verbunden hat. Der persönliche Token und das Anlegen von Repositories gehören ausschließlich dem Owner; ein Kunde ohne eigene Installation bekommt eine klare Absage statt des Owner-Zugangs.
+- **Portal:** `/projects` zeigt die Verbindung und den Knopf „GitHub verbinden“ bzw. „Weiteres GitHub-Konto verbinden“.
+- **Secret:** `AGENT_GH_WEBHOOK_SECRET` wird von `pnpm ugur api secrets --apply` erzeugt, in Infisical (`prod`) und in GitHub Actions abgelegt und von Hand in die App eingetragen. `--rotate` ändert es bewusst nicht.
+- **Tests:** `tests/api-github-connect.test.ts` (Signatur und Ablauf des `state`, Einmaligkeit, fremde Installation, Webhook mit Signatur, Wiederholung, Entzug) auf echtem SQLite; Abweichungen im Code (Signaturprüfung, Mandantenprüfung) wurden gezielt eingebaut, und die Tests scheiterten daran.
+
+Noch offen für Stufe 2 (braucht ein zweites GitHub-Konto): der Test des Flusses von Anfang bis Ende mit einem Testkonto und eine App, die „Any account“ erlaubt.
 
 ## Alternativen
 

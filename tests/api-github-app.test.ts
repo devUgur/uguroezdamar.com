@@ -1,7 +1,7 @@
 import { createVerify, generateKeyPairSync } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { appJwt, installationToken, toPkcs8 } from "../apps/api/src/github/app.ts";
-import { githubStatus, githubToken } from "../apps/api/src/github/credentials.ts";
+import { githubStatus, githubToken, personalToken } from "../apps/api/src/github/credentials.ts";
 import { listRepositories } from "../apps/api/src/projects/repositories.ts";
 import type { Env } from "../apps/api/src/env.ts";
 
@@ -18,11 +18,17 @@ function kv() {
   };
 }
 
-function envWith(extra: Record<string, unknown> = {}) {
+function envWith(extra: Record<string, unknown> = {}, installs: { tenant_id: string; installation_id: number; account: string; selection: string }[] = []) {
   const config = kv();
   const env = {
     CONFIG: config,
-    DB: { prepare: () => ({ bind: () => ({ all: async () => ({ results: [] }) }) }) },
+    DB: {
+      prepare: (sql: string) => ({
+        bind: (...args: unknown[]) => ({
+          all: async () => ({ results: sql.includes("FROM tenant_installations") ? installs.filter((row) => row.tenant_id === args[0]) : [] }),
+        }),
+      }),
+    },
     AGENT_GH_APP_ID: "123",
     AGENT_GH_APP_PRIVATE_KEY: pkcs1,
     GITHUB_OWNERS: "devUgur",
@@ -108,23 +114,24 @@ describe("which credential speaks for an account", () => {
   it("prefers the app, falls back to the personal token elsewhere, and says so when neither fits", async () => {
     stubGithub();
     const { env } = envWith({ AGENT_GITHUB_TOKEN: "pat" });
-    expect(await githubToken(env, "devUgur")).toBe("ghs_install");
-    expect(await githubToken(env, "viralsync-app")).toBe("pat");
+    expect(await githubToken(env, "owner", "devUgur")).toBe("ghs_install");
+    expect(await githubToken(env, "owner", "viralsync-app")).toBe("pat");
     const { env: appOnly } = envWith();
-    await expect(githubToken(appOnly, "viralsync-app")).rejects.toThrow(/nicht installiert/);
+    await expect(githubToken(appOnly, "owner", "viralsync-app")).rejects.toThrow(/nicht installiert/);
   });
 
   it("uses the token alone when no app is configured", async () => {
     const { env } = envWith({ AGENT_GH_APP_ID: undefined, AGENT_GH_APP_PRIVATE_KEY: undefined, AGENT_GITHUB_TOKEN: "pat" });
-    expect(await githubToken(env, "devUgur")).toBe("pat");
-    expect((await githubStatus(env, ["devugur"])).mode).toBe("token");
+    expect(await githubToken(env, "owner", "devUgur")).toBe("pat");
+    expect((await githubStatus(env, "owner")).mode).toBe("token");
   });
 
   it("reports installations and whether their account is on the allow-list", async () => {
     stubGithub();
     const { env } = envWith();
-    expect(await githubStatus(env, ["devugur"])).toMatchObject({ mode: "app", installations: [{ account: "devUgur", allowed: true }] });
-    expect((await githubStatus(env, [])).installations[0]?.allowed).toBe(false);
+    expect(await githubStatus(env, "owner")).toMatchObject({ mode: "app", installations: [{ account: "devUgur", allowed: true }] });
+    const { env: noOwners } = envWith({ GITHUB_OWNERS: "" });
+    expect((await githubStatus(noOwners, "owner")).installations[0]?.allowed).toBe(false);
   });
 });
 
@@ -138,9 +145,30 @@ describe("listing repositories through the app", () => {
     expect(calls.find((call) => call.url.includes("/user/repos"))?.authorization).toBe("Bearer pat");
   });
 
+  it("shows a customer only the accounts it connected, never the owner's token or repositories", async () => {
+    const calls = stubGithub();
+    const mine = { tenant_id: "acme", installation_id: 7, account: "devUgur", selection: "all" };
+    const { env } = envWith({ AGENT_GITHUB_TOKEN: "pat" }, [mine]);
+    // The stub's installation 7 is on devUgur: acme connected it, so it sees that installation's repositories, but not the token's extras.
+    expect((await listRepositories(env, "acme")).map((repo) => repo.fullName).sort()).toEqual(["devUgur/a", "devUgur/b"]);
+    expect(calls.some((call) => call.url.includes("/user/repos"))).toBe(false);
+    // A tenant that connected nothing sees nothing.
+    expect(await listRepositories(env, "globex")).toEqual([]);
+  });
+
   it("works with the app alone", async () => {
     stubGithub();
     const { env } = envWith();
     expect((await listRepositories(env, "owner")).map((repo) => repo.fullName)).toEqual(["devUgur/a", "devUgur/b"]);
+  });
+});
+
+describe("a customer never uses the owner's credentials", () => {
+  it("refuses the personal token and the owner's installation to any other tenant", async () => {
+    stubGithub();
+    const { env } = envWith({ AGENT_GITHUB_TOKEN: "pat" });
+    expect(() => personalToken(env, "acme")).toThrow(/Owner/);
+    // The app is installed on devUgur, but not for acme's account: no fallback to the token.
+    await expect(githubToken(env, "acme", "acme-corp")).rejects.toThrow(/nicht installiert/);
   });
 });

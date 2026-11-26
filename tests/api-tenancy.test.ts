@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-import { hubObjectName, OWNER_TENANT, officeObjectName, TENANT_TABLES, threadObjectName } from "../apps/api/src/tenancy.ts";
+import { hubObjectName, OWNER_TENANT, officeObjectName, TENANT_SCOPED_TABLES, TENANT_TABLES, threadObjectName } from "../apps/api/src/tenancy.ts";
 
 const apiSource = resolve(import.meta.dirname, "../apps/api/src");
 
@@ -30,7 +30,7 @@ function literals(path: string): { text: string; line: number }[] {
   return found;
 }
 
-const TABLE_REFERENCE = new RegExp(`\\b(?:FROM|JOIN|UPDATE|INTO)\\s+(?:${TENANT_TABLES.join("|")})\\b`);
+const TABLE_REFERENCE = new RegExp(`\\b(?:FROM|JOIN|UPDATE|INTO)\\s+(?:${TENANT_SCOPED_TABLES.join("|")})\\b`);
 const STATES_TENANT = /tenant_id|\/\* tenant:(?:parent|platform) \*\//;
 
 describe("tenant isolation in the API's SQL", () => {

@@ -1,6 +1,6 @@
 import type { Tool, ToolContext } from "./port.ts";
 import { githubToken } from "../github/credentials.ts";
-import { allowedOwners } from "../projects/repositories.ts";
+import { allowedOwnersFor } from "../github/tenants.ts";
 import { str, ToolInputError } from "./port.ts";
 
 const API = "https://api.github.com";
@@ -64,7 +64,7 @@ function ownerOfPath(path: string, fallback: string): string {
 }
 
 async function gh<T>(context: ToolContext, path: string, init: RequestInit = {}, owner?: string): Promise<T> {
-  const token = await githubToken(context.env, owner ?? ownerOfPath(path, context.repo), () => context.budget.take());
+  const token = await githubToken(context.env, context.tenantId, owner ?? ownerOfPath(path, context.repo), () => context.budget.take());
   context.budget.take();
   const response = await fetch(`${API}${path}`, {
     ...init,
@@ -111,7 +111,7 @@ async function readTarget(args: Record<string, unknown>, context: ToolContext): 
   if (!requested || requested.toLowerCase() === context.repo.toLowerCase()) return { repo: context.repo, ref: await readRef(context) };
   if (!REPO_FORMAT.test(requested)) throw new ToolInputError("Repository im Format owner/name angeben.");
   const owner = requested.split("/")[0] ?? "";
-  if (!allowedOwners(context.env).includes(owner.toLowerCase())) {
+  if (!(await allowedOwnersFor(context.env, context.tenantId)).includes(owner.toLowerCase())) {
     throw new ToolInputError(`Auf Repositories von „${owner}“ hat dieser Agent keinen Zugriff.`);
   }
   let cache = foreignRepos.get(context);

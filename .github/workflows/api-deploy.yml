@@ -75,10 +75,11 @@ jobs:
           #   API_SERVICE_TOKEN     the portal's key to this API; without it every call gets 401
           #   GEMINI_API_KEY        optional; without it the router falls back to Workers AI
           #   AGENT_GITHUB_TOKEN    optional; without it the repo tools report a missing token
+          #   AGENT_GH_WEBHOOK_SECRET  optional; signs the GitHub App's webhook deliveries (ADR 0032)
           #   AGENT_GH_APP_ID / AGENT_GH_APP_PRIVATE_KEY  optional; GitHub App (ADR 0031), replaces the token where installed
           #   MODAL_LLM_API_KEY     optional; key of the own models on Modal (apps/api/modal/llm.py)
           node -e '
-            const names = ["API_SERVICE_TOKEN", "GEMINI_API_KEY", "AGENT_GITHUB_TOKEN", "AGENT_GH_APP_ID", "AGENT_GH_APP_PRIVATE_KEY", "MODAL_LLM_API_KEY"];
+            const names = ["API_SERVICE_TOKEN", "GEMINI_API_KEY", "AGENT_GITHUB_TOKEN", "AGENT_GH_APP_ID", "AGENT_GH_APP_PRIVATE_KEY", "AGENT_GH_WEBHOOK_SECRET", "MODAL_LLM_API_KEY"];
             const set = names.filter((name) => process.env[name]);
             const missing = names.filter((name) => !process.env[name]);
             if (missing.length) console.log("::warning::Not set, skipped: " + missing.join(", "));
@@ -93,6 +94,7 @@ jobs:
           AGENT_GITHUB_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN }}
           AGENT_GH_APP_ID: ${{ secrets.AGENT_GH_APP_ID }}
           AGENT_GH_APP_PRIVATE_KEY: ${{ secrets.AGENT_GH_APP_PRIVATE_KEY }}
+          AGENT_GH_WEBHOOK_SECRET: ${{ secrets.AGENT_GH_WEBHOOK_SECRET }}
           MODAL_LLM_API_KEY: ${{ secrets.MODAL_LLM_API_KEY }}
       # Workers and custom domains that no longer exist in wrangler.jsonc (the former "platform"
       # worker, ADR 0024). Only these exact names; anything already gone is fine.

@@ -1,6 +1,7 @@
 import type { Env } from "../env.ts";
 import { appConfigured, GithubAccessError, installations } from "../github/app.ts";
 import { githubToken, personalToken } from "../github/credentials.ts";
+import { allowedOwnersFor } from "../github/tenants.ts";
 import { OWNER_TENANT } from "../tenancy.ts";
 
 const API = "https://api.github.com";
@@ -28,6 +29,8 @@ interface GithubRepo {
 }
 
 interface Call {
+  /** The tenant the call is for: only the owner may use the personal token. */
+  tenantId: string;
   /** Account whose repositories the call touches; selects the GitHub App installation. */
   owner?: string;
   /** User-level endpoint: only the personal token can call it, an app installation cannot. */
@@ -38,10 +41,10 @@ interface Call {
   post?: unknown;
 }
 
-async function github<T>(env: Env, path: string, call: Call = {}): Promise<T> {
+async function github<T>(env: Env, path: string, call: Call): Promise<T> {
   let token: string;
   try {
-    token = call.personal || !call.owner ? personalToken(env) : await githubToken(env, call.owner, call.beforeFetch);
+    token = call.personal || !call.owner ? personalToken(env, call.tenantId) : await githubToken(env, call.tenantId, call.owner, call.beforeFetch);
   } catch (error) {
     if (error instanceof GithubAccessError) throw new ProjectError(error.message, error.status);
     throw error;
@@ -69,16 +72,8 @@ async function github<T>(env: Env, path: string, call: Call = {}): Promise<T> {
   return (await response.json()) as T;
 }
 
-/** GitHub accounts whose repositories may become projects (comma-separated Worker variable). */
-export function allowedOwners(env: Env): string[] {
-  return (env.GITHUB_OWNERS ?? "")
-    .split(",")
-    .map((owner) => owner.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function ownerAllowed(env: Env, owner: string): boolean {
-  return allowedOwners(env).includes(owner.toLowerCase());
+async function ownerAllowed(env: Env, tenantId: string, owner: string): Promise<boolean> {
+  return (await allowedOwnersFor(env, tenantId)).includes(owner.toLowerCase());
 }
 
 /**
@@ -87,15 +82,17 @@ function ownerAllowed(env: Env, owner: string): boolean {
  * inside an agent run can count it against their subrequest budget.
  */
 export async function listRepositories(env: Env, tenantId: string, beforeFetch?: () => void) {
+  const allowed = await allowedOwnersFor(env, tenantId);
   const found = new Map<string, GithubRepo>();
   const add = (batch: GithubRepo[]) => batch.forEach((repo) => found.has(repo.full_name.toLowerCase()) || found.set(repo.full_name.toLowerCase(), repo));
-  if (!appConfigured(env) && !env.AGENT_GITHUB_TOKEN) personalToken(env);
+  if (!appConfigured(env) && !(tenantId === OWNER_TENANT && env.AGENT_GITHUB_TOKEN)) personalToken(env, tenantId);
   try {
     if (appConfigured(env)) {
       for (const installation of await installations(env, beforeFetch)) {
-        if (!ownerAllowed(env, installation.account)) continue;
+        if (!allowed.includes(installation.account.toLowerCase())) continue;
         for (let page = 1; page <= 4; page += 1) {
           const batch = await github<{ repositories: GithubRepo[] }>(env, `/installation/repositories?per_page=100&page=${page}`, {
+            tenantId,
             owner: installation.account,
             beforeFetch,
           });
@@ -108,9 +105,9 @@ export async function listRepositories(env: Env, tenantId: string, beforeFetch?:
     if (error instanceof GithubAccessError) throw new ProjectError(error.message, error.status);
     throw error;
   }
-  if (env.AGENT_GITHUB_TOKEN) {
+  if (tenantId === OWNER_TENANT && env.AGENT_GITHUB_TOKEN) {
     for (let page = 1; page <= 4; page += 1) {
-      const batch = await github<GithubRepo[]>(env, `/user/repos?affiliation=owner&sort=pushed&per_page=100&page=${page}`, { personal: true, beforeFetch });
+      const batch = await github<GithubRepo[]>(env, `/user/repos?affiliation=owner&sort=pushed&per_page=100&page=${page}`, { tenantId, personal: true, beforeFetch });
       add(batch);
       if (batch.length < 100) break;
     }
@@ -121,7 +118,7 @@ export async function listRepositories(env: Env, tenantId: string, beforeFetch?:
     .all<{ id: string; repo: string }>();
   const registered = new Map(results.map((row) => [row.repo.toLowerCase(), row.id]));
   return repos
-    .filter((repo) => ownerAllowed(env, repo.owner.login))
+    .filter((repo) => allowed.includes(repo.owner.login.toLowerCase()))
     .map((repo) => ({
       fullName: repo.full_name,
       name: repo.name,
@@ -144,9 +141,9 @@ function slug(name: string): string {
 export async function registerProject(env: Env, tenantId: string, fullName: string): Promise<{ id: string; created: boolean }> {
   if (!REPO_NAME.test(fullName)) throw new ProjectError("Repository im Format owner/name angeben.", 400);
   const owner = fullName.split("/")[0] ?? "";
-  if (!ownerAllowed(env, owner)) throw new ProjectError(`Der Besitzer „${owner}“ ist nicht freigegeben.`, 403);
+  if (!(await ownerAllowed(env, tenantId, owner))) throw new ProjectError(`Der Besitzer „${owner}“ ist nicht freigegeben.`, 403);
 
-  const repo = await github<GithubRepo>(env, `/repos/${fullName}`, { owner });
+  const repo = await github<GithubRepo>(env, `/repos/${fullName}`, { tenantId, owner });
   if (repo.archived) throw new ProjectError("Das Repository ist archiviert; dort kann nicht geschrieben werden.", 409);
 
   const visibility = repo.private ? "private" : "public";
@@ -188,9 +185,11 @@ export async function createRepository(
   if (!NEW_REPO_NAME.test(input.name) || input.name.endsWith(".git")) {
     throw new ProjectError("Ungültiger Repository-Name (Buchstaben, Ziffern, Punkt, Bindestrich, Unterstrich).", 400);
   }
-  const me = await github<{ login: string }>(env, "/user", { personal: true });
-  if (!ownerAllowed(env, me.login)) throw new ProjectError(`Das Konto „${me.login}“ ist nicht freigegeben.`, 403);
+  if (tenantId !== OWNER_TENANT) throw new ProjectError("Repositories lassen sich nur auf dem Konto des Owners anlegen.", 403);
+  const me = await github<{ login: string }>(env, "/user", { tenantId, personal: true });
+  if (!(await ownerAllowed(env, tenantId, me.login))) throw new ProjectError(`Das Konto „${me.login}“ ist nicht freigegeben.`, 403);
   const created = await github<GithubRepo>(env, "/user/repos", {
+    tenantId,
     personal: true,
     post: { name: input.name, description: input.description?.slice(0, 300), private: input.private !== false, auto_init: true },
   });

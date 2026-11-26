@@ -71,7 +71,7 @@ export async function appJwt(env: Env, now = Math.floor(Date.now() / 1000)): Pro
   return `${unsigned}.${base64url(signature)}`;
 }
 
-async function appRequest<T>(path: string, init: RequestInit, bearer: string, beforeFetch?: () => void): Promise<T> {
+export async function appRequest<T>(path: string, init: RequestInit, bearer: string, beforeFetch?: () => void): Promise<T> {
   beforeFetch?.();
   const response = await fetch(`${API}${path}`, {
     ...init,

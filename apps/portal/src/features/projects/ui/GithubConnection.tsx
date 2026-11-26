@@ -1,3 +1,4 @@
+import { connectGithub } from "../actions";
 import type { GithubStatus } from "../types";
 
 interface GithubConnectionProps {
@@ -34,7 +35,7 @@ export function GithubConnection({ status, error }: GithubConnectionProps) {
       {status.installations.length ? (
         <ul className="flex flex-col gap-1 text-sm">
           {status.installations.map((installation) => (
-            <li key={installation.id} className="flex flex-wrap items-center gap-2">
+            <li key={installation.installationId} className="flex flex-wrap items-center gap-2">
               <span className="font-mono">{installation.account}</span>
               <span className="text-muted-foreground">{installation.selection === "all" ? "alle Repositories" : "ausgewählte Repositories"}</span>
               {installation.allowed ? null : (
@@ -43,6 +44,21 @@ export function GithubConnection({ status, error }: GithubConnectionProps) {
             </li>
           ))}
         </ul>
+      ) : null}
+      {status.configuredOnly.length ? (
+        <p className="text-sm text-muted-foreground">
+          Freigegeben ohne Installation: <span className="font-mono">{status.configuredOnly.join(", ")}</span>
+        </p>
+      ) : null}
+      {status.mode === "app" ? (
+        <form action={connectGithub}>
+          <button
+            type="submit"
+            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            {status.installations.length ? "Weiteres GitHub-Konto verbinden" : "GitHub verbinden"}
+          </button>
+        </form>
       ) : null}
       {status.mode === "app" && status.tokenConfigured ? <p className="text-xs text-muted-foreground">Der persönliche Token bleibt als Rückfall und zum Anlegen von Repositories.</p> : null}
     </section>

@@ -35,6 +35,8 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 | `GET/PATCH/DELETE /api/threads/:id` | Verlauf, Status, offene Freigaben und Events; Titel oder Modell ändern; archivieren |
 | `POST /api/threads/:id/chat`, `…/stop` | Auftrag annehmen, Lauf abbrechen |
 | `GET /api/github/repositories` | Repositories des Kontos, die der Token sieht (nur freigegebene Besitzer, `GITHUB_OWNERS`), mit ihrem Projekt |
+| `POST /api/github/connect`, `GET /api/github/setup`, `GET /api/github/status` | „GitHub verbinden“: Link zur App-Installation, Rücksprung (Setup URL der App, ohne Dienst-Token, mit signiertem Einmal-`state`), Stand der Verbindung. [ADR 0032](../../docs/architecture/decisions/0032-multi-tenant-github-connect.md) |
+| `POST /webhooks/github` | Webhook der App: Signatur, Wiederholungsschutz, Installationsstand |
 | `GET/POST /api/projects`, `DELETE /api/projects/:id` | Projekte auflisten; ein Repository als Projekt registrieren (`{ "repo": "owner/name" }`); entfernen. [ADR 0029](../../docs/architecture/decisions/0029-projects-as-repository-access.md) |
 | `GET /api/models` | Anbieter, Modelle, Verfügbarkeit, Aliase |
 | `GET /api/approvals`, `POST /api/approvals/:id` | offene Freigaben; `{ "decision": "approve" \| "reject" }` |

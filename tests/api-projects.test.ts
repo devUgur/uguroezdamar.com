@@ -21,7 +21,14 @@ interface ProjectRow {
 const tenantOf = (row: ProjectRow): string => row.tenant_id ?? "owner";
 
 /** In-memory stand-in for the few D1 queries these modules run; it dispatches on the SQL text. */
-function fakeDb(projects: ProjectRow[]) {
+interface InstallRow {
+  tenant_id: string;
+  installation_id: number;
+  account: string;
+  selection: string;
+}
+
+function fakeDb(projects: ProjectRow[], installs: InstallRow[] = []) {
   return {
     projects,
     prepare(sql: string) {
@@ -32,7 +39,7 @@ function fakeDb(projects: ProjectRow[]) {
           return statement;
         },
         all: async () => ({
-          results: sql.includes("SELECT id, repo FROM projects") ? projects.filter((row) => row.status === "active" && tenantOf(row) === args[0]) : [],
+          results: sql.includes("FROM tenant_installations") ? installs.filter((row) => row.tenant_id === args[0]) : sql.includes("SELECT id, repo FROM projects") ? projects.filter((row) => row.status === "active" && tenantOf(row) === args[0]) : [],
         }),
         first: async () => {
           if (sql.includes("lower(repo)")) return projects.find((row) => tenantOf(row) === args[0] && row.repo.toLowerCase() === String(args[1]).toLowerCase()) ?? null;
@@ -62,8 +69,8 @@ function fakeDb(projects: ProjectRow[]) {
   };
 }
 
-function envWith(projects: ProjectRow[] = [], extra: Record<string, unknown> = {}) {
-  const db = fakeDb(projects);
+function envWith(projects: ProjectRow[] = [], extra: Record<string, unknown> = {}, installs: InstallRow[] = []) {
+  const db = fakeDb(projects, installs);
   const env = {
     DB: db,
     CONFIG: { get: async () => null },
@@ -373,23 +380,15 @@ describe("registering and creating repositories through approvals", () => {
 });
 
 describe("two tenants side by side", () => {
+  const acmeInstall: InstallRow = { tenant_id: "acme", installation_id: 9, account: "devUgur", selection: "all" };
   const ownerProject: ProjectRow = { id: "notes", tenant_id: "owner", repo: "devUgur/notes", status: "active", visibility: "private", default_branch: "main", write_mode: "dev-first" };
 
-  it("registers the same repository for another tenant without touching the owner's project", async () => {
-    const { env, db } = envWith([{ ...ownerProject }]);
+  it("refuses another tenant the owner's token: without its own app installation it cannot reach GitHub", async () => {
+    const { env, db } = envWith([{ ...ownerProject }], {}, [acmeInstall]);
     stubGithub(() => repoJson());
-    const created = await registerProject(env, "acme", "devUgur/notes");
-    expect(created.created).toBe(true);
-    expect(created.id).not.toBe("notes");
-    expect(db.projects.filter((row) => row.tenant_id === "owner")).toEqual([ownerProject]);
-    expect(db.projects.find((row) => row.id === created.id)).toMatchObject({ tenant_id: "acme", write_mode: "pr-only" });
-  });
-
-  it("shows a tenant only its own registrations in the repository list", async () => {
-    const { env } = envWith([{ ...ownerProject }]);
-    stubGithub(() => [repoJson()]);
-    expect((await listRepositories(env, "owner"))[0]?.projectId).toBe("notes");
-    expect((await listRepositories(env, "acme"))[0]?.projectId).toBeNull();
+    await expect(registerProject(env, "acme", "devUgur/notes")).rejects.toMatchObject({ status: 403 });
+    await expect(listRepositories(env, "acme")).rejects.toMatchObject({ status: 403 });
+    expect(db.projects).toEqual([ownerProject]);
   });
 
   it("does not let one tenant remove another tenant's project", async () => {

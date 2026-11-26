@@ -28,5 +28,7 @@ export interface GithubRepository {
 export interface GithubStatus {
   mode: "app" | "token" | "none";
   tokenConfigured: boolean;
-  installations: { id: number; account: string; selection: string; allowed: boolean }[];
+  installations: { installationId: number; account: string; selection: string; allowed: boolean }[];
+  /** Accounts allowed by hand (the owner's GITHUB_OWNERS) that have no recorded installation. */
+  configuredOnly: string[];
 }

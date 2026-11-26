@@ -15,6 +15,7 @@ const CREDENTIALS = [
   { name: "AGENT_GITHUB_TOKEN", purpose: "Repo lesen, Commits und Pull Requests (Rückfall zur GitHub App)" },
   { name: "AGENT_GH_APP_ID", purpose: "GitHub App: Kennung" },
   { name: "AGENT_GH_APP_PRIVATE_KEY", purpose: "GitHub App: privater Schlüssel" },
+  { name: "AGENT_GH_WEBHOOK_SECRET", purpose: "GitHub App: Webhook-Signatur" },
   { name: "GEMINI_API_KEY", purpose: "Gemini-Modelle" },
   { name: "MODAL_LLM_API_KEY", purpose: "Eigene Modelle auf Modal" },
 ] as const;

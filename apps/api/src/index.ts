@@ -5,8 +5,10 @@ import type { Env } from "./env.ts";
 import { emit, recentEvents } from "./events.ts";
 import { ModelRouter } from "./models/router.ts";
 import { GithubAccessError } from "./github/app.ts";
+import { completeConnect, startConnect } from "./github/connect.ts";
 import { githubStatus } from "./github/credentials.ts";
-import { allowedOwners, listRepositories, ProjectError, registerProject, unregisterProject } from "./projects/repositories.ts";
+import { handleGithubWebhook } from "./github/webhook.ts";
+import { listRepositories, ProjectError, registerProject, unregisterProject } from "./projects/repositories.ts";
 import { buildOfficeLayout } from "./office/layout.ts";
 import { officeActivityOf } from "./office/presence.ts";
 import { organizationCatalog } from "./organization/catalog.ts";
@@ -300,6 +302,16 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   // The hub checks the one-time ticket itself; browsers cannot send headers on a WebSocket.
   if (path === "/api/live") return env.HUB.get(env.HUB.idFromName("main")).fetch(request);
 
+  // GitHub sends the browser here after the app was installed (the app's Setup URL). No service token: the
+  // signed, single-use state names the tenant, and GitHub itself is asked about the installation.
+  if (path === "/api/github/setup" && method === "GET") {
+    const result = await completeConnect(env, Number(url.searchParams.get("installation_id")), url.searchParams.get("state") ?? "");
+    if (!result.returnTo) return json({ error: result.error }, 400);
+    const target = new URL(result.returnTo);
+    target.searchParams.set(result.error ? "error" : "notice", result.error ?? result.notice ?? "");
+    return new Response(null, { status: 302, headers: { location: target.toString(), "cache-control": "no-store" } });
+  }
+
   const caller = await authorize(request, env);
   if (!caller) return json({ error: "Nicht angemeldet" }, 401);
 
@@ -395,10 +407,21 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     return json(results);
   }
 
+  // The link behind the portal's "Connect GitHub" button.
+  if (path === "/api/github/connect" && method === "POST") {
+    const { returnTo } = await body<{ returnTo: string }>(request);
+    try {
+      return json({ url: await startConnect(env, caller.tenantId, String(returnTo ?? "")) });
+    } catch (error) {
+      if (error instanceof GithubAccessError) return json({ error: error.message }, error.status);
+      throw error;
+    }
+  }
+
   // How the API reaches GitHub: GitHub App installations or the personal token (ADR 0031).
   if (path === "/api/github/status" && method === "GET") {
     try {
-      return json(await githubStatus(env, allowedOwners(env)));
+      return json(await githubStatus(env, caller.tenantId));
     } catch (error) {
       if (error instanceof GithubAccessError) return json({ error: error.message }, error.status);
       throw error;
@@ -439,6 +462,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 export default {
   async fetch(request, env): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === "/webhooks/github") return handleGithubWebhook(request, env);
     if (!url.pathname.startsWith("/api/")) return json({ service: "uguroezdamar-api", env: env.API_ENV || "production" });
     try {
       return await handleApi(request, env, url);

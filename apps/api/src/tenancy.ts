@@ -12,6 +12,9 @@ export const OWNER_TENANT = "owner";
 /** Tables whose rows belong to one tenant. The staff (agents, organization catalog) is shared by all tenants for now. */
 export const TENANT_TABLES = ["projects", "threads", "tasks", "task_reviews", "approvals", "events", "memories"] as const;
 
+/** Every table a tenant's rows live in: the ones above plus the installations that connect a tenant to GitHub. */
+export const TENANT_SCOPED_TABLES = [...TENANT_TABLES, "tenant_installations"] as const;
+
 /**
  * Name of the Durable Object of a chat thread. The owner keeps the original name so existing threads and
  * their stored history stay reachable; other tenants get a namespace of their own.

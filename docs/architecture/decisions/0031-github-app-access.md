@@ -35,6 +35,15 @@ Die Agenten griffen bisher mit einem Fine-grained Personal Access Token (`AGENT_
 
 Das Portal zeigt anschließend „GitHub App verbunden“. Den `AGENT_GITHUB_TOKEN` braucht es dann nur noch zum Anlegen von Repositories.
 
+### Einstellungen für den Verbinden-Fluss und den Webhook ([ADR 0032](0032-multi-tenant-github-connect.md))
+
+Auf der Seite der App unter „General“ (je Stage eine eigene App, weil eine App nur eine Adresse kennt; Dev zuerst):
+
+- **Setup URL:** `https://api-dev.uguroezdamar.com/api/github/setup`. „Redirect on update“ anhaken.
+- **Webhook → Active** anhaken. **Webhook URL:** `https://api-dev.uguroezdamar.com/webhooks/github`. **Secret:** der Wert aus Infisical (`prod`, `AGENT_GH_WEBHOOK_SECRET`), den `pnpm ugur api secrets --apply` erzeugt.
+- Bleibt aus: „Request user authorization (OAuth) during installation“, „Enable Device Flow“, Callback URL.
+- Events brauchen keine Auswahl: `installation` und `installation_repositories` kommen für Apps automatisch.
+
 ## Alternativen
 
 - **GitHub-MCP-Server direkt am Agenten:** verworfen. Er umgeht Freigaben, Besitzer-Freigabe und die Sperre für auswertende Modelle, und seine Werkzeuge belegen Kontext.

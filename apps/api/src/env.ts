@@ -33,6 +33,8 @@ export interface Env {
   /** GitHub App (ADR 0031): id and private key (PEM). Where the app is installed it replaces the token. */
   AGENT_GH_APP_ID?: string;
   AGENT_GH_APP_PRIVATE_KEY?: string;
+  /** Secret of the app's webhook; deliveries without a matching signature are refused. */
+  AGENT_GH_WEBHOOK_SECRET?: string;
   OPENROUTER_API_KEY?: string;
   /** Key of the vLLM servers on Modal (apps/api/modal/llm.py); same value as the Modal secret uguroezdamar-llm. */
   MODAL_LLM_API_KEY?: string;
