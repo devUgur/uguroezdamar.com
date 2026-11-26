@@ -14,7 +14,7 @@ async function claimRun(context: ToolContext): Promise<void> {
   await context.env.CONFIG.put(key, String(used + 1), { expirationTtl: 2 * 86_400 });
 }
 
-async function execute(context: ToolContext, job: Omit<WorkstationJob, "runId" | "tenantId">): Promise<WorkstationResult> {
+export async function executeInWorkstation(context: ToolContext, job: Omit<WorkstationJob, "runId" | "tenantId">): Promise<WorkstationResult> {
   if (!context.env.WORKSTATION) throw new WorkstationUnavailable();
   await claimRun(context);
   const runId = crypto.randomUUID();
@@ -61,7 +61,7 @@ const sandboxRun: Tool = {
     const ref = assertRef(str(args, "ref", target.ref));
     const meta = await repoMeta(context, target.repo);
     if (meta.private) await context.markPrivate?.([meta.full_name]);
-    const result = await execute(context, { repo: meta.full_name, ref, private: meta.private, command: args.command });
+    const result = await executeInWorkstation(context, { repo: meta.full_name, ref, private: meta.private, command: args.command });
     return {
       repo: meta.full_name,
       ref,
@@ -88,6 +88,7 @@ async function hasWranglerConfig(context: ToolContext, ref: string): Promise<boo
 
 const previewDeploy: Tool = {
   requiresApproval: true,
+  requiresProject: true,
   spec: {
     name: "preview_deploy",
     description:
@@ -127,7 +128,7 @@ const previewDeploy: Tool = {
     const meta = await repoMeta(context, context.repo);
     if (meta.private) await context.markPrivate?.([meta.full_name]);
 
-    const result = await execute(context, { repo: meta.full_name, ref, private: meta.private, command: "preview", preview: { workerName, alias } });
+    const result = await executeInWorkstation(context, { repo: meta.full_name, ref, private: meta.private, command: "preview", preview: { workerName, alias } });
     const upload = result.steps.find((step) => step.name === "upload");
     const versionId = upload ? versionIdFrom(upload.output) : null;
     const status = result.ok ? "ready" : "failed";

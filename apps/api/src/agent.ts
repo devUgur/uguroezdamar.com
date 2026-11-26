@@ -310,7 +310,8 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       return { kind: "failed", reply };
     }
 
-    const repo = project?.repo ?? this.env.DEFAULT_REPO;
+    // Company scope (no project): no repository; reading needs repo=owner/name, writing needs a project.
+    const repo = project?.repo ?? (projectId ? this.env.DEFAULT_REPO : "");
     const budget = new SubrequestBudget();
     const router = await ModelRouter.load(this.env, tenantId);
     const pinned = parsePinned(thread?.model);

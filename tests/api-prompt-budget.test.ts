@@ -15,7 +15,7 @@ const fixedPart = (agentId: string) => {
 
 describe("prompt budget", () => {
   it("keeps the chef's fixed part small", () => {
-    // +sandbox_run and preview_deploy with the workstations (ADR 0036, 26.11.2026).
+    // +sandbox_run and preview_deploy with the workstations (ADR 0036, 26.11.2026); sandbox_run → code_verify and the company scope.
     expect(fixedPart("chef").size).toBeLessThan(7_700);
     // +knowledge_search in stage 3 (26.11.2026): about 260 characters for the reviewer.
     expect(fixedPart("reviewer").size).toBeLessThan(5_200);

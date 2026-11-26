@@ -157,6 +157,11 @@ async function runTool(call: ToolCall, deps: LoopDeps, step: number): Promise<st
   await deps.emit({ type: "tool_call", data: { tool: call.name, args: preview(args), step } });
   const started = Date.now();
   if (!tool) return JSON.stringify({ error: `Werkzeug "${call.name}" steht dir nicht zur Verfügung.` });
+  if (tool.requiresProject && !deps.context.repo) {
+    const error = "Dieses Gespräch läuft auf Firmenebene ohne Projekt. Schreiben geht nur in einem Projekt: Ugur öffnet das Gespräch im Office im passenden Projekt, oder du schlägst mit project_register ein Repository vor.";
+    await deps.emit({ type: "tool_result", data: { tool: call.name, ok: false, preview: error, step } });
+    return JSON.stringify({ error });
+  }
 
   if (tool.requiresApproval) {
     const { approvalId, description } = await deps.requestApproval(call.name, args);

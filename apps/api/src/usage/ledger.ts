@@ -71,7 +71,7 @@ async function safely(what: string, work: () => Promise<unknown>): Promise<void>
 export function startRun(env: Env, run: RunStart): Promise<void> {
   return safely("start run", () =>
     env.DB.prepare("INSERT OR IGNORE INTO runs (id, tenant_id, agent_id, project_id, thread_id, task_id, kind, started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(run.id, run.tenantId, run.agentId, run.projectId ?? null, run.threadId ?? null, run.taskId ?? null, run.kind, run.startedAt)
+      .bind(run.id, run.tenantId, run.agentId, run.projectId || null, run.threadId ?? null, run.taskId ?? null, run.kind, run.startedAt)
       .run(),
   );
 }
@@ -94,7 +94,7 @@ export function recordModelCall(env: Env, call: ModelCallRecord): Promise<void> 
            cache_read_tokens, cache_write_tokens, input_usd_per_m, output_usd_per_m, price_source, cost_usd, latency_ms, first_token_ms, key_source, strict_policy, attempts, error, ts)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).bind(
-        call.tenantId, call.runId ?? null, call.agentId ?? null, call.projectId ?? null, call.threadId ?? null, call.taskId ?? null, call.step ?? null,
+        call.tenantId, call.runId ?? null, call.agentId ?? null, call.projectId || null, call.threadId ?? null, call.taskId ?? null, call.step ?? null,
         call.alias ?? null, call.provider, call.model, call.status, call.tokensIn ?? 0, call.tokensOut ?? 0, call.cacheReadTokens ?? 0, call.cacheWriteTokens ?? 0,
         call.inputUsdPerM ?? 0, call.outputUsdPerM ?? 0, call.priceSource ?? "catalog", call.costUsd ?? 0, call.latencyMs ?? null, call.firstTokenMs ?? null,
         call.keySource ?? null, call.strictPolicy ? 1 : 0, call.attempts ? JSON.stringify(call.attempts) : null, call.error?.slice(0, 1_000) ?? null, Date.now(),
@@ -117,7 +117,7 @@ export function recordToolCall(env: Env, call: ToolCallRecord): Promise<void> {
       env.DB.prepare(
         "INSERT INTO tool_calls (tenant_id, run_id, agent_id, project_id, step, tool, args_preview, ok, approval_id, duration_ms, result_preview, ts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       ).bind(
-        call.tenantId, call.runId ?? null, call.agentId ?? null, call.projectId ?? null, call.step ?? null, call.tool, call.argsPreview?.slice(0, 600) ?? null,
+        call.tenantId, call.runId ?? null, call.agentId ?? null, call.projectId || null, call.step ?? null, call.tool, call.argsPreview?.slice(0, 600) ?? null,
         call.ok ? 1 : 0, call.approvalId ?? null, call.durationMs ?? null, call.resultPreview?.slice(0, 600) ?? null, Date.now(),
       ),
     ];

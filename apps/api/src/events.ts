@@ -74,7 +74,7 @@ export async function emit(env: Env, event: AgentEvent): Promise<StoredEvent> {
       event.agentId ?? null,
       event.threadId ?? null,
       event.taskId ?? null,
-      event.projectId ?? null,
+      event.projectId || null,
       event.type,
       event.data === undefined ? null : JSON.stringify(event.data),
       event.tokensIn ?? 0,

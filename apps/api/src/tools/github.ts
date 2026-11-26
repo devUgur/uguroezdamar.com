@@ -117,6 +117,9 @@ export function repoMeta(context: ToolContext, repo: string): Promise<RepoMeta> 
  */
 export async function readTarget(args: Record<string, unknown>, context: ToolContext): Promise<{ repo: string; ref: string }> {
   const requested = typeof args.repo === "string" ? args.repo.trim() : "";
+  if (!requested && !context.repo) {
+    throw new ToolInputError("Kein Projekt in diesem Gespräch (Firmenebene): gib repo=owner/name an.");
+  }
   if (!requested || requested.toLowerCase() === context.repo.toLowerCase()) return { repo: context.repo, ref: await readRef(context) };
   if (!REPO_FORMAT.test(requested)) throw new ToolInputError("Repository im Format owner/name angeben.");
   const owner = requested.split("/")[0] ?? "";
@@ -230,6 +233,7 @@ interface FileChange {
 
 const commitFiles: Tool = {
   requiresApproval: true,
+  requiresProject: true,
   spec: {
     name: "repo_commit_files",
     description:
@@ -301,6 +305,7 @@ const commitFiles: Tool = {
 
 const openPullRequest: Tool = {
   requiresApproval: true,
+  requiresProject: true,
   spec: {
     name: "repo_open_pull_request",
     description:

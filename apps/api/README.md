@@ -15,7 +15,7 @@ Agenten-Backend des Admin-Portals: Threads, Agentenschleife, Modelle, Werkzeuge,
 | `src/work/sprints.ts` | Sprints je Projekt; Aufgaben tragen `sprint_id` |
 | `src/knowledge/` | Wissensindex je Projekt (Doku und erledigte Aufgaben, hybride Suche über FTS5 und Vectorize), Indexer als Durable Object, Arbeitsgedächtnis je Mitarbeiter ([ADR 0037](../../docs/architecture/decisions/0037-agent-memory-and-knowledge.md)) |
 | `src/usage/` | Verbrauchsprotokoll: `runs`, `model_calls`, `tool_calls` (Migration `0017`), Auswertung, Lauf-Trace, CSV; das Tagesbudget zählt daraus |
-| `src/tools/` | `ToolPort`, GitHub-Werkzeuge, Projekt- und Notiz-Werkzeuge, `sandbox_run` und `preview_deploy` (`sandbox.ts`); PR-Diff lesen ist nur dem read-only QA-Reviewer freigegeben |
+| `src/tools/` | `ToolPort`, GitHub-Werkzeuge, Projekt- und Notiz-Werkzeuge, `sandbox_run` und `preview_deploy` (`sandbox.ts`), `code_verify` (`verify.ts`: Workstation oder CI des Repositories, ADR 0038); PR-Diff lesen ist nur dem read-only QA-Reviewer freigegeben |
 | `src/workstation/` | Workstations ([ADR 0036](../../docs/architecture/decisions/0036-isolated-workstations-and-previews.md)): Durable Object mit Container je Lauf, Gateways für `github.com`, `registry.npmjs.org` und `api.cloudflare.com` (Zugangsdaten nur im Worker), Befehls-Allowlist, Preview-Regeln |
 | `workstation/Dockerfile` | Image der Workstations (Node, pnpm, git); wird erst gebaut, wenn `wrangler.jsonc` es nennt |
 | `src/agents/registry.ts` | die Agenten: Prompt, Modell-Alias, Werkzeuge |
@@ -37,8 +37,8 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 | `PATCH /api/organization/instances/:id`, `GET /api/organization/audit` | Owner-Scope: registrierte Instanzen begrenzt pflegen und die letzten 50 Auditänderungen lesen |
 | `GET/PUT /api/agents/:id/settings` | Einstellungen eines Mitarbeiters je Mandant: Modell, Denkaufwand (`low`/`medium`/`high`), Schritte je Lauf (4–60), Tagesbudget; Schreiben mit Scope `organization:write` und erwarteter `version` |
 | `GET /api/agents/:id/config` | Konfiguration eines Agenten, nur lesend: Modell-Kette mit Verfügbarkeit, Werkzeuge, Systemprompt, Grenzen, Speicher (D1, KV, R2), Schutzregeln, Zugangsdaten (nur ob gesetzt) |
-| `GET /api/threads`, `POST /api/threads` | Threads auflisten, anlegen |
-| `GET/PATCH/DELETE /api/threads/:id` | Verlauf, Status, offene Freigaben und Events; Titel oder Modell ändern; archivieren |
+| `GET /api/threads`, `POST /api/threads` | Threads auflisten, anlegen; ohne `projectId` auf Firmenebene ohne Repository (ADR 0038) |
+| `GET/PATCH/DELETE /api/threads/:id` | Verlauf, Status, offene Freigaben und Events; Titel, Modell oder Bereich ändern (`projectId: null` = Firma); archivieren |
 | `POST /api/threads/:id/chat`, `…/stop` | Auftrag annehmen, Lauf abbrechen |
 | `GET /api/github/repositories` | Repositories des Kontos, die der Token sieht (nur freigegebene Besitzer, `GITHUB_OWNERS`), mit ihrem Projekt |
 | `POST /api/github/connect`, `GET /api/github/setup`, `GET /api/github/status` | „GitHub verbinden“: Link zur App-Installation, Rücksprung (Setup URL der App, ohne Dienst-Token, mit signiertem Einmal-`state`), Stand der Verbindung. [ADR 0032](../../docs/architecture/decisions/0032-multi-tenant-github-connect.md) |

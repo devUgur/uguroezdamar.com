@@ -29,6 +29,8 @@ export interface ToolContext {
 export interface Tool {
   spec: ToolSpec;
   requiresApproval?: boolean;
+  /** Only within a project (its repository): writing tools. On the company level the loop refuses them before any approval. */
+  requiresProject?: boolean;
   run(args: Record<string, unknown>, context: ToolContext): Promise<unknown>;
 }
 

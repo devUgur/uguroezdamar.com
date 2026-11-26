@@ -79,7 +79,8 @@ function toThread(row: ThreadRow) {
   return {
     id: row.id,
     agentId: row.agent_id,
-    projectId: row.project_id ?? DEFAULT_PROJECT,
+    // No project: the conversation is on the company level, without a repository (plan stage 4, office scope).
+    projectId: row.project_id ?? null,
     taskId: row.task_id,
     title: row.title,
     model: row.model ? (JSON.parse(row.model) as { provider: string; model: string }) : null,
@@ -224,7 +225,7 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
   }
 
   if (path === "/api/threads" && method === "POST") {
-    const input = await body<{ agentId: string; projectId: string; title: string; model: { provider: string; model: string } | null }>(request);
+    const input = await body<{ agentId: string; projectId: string | null; title: string; model: { provider: string; model: string } | null }>(request);
     const agentId = input.agentId && AGENTS[input.agentId] ? input.agentId : DEFAULT_AGENT;
     const activeAgent = await env.DB.prepare("SELECT 1 FROM agents WHERE id = ? AND active = 1").bind(agentId).first();
     if (!activeAgent) return json({ error: "Der ausgewählte Agent ist nicht aktiv." }, 409);
@@ -234,7 +235,7 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
     }
     const id = crypto.randomUUID();
     await env.DB.prepare("INSERT INTO threads (id, tenant_id, agent_id, project_id, title, model, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      .bind(id, caller.tenantId, agentId, input.projectId ?? DEFAULT_PROJECT, input.title?.slice(0, 120) ?? null, input.model ? JSON.stringify(input.model) : null, caller.actor)
+      .bind(id, caller.tenantId, agentId, input.projectId || null, input.title?.slice(0, 120) ?? null, input.model ? JSON.stringify(input.model) : null, caller.actor)
       .run();
     const row = await loadThread(env, caller.tenantId, id);
     return json(row ? toThread(row) : { id }, 201);
@@ -265,19 +266,23 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
   }
 
   if (!action && method === "PATCH") {
-    const input = await body<{ title: string; projectId: string; model: { provider: string; model: string } | null }>(request);
+    const input = await body<{ title: string; projectId: string | null; model: { provider: string; model: string } | null }>(request);
     if (input.projectId !== undefined) {
-      const project = await env.DB.prepare("SELECT 1 FROM projects WHERE tenant_id = ? AND id = ? AND status = 'active'").bind(caller.tenantId, input.projectId).first();
-      if (!project) return json({ error: "Unbekanntes oder entferntes Projekt" }, 400);
-      if ((await stub.status(caller.tenantId)).running) return json({ error: "Das Projekt lässt sich nicht wechseln, solange der Agent arbeitet." }, 409);
+      if (input.projectId !== null) {
+        const project = await env.DB.prepare("SELECT 1 FROM projects WHERE tenant_id = ? AND id = ? AND status = 'active'").bind(caller.tenantId, input.projectId).first();
+        if (!project) return json({ error: "Unbekanntes oder entferntes Projekt" }, 400);
+      }
+      if ((await stub.status(caller.tenantId)).running) return json({ error: "Der Bereich lässt sich nicht wechseln, solange der Agent arbeitet." }, 409);
     }
     const router = await ModelRouter.load(env, caller.tenantId);
     if (input.model && !router.offers(input.model)) return json({ error: "Unbekanntes Modell" }, 400);
     // A private repository never goes to a provider that may evaluate it: refuse that choice instead of skipping it later.
-    const projectId = input.projectId ?? thread.project_id ?? DEFAULT_PROJECT;
-    const target = await env.DB.prepare("SELECT name, visibility, model_policy FROM projects WHERE tenant_id = ? AND id = ?")
-      .bind(caller.tenantId, projectId)
-      .first<{ name: string; visibility: string; model_policy: string | null }>();
+    const projectId = input.projectId !== undefined ? input.projectId : thread.project_id;
+    const target = projectId
+      ? await env.DB.prepare("SELECT name, visibility, model_policy FROM projects WHERE tenant_id = ? AND id = ?")
+          .bind(caller.tenantId, projectId)
+          .first<{ name: string; visibility: string; model_policy: string | null }>()
+      : null;
     const isPrivate = (target ? effectivePolicy(target) === "strict" : false) || (await stub.status(caller.tenantId)).private === true;
     const currentModel = thread.model ? (JSON.parse(thread.model) as { provider: string; model: string }) : null;
     let model = input.model !== undefined ? input.model : currentModel;
@@ -294,9 +299,9 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
     if (model && input.model) await router.warmUp(model);
     const modelChanged = input.model !== undefined || model !== currentModel;
     await env.DB.prepare(
-      `/* tenant:parent */ UPDATE threads SET title = COALESCE(?, title), project_id = COALESCE(?, project_id), model = CASE WHEN ? THEN ? ELSE model END, updated_at = unixepoch() WHERE id = ?`,
+      `/* tenant:parent */ UPDATE threads SET title = COALESCE(?, title), project_id = CASE WHEN ? THEN ? ELSE project_id END, model = CASE WHEN ? THEN ? ELSE model END, updated_at = unixepoch() WHERE id = ?`,
     )
-      .bind(input.title?.slice(0, 120) ?? null, input.projectId ?? null, modelChanged ? 1 : 0, model ? JSON.stringify(model) : null, threadId)
+      .bind(input.title?.slice(0, 120) ?? null, input.projectId !== undefined ? 1 : 0, input.projectId ?? null, modelChanged ? 1 : 0, model ? JSON.stringify(model) : null, threadId)
       .run();
     return json({ ...toThread((await loadThread(env, caller.tenantId, threadId)) ?? thread), ...(notice ? { notice } : {}) });
   }
@@ -318,7 +323,7 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
       .bind(text.replace(/\s+/g, " ").slice(0, 80), threadId)
       .run();
     return json(
-      await stub.chat({ tenantId: caller.tenantId, threadId, agentId: thread.agent_id, projectId: thread.project_id ?? DEFAULT_PROJECT, taskId: thread.task_id ?? undefined, text: text.slice(0, 20_000) }),
+      await stub.chat({ tenantId: caller.tenantId, threadId, agentId: thread.agent_id, projectId: thread.project_id ?? "", taskId: thread.task_id ?? undefined, text: text.slice(0, 20_000) }),
     );
   }
 

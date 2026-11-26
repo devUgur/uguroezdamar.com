@@ -10,6 +10,7 @@ const knowledgeSearch: Tool = {
     parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
   },
   async run(args, context) {
+    if (!context.projectId) return { hits: [], note: "Firmenebene ohne Projekt: das Wissen ist je Projekt indexiert. Projekt wählen oder Dateien mit repo=owner/name lesen." };
     const hits = await search(context.env, context.tenantId, context.projectId, str(args, "query"), 6);
     if (!hits.length) return { hits: [], note: "Nichts gefunden. Ist das Wissen des Projekts indexiert? Sonst Dateien direkt lesen." };
     return { hits: hits.map((hit) => ({ source: hit.source.replace(/^file:/, ""), heading: hit.heading, text: hit.text.slice(0, 1_200) })) };

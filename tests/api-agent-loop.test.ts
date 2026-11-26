@@ -18,7 +18,7 @@ function harness(turns: ModelTurn[], overrides: Partial<LoopDeps> = {}) {
       return { path: args.path, content: "# Arbeitsregeln" };
     },
   };
-  const commit: Tool = { ...readFile, requiresApproval: true, spec: { ...readFile.spec, name: "repo_commit_files" } };
+  const commit: Tool = { ...readFile, requiresApproval: true, requiresProject: true, spec: { ...readFile.spec, name: "repo_commit_files" } };
   let call = 0;
   const deps: LoopDeps = {
     system: { role: "system", content: "Du bist der Chef-Agent." },
@@ -75,6 +75,17 @@ describe("platform agent loop", () => {
     const requested = events.find((event) => event.type === "approval_requested");
     expect(requested?.data).toMatchObject({ approvalId: "a-1", risk: "security" });
     expect(events.some((event) => event.type === "tool_result")).toBe(false);
+  });
+
+  it("refuses writing on the company level before asking for an approval", async () => {
+    const files = [{ path: "README.md", content: "x" }];
+    const { deps, events, messages } = harness([toolTurn("repo_commit_files", { branch: "agent/x", message: "m", files }), answer("Geht nur im Projekt.")]);
+    deps.context = { ...deps.context, projectId: "", repo: "" };
+    await runAgentLoop(deps);
+
+    expect(events.some((event) => event.type === "approval_requested")).toBe(false);
+    expect(events.find((event) => event.type === "tool_result")?.data).toMatchObject({ tool: "repo_commit_files", ok: false });
+    expect(messages.find((message) => message.role === "tool")?.content).toContain("Firmenebene");
   });
 
   it("pauses before the subrequest budget runs out instead of failing", async () => {

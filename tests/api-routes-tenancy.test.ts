@@ -80,6 +80,20 @@ describe("routes on real SQLite", () => {
     expect(objects).toContain(`thread:${id}`);
   });
 
+  it("starts a conversation on the company level by default and moves it into a project and back", async () => {
+    const { call } = setup();
+    const created = await call("/api/threads", { method: "POST", body: { agentId: "chef" } });
+    expect(created.body).toMatchObject({ projectId: null });
+    const id = (created.body as { id: string }).id;
+
+    expect((await call(`/api/threads/${id}`, { method: "PATCH", body: { projectId: "uguroezdamar" } })).body).toMatchObject({ projectId: "uguroezdamar" });
+    expect((await call(`/api/threads/${id}`, { method: "PATCH", body: { projectId: null } })).body).toMatchObject({ projectId: null });
+    expect((await call(`/api/threads/${id}`, { method: "PATCH", body: { projectId: "gibt-es-nicht" } })).status).toBe(400);
+
+    const scoped = await call("/api/threads", { method: "POST", body: { agentId: "chef", projectId: "uguroezdamar" } });
+    expect(scoped.body).toMatchObject({ projectId: "uguroezdamar" });
+  });
+
   it("answers the list routes the portal uses", async () => {
     const { call } = setup();
     for (const path of ["/api/projects", "/api/threads", "/api/tasks", "/api/agents", "/api/approvals", "/api/events", "/api/office/state", "/api/agents/chef/config"]) {
