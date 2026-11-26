@@ -179,7 +179,12 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
     await env.DB.prepare(
       `INSERT INTO tasks (id, tenant_id, project_id, title, input, description, acceptance_criteria, priority, story_points, created_by, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'backlog')`,
-    ).bind(id, caller.tenantId, projectId, title, description.slice(0, 10_000) || null, acceptanceCriteria.slice(0, 5_000) || null, priority ?? "normal", storyPoints, caller.actor).run();
+    ).bind(
+      id, caller.tenantId, projectId, title,
+      // `input` is the legacy copy of the description; the column list needs a value for it.
+      description.slice(0, 10_000) || null, description.slice(0, 10_000) || null,
+      acceptanceCriteria.slice(0, 5_000) || null, priority ?? "normal", storyPoints, caller.actor,
+    ).run();
     const task = await loadTask(env, caller.tenantId, id);
     if (!task) return json({ error: "Aufgabe konnte nicht geladen werden." }, 500);
     await publish(env, caller, task, "task_created");

@@ -34,6 +34,7 @@ export default defineConfig({
     // Workspace packages resolve through their own `exports` to TypeScript source: no build first.
     alias: {
       'server-only': resolve(rootDir, 'tests', '_stubs', 'server-only.js'),
+      'cloudflare:workers': resolve(rootDir, 'tests', '_stubs', 'cloudflare-workers.js'),
     },
   },
 });
