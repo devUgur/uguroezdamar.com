@@ -11,6 +11,8 @@ export interface SecretSpec {
   managedBy?: string;
   /** A random value of our own making; `secrets generate` can create it. */
   random?: boolean;
+  /** Kept in Infisical only for the owner to look up; no app or turbo task reads it. */
+  ownerCopy?: boolean;
   /** The apps that read the key at runtime or build time; `hosting env` syncs it to those. */
   apps?: readonly ("site" | "portal")[];
 }
@@ -59,6 +61,12 @@ export const SECRETS: readonly SecretSpec[] = [
     ["VERCEL_BYPASS_SITE", "VERCEL_BYPASS_PORTAL"],
     { stages: ["dev"] },
   ),
+  // The agent platform deploys from GitHub Actions secrets (ADR 0024). Infisical keeps a copy of
+  // the admin token only so the owner can look it up; no app reads it from here.
+  ...required("Login of the agent platform (platform.uguroezdamar.com, platform-dev)", ["PLATFORM_ADMIN_TOKEN"], {
+    managedBy: "pnpm ugur platform secrets",
+    ownerCopy: true,
+  }),
 ];
 
 /** Keys that used to exist. `secrets audit` names them so they get removed, not re-declared. */

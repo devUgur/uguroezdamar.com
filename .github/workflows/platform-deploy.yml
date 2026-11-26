@@ -45,12 +45,13 @@ jobs:
         run: |
           api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain"
           auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
-          if curl -fsS -H "$auth" "$api" | grep -q '"subdomain":"[^"]'; then echo "subdomain exists"; exit 0; fi
           for name in uguroezdamar uguroezdamar-platform; do
-            if curl -fsS -X PUT -H "$auth" -H "content-type: application/json" --data "{\"subdomain\":\"$name\"}" "$api" >/dev/null; then
-              echo "created $name.workers.dev"; exit 0
-            fi
+            # 200: created; 409: the account already has one (or the name is taken) — check below.
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X PUT -H "$auth" -H "content-type: application/json" --data "{\"subdomain\":\"$name\"}" "$api")
+            echo "PUT $name: $code"
+            if [ "$code" = 200 ]; then exit 0; fi
           done
+          if curl -fsS -H "$auth" "$api" | grep -Eq '"subdomain" *: *"[^"]+"'; then echo "subdomain exists"; exit 0; fi
           echo "::error::Could not create a workers.dev subdomain; open Workers & Pages once in the dashboard of this account."
           exit 1
         env:

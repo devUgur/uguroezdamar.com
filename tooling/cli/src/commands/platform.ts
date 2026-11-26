@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { has, run } from "../lib/exec.ts";
+import { setSecret as setInfisicalSecret } from "../lib/infisical.ts";
 import { askHidden } from "../lib/prompt.ts";
 
 /**
@@ -98,11 +99,16 @@ export async function platformSecrets(apply: boolean, rotate: boolean): Promise<
       return 1;
     }
     changed = true;
+    // A copy in Infisical, so the owner can reveal it there (dev and prod hold the same value).
+    const stored = (["dev", "prod"] as const).filter((stage) => setInfisicalSecret(stage, "PLATFORM_ADMIN_TOKEN", token).ok);
+    const copied = copyToClipboard(token);
+    console.log(`\nPLATFORM_ADMIN_TOKEN neu gesetzt (GitHub${stored.length ? `, Infisical ${stored.join(" + ")}` : ""}).`);
     console.log(
-      copyToClipboard(token)
-        ? "\nPLATFORM_ADMIN_TOKEN gesetzt und in die Zwischenablage kopiert. Jetzt im Passwortmanager speichern – angezeigt wird es nie."
-        : "\nPLATFORM_ADMIN_TOKEN gesetzt, aber die Zwischenablage ging nicht. Mit --rotate erneut erzeugen.",
+      stored.length
+        ? "  Nachsehen: Infisical → uguroezdamar.com → PLATFORM_ADMIN_TOKEN → Reveal."
+        : "  Infisical nicht erreichbar (`pnpm ugur setup`); der Wert liegt nur in der Zwischenablage.",
     );
+    if (copied) console.log("  Außerdem in der Zwischenablage. Hier angezeigt wird er nie.");
   }
 
   for (const secret of SECRETS.filter((entry) => !entry.required && !existing.has(entry.name))) {
