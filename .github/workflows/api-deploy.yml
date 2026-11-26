@@ -79,8 +79,9 @@ jobs:
           #   AGENT_GH_APP_ID / AGENT_GH_APP_PRIVATE_KEY  optional; GitHub App (ADR 0031), replaces the token where installed
           #   MODAL_LLM_API_KEY     optional; key of the own models on Modal (apps/api/modal/llm.py)
           #   PROVIDER_KEYS_SECRET  optional; encrypts model keys entered in the portal (ADR 0033); without it none can be stored
+          #   AGENT_CF_PREVIEW_TOKEN  optional; preview uploads of the workstations (ADR 0035); without it preview_deploy refuses
           node -e '
-            const names = ["API_SERVICE_TOKEN", "GEMINI_API_KEY", "AGENT_GITHUB_TOKEN", "AGENT_GH_APP_ID", "AGENT_GH_APP_PRIVATE_KEY", "AGENT_GH_WEBHOOK_SECRET", "MODAL_LLM_API_KEY", "PROVIDER_KEYS_SECRET"];
+            const names = ["API_SERVICE_TOKEN", "GEMINI_API_KEY", "AGENT_GITHUB_TOKEN", "AGENT_GH_APP_ID", "AGENT_GH_APP_PRIVATE_KEY", "AGENT_GH_WEBHOOK_SECRET", "MODAL_LLM_API_KEY", "PROVIDER_KEYS_SECRET", "AGENT_CF_PREVIEW_TOKEN"];
             const set = names.filter((name) => process.env[name]);
             const missing = names.filter((name) => !process.env[name]);
             if (missing.length) console.log("::warning::Not set, skipped: " + missing.join(", "));
@@ -98,6 +99,7 @@ jobs:
           AGENT_GH_WEBHOOK_SECRET: ${{ secrets.AGENT_GH_WEBHOOK_SECRET }}
           MODAL_LLM_API_KEY: ${{ secrets.MODAL_LLM_API_KEY }}
           PROVIDER_KEYS_SECRET: ${{ secrets.PROVIDER_KEYS_SECRET }}
+          AGENT_CF_PREVIEW_TOKEN: ${{ secrets.AGENT_CF_PREVIEW_TOKEN }}
       # Workers and custom domains that no longer exist in wrangler.jsonc (the former "platform"
       # worker, ADR 0024). Only these exact names; anything already gone is fine.
       - name: Remove retired Workers

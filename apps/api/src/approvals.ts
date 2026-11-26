@@ -79,6 +79,14 @@ export function describeApproval(tool: string, args: Record<string, unknown>): A
       ],
     };
   }
+  if (tool === "preview_deploy") {
+    const target = typeof args.pullRequest === "number" ? `Pull Request #${args.pullRequest}` : `Branch ${String(args.branch ?? "?")}`;
+    return {
+      summary: `Preview anlegen für ${target}: bauen und als Version des Preview-Workers hochladen`,
+      risk: null,
+      warnings: ["Die Preview-URL ist öffentlich erreichbar (workers.dev), auch bei privaten Repositories.", "Kostet einen Workstation-Lauf (Container, wenige Minuten)."],
+    };
+  }
   const text = JSON.stringify(args);
   return { summary: `${tool}: ${text.length > 400 ? `${text.slice(0, 400)}…` : text}`, risk: null, warnings: [] };
 }

@@ -293,6 +293,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       env: this.env,
       tenantId,
       agentId,
+      threadId,
       projectId,
       repo,
       budget,
