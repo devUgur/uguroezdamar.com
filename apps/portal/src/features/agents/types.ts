@@ -170,3 +170,20 @@ export interface AgentConfig {
   guardrails: { workBranch: string; agentBranchPrefix: string; neverWritesTo: string; protectedPaths: { path: string; reason: string }[] };
   credentials: { name: string; purpose: string; set: boolean }[];
 }
+
+/** Settings of one agent (employee) for this tenant (agent API: GET/PUT /api/agents/:id/settings). */
+export interface AgentSettings {
+  model: ModelChoice | null;
+  effort: "low" | "medium" | "high" | null;
+  maxSteps: number | null;
+  dailyBudgetUsd: number | null;
+  version: number;
+  updatedBy: string | null;
+  updatedAt: number | null;
+}
+
+export interface AgentSettingsForm {
+  settings: AgentSettings;
+  catalog: ModelCatalog;
+  canManage: boolean;
+}

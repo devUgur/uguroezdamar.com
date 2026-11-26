@@ -26,7 +26,7 @@ export function AgentConfigView({ config }: { config: AgentConfig }) {
             </li>
           ))}
         </ol>
-        <p className="text-xs text-muted-foreground">Reihenfolge der Fallbacks. Pro Thread lässt sich ein bestimmtes Modell wählen.</p>
+        <p className="text-xs text-muted-foreground">Reihenfolge der Fallbacks: zuerst das Modell aus den Einstellungen, dann die Rolle. Pro Chat lässt sich ein anderes Modell wählen.</p>
       </Section>
 
       <Section title={`Werkzeuge (${config.tools.length})`}>
@@ -63,7 +63,7 @@ export function AgentConfigView({ config }: { config: AgentConfig }) {
           rows={[
             ["Schritte je Auftrag", String(limits.maxSteps)],
             ["Externe Aufrufe je Etappe", String(limits.subrequestsPerStage)],
-            ["Verlauf ans Modell", `${limits.historyMessages} Nachrichten`],
+            ["Verlauf ans Modell", `aktueller Lauf vollständig, davor Zusammenfassung und ${limits.historyMessages} Nachrichten`],
             ["Lauf gilt als tot nach", `${limits.staleRunMinutes} min`],
             ["Freigabe läuft ab nach", `${limits.approvalHours} h`],
             ["Tagesbudget", `${usd(limits.dailyBudgetUsd)} (heute ${usd(limits.spentTodayUsd)})`],

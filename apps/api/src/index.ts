@@ -1,4 +1,5 @@
 import { describeAgent } from "./agents/describe.ts";
+import { handleAgentSettings } from "./agents/settings.ts";
 import { AGENTS } from "./agents/registry.ts";
 import { authorize, type Caller } from "./auth.ts";
 import type { Env } from "./env.ts";
@@ -365,6 +366,9 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 
   const threads = await handleThreads(request, env, caller, path);
   if (threads) return threads;
+
+  const settings = await handleAgentSettings(request, env, caller, path);
+  if (settings) return settings;
 
   const configMatch = path.match(/^\/api\/agents\/([a-z0-9-]{1,40})\/config$/);
   if (configMatch && method === "GET") {

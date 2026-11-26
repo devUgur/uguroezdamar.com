@@ -22,6 +22,8 @@ export interface RouteOptions {
   privateContent?: boolean;
   /** A model chosen in the portal for this thread; tried first, the alias chain stays as fallback. */
   pinned?: PinnedModel;
+  /** The model set for this agent (employee); tried after the thread's choice and before the tenant's role default. */
+  preferred?: PinnedModel;
 }
 
 export interface PinnedModel {
@@ -134,6 +136,11 @@ export class ModelRouter {
     return this.offers(pinned) && this.config.providers[pinned.provider]?.trainsOnData === false;
   }
 
+  /** True when the model is in the catalog and its provider has a key (or needs none). */
+  usable(choice: PinnedModel): boolean {
+    return this.offers(choice) && this.hasCredentials(choice.provider);
+  }
+
   /** True when the provider exists and offers this model in the catalog. */
   offers(pinned: PinnedModel): boolean {
     return Boolean(this.config.providers[pinned.provider]?.models?.some((model) => model.id === pinned.model));
@@ -161,7 +168,9 @@ export class ModelRouter {
 
   async chat(alias: string, request: Omit<ChatRequest, "model">, options: RouteOptions = {}): Promise<RoutedResult> {
     const chain = this.ordered(alias);
-    const ordered = options.pinned ? [this.target(options.pinned), ...chain.filter((target) => !sameTarget(target, options.pinned))] : chain;
+    const first = [options.pinned, options.preferred].filter((choice): choice is PinnedModel => Boolean(choice && this.offers(choice)));
+    const unique = first.filter((choice, index) => first.findIndex((other) => sameTarget(this.target(other), choice)) === index);
+    const ordered = [...unique.map((choice) => this.target(choice)), ...chain.filter((target) => !unique.some((choice) => sameTarget(target, choice)))];
     if (!ordered.length) throw new ModelError(`Unknown model alias "${alias}"`, "router", 400);
     const attempts: string[] = [];
     // Private content never reaches a provider that may evaluate it. Blocked targets are named, so a chosen model
@@ -250,7 +259,7 @@ export class ModelRouter {
       : provider.baseUrl);
     if (!baseUrl) return undefined;
     const shortToolCallIds = provider.shortToolCallIds || provider.models?.find((entry) => entry.id === model)?.shortToolCallIds;
-    return new OpenAICompatibleModel(providerId, baseUrl, apiKey, {}, { shortToolCallIds });
+    return new OpenAICompatibleModel(providerId, baseUrl, apiKey, {}, { shortToolCallIds, reasoningEffort: provider.reasoningEffort });
   }
 }
 

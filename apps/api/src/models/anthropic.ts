@@ -39,8 +39,8 @@ export class AnthropicModel implements ModelPort {
       const stream = this.client.beta.messages.stream({
         model: request.model,
         max_tokens: request.maxTokens && request.maxTokens > MAX_TOKENS ? request.maxTokens : MAX_TOKENS,
-        // Agentic coding with many tool calls: medium is the recommended starting point.
-        output_config: { effort: "medium" },
+        // Agentic coding with many tool calls: medium is the recommended starting point unless the agent says otherwise.
+        output_config: { effort: request.effort ?? "medium" },
         // Caches the stable prefix (tools, system prompt, history) between the steps of a run.
         cache_control: { type: "ephemeral" },
         system: system || undefined,

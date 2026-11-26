@@ -4,8 +4,10 @@ import { secret } from "../env.ts";
 import { spentTodayFromLedger } from "../usage/ledger.ts";
 import { parseList } from "../organization/catalog.ts";
 import { ModelRouter } from "../models/router.ts";
+import { PRIOR_MESSAGES } from "../runtime/context.ts";
+import { loadAgentSettings, stepsOf } from "./settings.ts";
 import { EXTERNAL_SUBREQUESTS_PER_STAGE } from "../runtime/budget.ts";
-import { HISTORY_LIMIT, MAX_STEPS, STALE_RUN_MS } from "../runtime/limits.ts";
+import { STALE_RUN_MS } from "../runtime/limits.ts";
 import { BRANCH_PREFIX, WORK_BRANCH } from "../tools/github.ts";
 import { toolsByName } from "../tools/registry.ts";
 import { AGENTS } from "./registry.ts";
@@ -64,7 +66,7 @@ export async function describeAgent(env: Env, tenantId: string, agentId: string)
   const definition = AGENTS[agentId];
   if (!definition) return null;
 
-  const router = await ModelRouter.load(env, tenantId);
+  const [router, settings] = await Promise.all([ModelRouter.load(env, tenantId), loadAgentSettings(env, tenantId, agentId)]);
   const [row, project, spent, threads, pendingApprovals, memories, totals, organization, taskCounts, activeTasks] = await Promise.all([
     env.DB.prepare("SELECT role, daily_budget_usd, desk_x, desk_y FROM agents WHERE id = ?")
       .bind(agentId)
@@ -109,7 +111,17 @@ export async function describeAgent(env: Env, tenantId: string, agentId: string)
     role: row?.role ?? "",
     summary: definition.summary,
     desk: { x: row?.desk_x ?? 0, y: row?.desk_y ?? 0 },
-    model: { alias: definition.modelAlias, chain: router.chain(definition.modelAlias) },
+    model: {
+      alias: definition.modelAlias,
+      // The employee's own model comes first, then the role chain (with the tenant's role default).
+      chain: [
+        ...(settings.model && router.offers(settings.model)
+          ? [{ provider: settings.model.provider, providerLabel: router.catalog().providers.find((provider) => provider.id === settings.model?.provider)?.label ?? settings.model.provider, model: settings.model.model, available: true }]
+          : []),
+        ...router.chain(definition.modelAlias).filter((target) => !(settings.model && target.provider === settings.model.provider && target.model === settings.model.model)),
+      ],
+    },
+    settings,
     tools: toolsByName(definition.tools).map((tool) => ({
       name: tool.spec.name,
       description: tool.spec.description,
@@ -143,12 +155,12 @@ export async function describeAgent(env: Env, tenantId: string, agentId: string)
     },
     prompt: definition.systemPrompt({ repo, projectName: project?.name ?? DEFAULT_PROJECT, memories: [] }),
     limits: {
-      maxSteps: MAX_STEPS,
+      maxSteps: stepsOf(settings),
       subrequestsPerStage: EXTERNAL_SUBREQUESTS_PER_STAGE,
-      historyMessages: HISTORY_LIMIT,
+      historyMessages: PRIOR_MESSAGES,
       staleRunMinutes: STALE_RUN_MS / 60_000,
       approvalHours: APPROVAL_TTL_SECONDS / 3600,
-      dailyBudgetUsd: row?.daily_budget_usd ?? 0.5,
+      dailyBudgetUsd: settings.dailyBudgetUsd ?? row?.daily_budget_usd ?? 0.5,
       spentTodayUsd: spent,
     },
     storage: {

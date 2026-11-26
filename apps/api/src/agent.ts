@@ -1,3 +1,5 @@
+import { loadAgentSettings, stepsOf } from "./agents/settings.ts";
+import { buildContext, PRIOR_MESSAGES, SUMMARIZE_AFTER, summaryPrompt, type ThreadSummary, unsummarized } from "./runtime/context.ts";
 import { finishRun, recordModelCall, recordToolCall, spentTodayFromLedger, startRun } from "./usage/ledger.ts";
 import { anyStrict, effectivePolicy } from "./projects/policy.ts";
 import { DurableObject } from "cloudflare:workers";
@@ -9,7 +11,7 @@ import type { ChatMessage, ToolCall } from "./models/port.ts";
 import { ModelRouter, type PinnedModel, type RoutedResult } from "./models/router.ts";
 import { OWNER_TENANT } from "./tenancy.ts";
 import { BudgetExhausted, SubrequestBudget } from "./runtime/budget.ts";
-import { DELTA_FLUSH_MS, HISTORY_LIMIT, MAX_STEPS, STALE_RUN_MS } from "./runtime/limits.ts";
+import { DELTA_FLUSH_MS, HISTORY_LIMIT, STALE_RUN_MS } from "./runtime/limits.ts";
 import { runAgentLoop, type LoopEvent } from "./runtime/loop.ts";
 import type { Accepted, AgentRuntimePort, AgentStatus, ChatInput, ResumeInput } from "./runtime/port.ts";
 import { projectMemories } from "./tools/workspace.ts";
@@ -51,9 +53,13 @@ interface RunState {
   touchedAt: number;
   /** Row in the usage ledger (runs); missing on runs started before the ledger existed. */
   runId?: string;
+  /** First message id of this run: everything from here goes to the model in full (runtime/context.ts). */
+  historyFrom?: number;
 }
 
 const RUN = "run";
+/** Running summary of the thread's earlier messages (runtime/context.ts). */
+const SUMMARY = "summary";
 const INBOX = "inbox";
 /** Private repositories whose content entered this thread (legacy: true); see ToolContext.markPrivate. */
 type PrivateMark = boolean | string[];
@@ -205,7 +211,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
   async reset(): Promise<void> {
     await this.stop();
     this.ctx.storage.sql.exec("DELETE FROM messages");
-    await this.ctx.storage.delete(PRIVATE_THREAD);
+    await this.ctx.storage.delete([PRIVATE_THREAD, SUMMARY]);
   }
 
   /** Messages wait in the inbox until a stage boundary, so tool-call sequences stay intact. */
@@ -241,6 +247,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     if (!run.runId) Object.assign(run, await this.openRun(run));
     const base = { tenantId: run.tenantId, threadId: run.threadId, agentId: run.agentId, projectId: run.projectId, taskId: run.taskId };
     try {
+      run.historyFrom ??= this.nextMessageId();
       const inbox = (await this.ctx.storage.get<string[]>(INBOX)) ?? [];
       if (inbox.length) {
         for (const text of inbox) this.append({ role: "user", content: text });
@@ -287,7 +294,8 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       spentTodayFromLedger(this.env, tenantId, agentId),
       this.env.DB.prepare("SELECT model FROM threads WHERE tenant_id = ? AND id = ?").bind(tenantId, threadId).first<{ model: string | null }>(),
     ]);
-    const dailyBudget = budgetRow?.daily_budget_usd ?? 0.5;
+    const settings = await loadAgentSettings(this.env, tenantId, agentId);
+    const dailyBudget = settings.dailyBudgetUsd ?? budgetRow?.daily_budget_usd ?? 0.5;
     if (spent >= dailyBudget) {
       const reply = `Mein Tagesbudget von ${dailyBudget.toFixed(2)} $ ist aufgebraucht (${spent.toFixed(2)} $). Ich mache morgen weiter oder du erhöhst das Budget.`;
       await emit(this.env, { ...base, type: "budget_blocked", data: { budget: dailyBudget, spent } });
@@ -328,6 +336,11 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
         if (!tainted) tainted = seen === true || (await anyStrict(this.env, tenantId, next));
       },
     };
+    // Every stage may run in a fresh object instance: the summary comes from storage, not from memory.
+    this.summaryCache = (await this.ctx.storage.get<ThreadSummary>(SUMMARY)) ?? null;
+    if (run.stages === 0 && run.historyFrom !== undefined) {
+      await this.summarize({ tenantId, agentId, projectId, threadId, taskId: run.taskId, runId: run.runId, runFrom: run.historyFrom, router, budget, strict: privateContent() });
+    }
     const deltas = new DeltaBuffer(this.env, agentId, threadId);
     // The step the loop is in and the arguments of the tool call in flight, for the usage ledger.
     let step = run.steps;
@@ -343,7 +356,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
           memories: definition.useProjectMemory === false ? [] : await projectMemories(this.env.DB, tenantId, projectId),
         }),
       },
-      history: { recent: () => this.recent(HISTORY_LIMIT), append: (message) => this.append(message) },
+      history: { recent: () => this.context(run.historyFrom), append: (message) => this.append(message) },
       model: async (request, onDelta) => {
         const started = Date.now();
         let firstToken: number | null = null;
@@ -353,9 +366,10 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
         try {
           result = await router.chat(
             definition.modelAlias,
-            { ...request, temperature: 0.3, maxTokens: 8192 },
+            { ...request, temperature: 0.3, maxTokens: 8192, effort: settings.effort ?? undefined },
             {
               budget,
+              preferred: settings.model ?? undefined,
               onDelta: (text) => {
                 firstToken ??= Date.now() - started;
                 onDelta(text);
@@ -447,7 +461,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       },
       delta: (step, text) => deltas.push(step, text),
       stepsDone: run.steps,
-      maxSteps: MAX_STEPS,
+      maxSteps: stepsOf(settings),
     });
     await deltas.flush();
     run.steps = outcome.steps;
@@ -558,22 +572,84 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     );
   }
 
+  private nextMessageId(): number {
+    const row = this.ctx.storage.sql.exec<{ next: number }>("SELECT COALESCE(MAX(id), 0) + 1 AS next FROM messages").one();
+    return Number(row.next);
+  }
+
+  /** The thread as the model sees it in this run (runtime/context.ts); runs from before the builder keep the old window. */
+  private context(runFrom: number | undefined): ChatMessage[] {
+    if (runFrom === undefined) return this.recent(HISTORY_LIMIT);
+    const rows = this.ctx.storage.sql
+      .exec<MessageRow & { id: number }>(
+        "SELECT id, role, content, tool_calls, tool_call_id, raw FROM messages WHERE id >= ? OR id IN (SELECT id FROM messages WHERE id < ? ORDER BY id DESC LIMIT ?) ORDER BY id",
+        runFrom,
+        runFrom,
+        PRIOR_MESSAGES,
+      )
+      .toArray();
+    return buildContext(rows.map((row) => ({ id: Number(row.id), ...toMessage(row) })), runFrom, this.summaryCache);
+  }
+
+  private summaryCache: ThreadSummary | null = null;
+
+  /**
+   * Folds earlier messages into the thread summary with the cheap role model, once at the start of a run and only when
+   * enough has piled up. A failure keeps the old summary; the run goes on either way.
+   */
+  private async summarize(input: { tenantId: string; agentId: string; projectId: string; threadId: string; taskId?: string; runId?: string; runFrom: number; router: ModelRouter; budget: SubrequestBudget; strict: boolean }): Promise<void> {
+    this.summaryCache = (await this.ctx.storage.get<ThreadSummary>(SUMMARY)) ?? null;
+    const rows = this.ctx.storage.sql
+      .exec<MessageRow & { id: number }>("SELECT id, role, content, tool_calls, tool_call_id, raw FROM messages WHERE id > ? AND id < ? ORDER BY id", this.summaryCache?.upTo ?? 0, input.runFrom)
+      .toArray()
+      .map((row) => ({ id: Number(row.id), ...toMessage(row) }));
+    const pending = unsummarized(rows, input.runFrom, this.summaryCache);
+    if (pending.length < SUMMARIZE_AFTER) return;
+    const started = Date.now();
+    try {
+      const result = await input.router.chat("worker-cheap", { messages: summaryPrompt(this.summaryCache, pending), temperature: 0.2, maxTokens: 1_200 }, { budget: input.budget, privateContent: input.strict });
+      const text = result.message.content?.trim();
+      if (text) {
+        this.summaryCache = { text: text.slice(0, 4_000), upTo: pending.at(-1)?.id ?? this.summaryCache?.upTo ?? 0 };
+        await this.ctx.storage.put(SUMMARY, this.summaryCache);
+      }
+      await recordModelCall(this.env, {
+        tenantId: input.tenantId, runId: input.runId, agentId: input.agentId, projectId: input.projectId, threadId: input.threadId, taskId: input.taskId,
+        step: 0, alias: "context-summary", provider: result.target.provider, model: result.target.model, status: "ok",
+        tokensIn: result.usage.inputTokens, tokensOut: result.usage.outputTokens, cacheReadTokens: result.usage.cacheReadTokens,
+        inputUsdPerM: result.target.inputUsdPerM, outputUsdPerM: result.target.outputUsdPerM, priceSource: result.priceSource, costUsd: result.costUsd,
+        latencyMs: Date.now() - started, keySource: result.keySource, strictPolicy: input.strict, attempts: result.attempts,
+      });
+    } catch (error) {
+      console.error("thread summary failed", error instanceof Error ? error.message : error);
+      await recordModelCall(this.env, {
+        tenantId: input.tenantId, runId: input.runId, agentId: input.agentId, projectId: input.projectId, threadId: input.threadId,
+        step: 0, alias: "context-summary", provider: "router", model: "worker-cheap", status: "error", latencyMs: Date.now() - started,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   private recent(limit: number): ChatMessage[] {
     const rows = this.ctx.storage.sql
       .exec<MessageRow>("SELECT role, content, tool_calls, tool_call_id, raw FROM messages ORDER BY id DESC LIMIT ?", limit)
       .toArray()
       .reverse();
-    const messages: ChatMessage[] = rows.map((row) => ({
-      role: row.role as ChatMessage["role"],
-      content: row.content,
-      toolCalls: row.tool_calls ? (JSON.parse(row.tool_calls) as ToolCall[]) : undefined,
-      toolCallId: row.tool_call_id ?? undefined,
-      raw: row.raw ? (JSON.parse(row.raw) as ChatMessage["raw"]) : undefined,
-    }));
+    const messages: ChatMessage[] = rows.map(toMessage);
     // A window must not open with tool results whose call fell outside it.
     while (messages.length && messages[0]?.role === "tool") messages.shift();
     return messages;
   }
+}
+
+function toMessage(row: MessageRow): ChatMessage {
+  return {
+    role: row.role as ChatMessage["role"],
+    content: row.content,
+    toolCalls: row.tool_calls ? (JSON.parse(row.tool_calls) as ToolCall[]) : undefined,
+    toolCallId: row.tool_call_id ?? undefined,
+    raw: row.raw ? (JSON.parse(row.raw) as ChatMessage["raw"]) : undefined,
+  };
 }
 
 function parsePinned(value: string | null | undefined): PinnedModel | undefined {

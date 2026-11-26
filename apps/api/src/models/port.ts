@@ -36,6 +36,8 @@ export interface ChatRequest {
   tools?: ToolSpec[];
   temperature?: number;
   maxTokens?: number;
+  /** How hard the model should think, where the provider supports it; otherwise ignored. */
+  effort?: "low" | "medium" | "high";
 }
 
 export interface Usage {

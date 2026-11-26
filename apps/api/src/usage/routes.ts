@@ -127,9 +127,11 @@ const RUN_COLUMNS = `r.id, r.agent_id AS agentId, COALESCE((SELECT name FROM age
 export async function usageRuns(env: Env, tenantId: string, filter: UsageFilter, limit = 100) {
   const parts = ["r.tenant_id = ?", "r.started_at >= ?", "r.started_at <= ?"];
   const params: unknown[] = [tenantId, filter.from, filter.to];
-  if (filter.projectId) (parts.push("r.project_id = ?"), params.push(filter.projectId));
-  if (filter.agentId) (parts.push("r.agent_id = ?"), params.push(filter.agentId));
-  if (filter.status) (parts.push("r.status = ?"), params.push(filter.status));
+  for (const [column, value] of [["r.project_id", filter.projectId], ["r.agent_id", filter.agentId], ["r.status", filter.status]] as const) {
+    if (value === undefined) continue;
+    parts.push(`${column} = ?`);
+    params.push(value);
+  }
   const { results } = await env.DB.prepare(
     `SELECT ${RUN_COLUMNS} FROM runs r WHERE ${parts.join(" AND ")} ORDER BY r.started_at DESC LIMIT ?`,
   )

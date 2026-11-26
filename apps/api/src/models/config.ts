@@ -58,6 +58,8 @@ export interface ProviderConfig {
   discoverModels?: boolean;
   /** Every model of this provider wants nine-character tool-call ids (Mistral). */
   shortToolCallIds?: boolean;
+  /** Accepts `reasoning_effort` (low, medium, high) in the OpenAI format. */
+  reasoningEffort?: boolean;
   /** One line for the portal: what the provider is good for. */
   description?: string;
   /** Price for a model of this provider without its own price; without it a paid provider counts DEFAULT_PAID_PRICE. */
@@ -105,6 +107,7 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
       baseUrl: "https://api.openai.com/v1",
       gatewayPath: "openai",
       apiKeySecret: "OPENAI_API_KEY",
+      reasoningEffort: true,
       models: [],
     },
     deepseek: {
@@ -183,6 +186,7 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
       baseUrl: "https://api.x.ai/v1",
       gatewayPath: "grok",
       apiKeySecret: "XAI_API_KEY",
+      reasoningEffort: true,
       models: [],
     },
     together: {
@@ -227,6 +231,7 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
       baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
       gatewayPath: "google-ai-studio/v1beta/openai",
       apiKeySecret: "GEMINI_API_KEY",
+      reasoningEffort: true,
     },
     openrouter: {
       kind: "openai-compatible",

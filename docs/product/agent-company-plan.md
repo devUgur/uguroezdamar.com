@@ -94,6 +94,11 @@ Jede Stufe ist einzeln auslieferbar, hat Tests gegen echtes SQLite und wird auf 
 
 ### Stufe 2: Mitarbeiter konfigurieren, Kontext verschlanken
 
+> **Umgesetzt am 26.11.2026:**
+> - Einstellungen je Mitarbeiter und Mandant (`agent_settings`, Migration `0018`, `GET/PUT /api/agents/:id/settings`) für Modell, Denkaufwand, Schritte und Tagesbudget; bearbeitbar im Agentenblatt des Büros, nur für den Owner.
+> - Reihenfolge der Modelle: Wahl im Chat → Modell des Mitarbeiters → Standard der Rolle → eingebaute Kette.
+> - Der Context Builder (`apps/api/src/runtime/context.ts`) schickt den laufenden Lauf vollständig, damit der Prompt-Cache greift. Davor gehen nur eine fortgeschriebene Zusammenfassung (günstiges Modell, im Protokoll als `context-summary`) und die letzten zehn Nachrichten mit gekürzten Werkzeugergebnissen mit.
+
 - **Agentenblatt im Büro bearbeitbar:**
   - Modell (aus den Anbietern mit Schlüssel und passend zur Datenrichtlinie) und Denkaufwand (niedrig bis hoch, wo der Anbieter es kann).
   - Maximale Schritte, Tagesbudget, aktiv oder pausiert.

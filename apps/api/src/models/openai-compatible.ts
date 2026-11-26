@@ -45,7 +45,7 @@ export class OpenAICompatibleModel implements ModelPort {
     private readonly baseUrl: string,
     private readonly apiKey: string | undefined,
     private readonly extraHeaders: Record<string, string> = {},
-    private readonly options: { shortToolCallIds?: boolean } = {},
+    private readonly options: { shortToolCallIds?: boolean; reasoningEffort?: boolean } = {},
   ) {}
 
   available(): boolean {
@@ -71,6 +71,7 @@ export class OpenAICompatibleModel implements ModelPort {
       tools: request.tools?.length ? request.tools.map((tool) => ({ type: "function", function: tool })) : undefined,
       temperature: request.temperature,
       max_tokens: request.maxTokens,
+      reasoning_effort: this.options.reasoningEffort && request.effort ? request.effort : undefined,
       stream: onDelta ? true : undefined,
       // Without it most providers send no token counts in a stream, and the ledger would record zero.
       stream_options: onDelta ? { include_usage: true } : undefined,

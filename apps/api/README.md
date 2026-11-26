@@ -7,7 +7,7 @@ Agenten-Backend des Admin-Portals: Threads, Agentenschleife, Modelle, Werkzeuge,
 | `src/index.ts` | HTTP-API (`/api/*`), Threads, Freigabe-Entscheidungen |
 | `src/auth.ts` | Service-Token des Portals, fail closed |
 | `src/agent.ts` | `AgentRuntime`: ein Durable Object pro Thread, führt Aufträge in Alarm-Etappen aus |
-| `src/runtime/` | `AgentRuntimePort`, die Schleife ohne Cloudflare-APIs (`loop.ts`), Subrequest-Budget pro Etappe |
+| `src/runtime/` | `AgentRuntimePort`, die Schleife ohne Cloudflare-APIs (`loop.ts`), Subrequest-Budget pro Etappe, Context Builder (`context.ts`): laufender Lauf vollständig, davor Zusammenfassung plus zehn Nachrichten |
 | `src/approvals.ts` | Text, Risiko und Ablauf der Freigaben; geschützte Pfade |
 | `src/hub.ts` | `LiveHub`: verteilt Events und gestreamten Text per WebSocket, Einmal-Tickets |
 | `src/events.ts` | Event-Log in D1, Tagesbudget |
@@ -32,6 +32,7 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 | `GET /api/organization` | geschützter, read-only Katalog von Abteilungen, Rollen, Definitionen und Instanzen |
 | `POST /api/organization/roles`, `PATCH /api/organization/roles/:id` | Owner-Scope: versionierte, nicht ausführbare Rollenprofile anlegen und pflegen |
 | `PATCH /api/organization/instances/:id`, `GET /api/organization/audit` | Owner-Scope: registrierte Instanzen begrenzt pflegen und die letzten 50 Auditänderungen lesen |
+| `GET/PUT /api/agents/:id/settings` | Einstellungen eines Mitarbeiters je Mandant: Modell, Denkaufwand (`low`/`medium`/`high`), Schritte je Lauf (4–60), Tagesbudget; Schreiben mit Scope `organization:write` und erwarteter `version` |
 | `GET /api/agents/:id/config` | Konfiguration eines Agenten, nur lesend: Modell-Kette mit Verfügbarkeit, Werkzeuge, Systemprompt, Grenzen, Speicher (D1, KV, R2), Schutzregeln, Zugangsdaten (nur ob gesetzt) |
 | `GET /api/threads`, `POST /api/threads` | Threads auflisten, anlegen |
 | `GET/PATCH/DELETE /api/threads/:id` | Verlauf, Status, offene Freigaben und Events; Titel oder Modell ändern; archivieren |

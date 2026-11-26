@@ -7,6 +7,7 @@ import { loadAgentConfig } from "../../actions";
 import type { AgentConfig, AgentSummary } from "../../types";
 import { ACTIVITY_LABEL, type AgentLiveState } from "./agentState";
 import { AgentConfigView } from "./AgentConfigView";
+import { AgentSettingsPanel } from "./AgentSettingsPanel";
 
 interface AgentConfigSheetProps {
   agent: AgentSummary | null;
@@ -19,6 +20,7 @@ interface AgentConfigSheetProps {
 export function AgentConfigSheet({ agent, state, onClose, onChat }: AgentConfigSheetProps) {
   const [config, setConfig] = useState<AgentConfig | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     setConfig(null);
@@ -31,7 +33,7 @@ export function AgentConfigSheet({ agent, state, onClose, onChat }: AgentConfigS
     return () => {
       cancelled = true;
     };
-  }, [agent]);
+  }, [agent, reload]);
 
   return (
     <Sheet open={Boolean(agent)} onOpenChange={(open) => !open && onClose()}>
@@ -60,6 +62,7 @@ export function AgentConfigSheet({ agent, state, onClose, onChat }: AgentConfigS
               </div>
             </SheetHeader>
             <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4">
+              <AgentSettingsPanel agentId={agent.id} onSaved={() => setReload((count) => count + 1)} />
               {config ? <AgentConfigView config={config} /> : <p className="text-sm text-muted-foreground">{failed ?? "Konfiguration wird geladen …"}</p>}
             </div>
           </>
