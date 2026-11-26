@@ -16,8 +16,8 @@ Agenten-Backend des Admin-Portals: Threads, Agentenschleife, Modelle, Werkzeuge,
 | `src/agents/registry.ts` | die Agenten: Prompt, Modell-Alias, Werkzeuge |
 | `src/agents/describe.ts` | Konfigurationsansicht eines Agenten für das Portal |
 | `src/runtime/limits.ts` | Grenzwerte eines Laufs, von Laufzeit und Ansicht gemeinsam genutzt |
-| `src/organization/` | read-only Organisationskatalog über die D1-Control-Plane |
-| `migrations/` | D1-Schema für Organisation, Work-Items und Review-Audit |
+| `src/organization/` | Organisationskatalog und owner-geschützte Verwaltung über die D1-Control-Plane |
+| `migrations/` | D1-Schema für Organisation, Work-Items, Review- und Organisationsaudit |
 | `modal/llm.py` | eigene Open-Weight-Modelle auf Modal (vLLM, OpenAI-kompatibel), nicht Teil des Worker-Bundles |
 
 ## API
@@ -28,6 +28,8 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 | --- | --- |
 | `GET /api/agents` | Agenten mit Rolle, Modell-Alias, letztem Event und neuestem Thread (für das Büro) |
 | `GET /api/organization` | geschützter, read-only Katalog von Abteilungen, Rollen, Definitionen und Instanzen |
+| `POST /api/organization/roles`, `PATCH /api/organization/roles/:id` | Owner-Scope: versionierte, nicht ausführbare Rollenprofile anlegen und pflegen |
+| `PATCH /api/organization/instances/:id`, `GET /api/organization/audit` | Owner-Scope: registrierte Instanzen begrenzt pflegen und die letzten 50 Auditänderungen lesen |
 | `GET /api/agents/:id/config` | Konfiguration eines Agenten, nur lesend: Modell-Kette mit Verfügbarkeit, Werkzeuge, Systemprompt, Grenzen, Speicher (D1, KV, R2), Schutzregeln, Zugangsdaten (nur ob gesetzt) |
 | `GET /api/threads`, `POST /api/threads` | Threads auflisten, anlegen |
 | `GET/PATCH/DELETE /api/threads/:id` | Verlauf, Status, offene Freigaben und Events; Titel oder Modell ändern; archivieren |
@@ -42,6 +44,8 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 | `POST /api/tasks/:id/run`, `POST /api/tasks/:id/review` | Chef-Ausführung bzw. getrennte, read-only QA-Übergabe |
 
 `task_reviews` speichert Ergebnis und Evidence jedes Prüflaufs. `Done` wird nie durch das Modell gesetzt; ein Owner muss eine Abschlussnotiz hinterlegen. Der QA-Reviewer kann weder Commits noch Pull Requests erzeugen.
+
+Organisationsänderungen prüfen zusätzlich `organization:write`, die Portal-Owner-Session und eine erwartete Versionsnummer. Rollen- und Instanzänderungen werden mit Vorher-/Nachher-Zustand in `organization_audit` gespeichert. Runtime-Definitionen, Tools, Modelle und harte Löschungen sind keine Portalaktionen.
 
 ## Ablauf eines Auftrags
 

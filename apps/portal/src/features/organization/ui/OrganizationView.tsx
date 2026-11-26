@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { OrganizationCatalog } from "../types";
+import { OrganizationLiveSync } from "./OrganizationLiveSync";
 
-export function OrganizationView({ catalog, error }: { catalog: OrganizationCatalog | null; error: string | null }) {
+export function OrganizationView({ catalog, error, canManage = false }: { catalog: OrganizationCatalog | null; error: string | null; canManage?: boolean }) {
   if (!catalog) {
     return <main className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-10"><h1 className="font-serif text-3xl">Organisation</h1><p role="status" className="text-sm text-destructive">{error}</p></main>;
   }
@@ -15,6 +16,8 @@ export function OrganizationView({ catalog, error }: { catalog: OrganizationCata
         <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">Control Plane</p>
         <h1 className="font-serif text-3xl">Organisation</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">Rollen beschreiben Verantwortlichkeiten. Nur eine registrierte Runtime-Definition macht eine Agenteninstanz ausführbar. Die 3D-Ansicht zeigt ausschließlich echte Instanzen.</p>
+        <OrganizationLiveSync />
+        {canManage ? <Link href="/organization/manage" className="mt-2 inline-flex w-fit rounded-md border border-border px-3 py-2 text-sm hover:bg-accent">Organisation verwalten</Link> : null}
       </header>
 
       <section className="flex flex-col gap-4" aria-labelledby="staff-title">
@@ -49,7 +52,7 @@ export function OrganizationView({ catalog, error }: { catalog: OrganizationCata
           ))}
         </div>
       </section>
-      <p className="text-xs text-muted-foreground">Der Katalog ist derzeit versioniert und lesbar. Neue Runtime-Definitionen, Tools oder Mitarbeitende werden erst aktiviert, wenn Rechte, Limits, Ausführungsadapter und Abnahme dafür umgesetzt sind.</p>
+      <p className="text-xs text-muted-foreground">Rollenprofile lassen sich versioniert pflegen. Runtime-Definitionen, Tool-Rechte und neue ausführbare Mitarbeitende bleiben codeverwaltet und benötigen eine separate technische Prüfung.</p>
     </main>
   );
 }

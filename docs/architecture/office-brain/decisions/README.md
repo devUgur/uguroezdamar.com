@@ -1,11 +1,11 @@
 # Office Brain – geplante Architekturentscheidungen
 
-Diese Liste ist ein Entscheidungsbacklog, kein Beschluss. Die Agentenlaufzeit, gemeinsame Bürobewegung, Agentenarbeit, Organisationskatalog und unabhängige QA im API-Control-Plane sind in [ADR 0024](../../decisions/0024-agent-platform-on-cloudflare.md), [ADR 0025](../../decisions/0025-synchronisierte-agentenpraesenz.md), [ADR 0026](../../decisions/0026-agent-work-management.md), [ADR 0027](../../decisions/0027-agent-organization-catalog.md) und [ADR 0028](../../decisions/0028-independent-agent-qa.md) entschieden.
+Diese Liste ist ein Entscheidungsbacklog, kein Beschluss. Die Agentenlaufzeit, gemeinsame Bürobewegung, Agentenarbeit, Organisationskatalog, unabhängige QA und Owner-Verwaltung im API-Control-Plane sind in [ADR 0024](../../decisions/0024-agent-platform-on-cloudflare.md), [ADR 0025](../../decisions/0025-synchronisierte-agentenpraesenz.md), [ADR 0026](../../decisions/0026-agent-work-management.md), [ADR 0027](../../decisions/0027-agent-organization-catalog.md), [ADR 0028](../../decisions/0028-independent-agent-qa.md) und [ADR 0030](../../decisions/0030-owner-geschuetzte-organisationsverwaltung.md) entschieden.
 
 ## Offene Entscheidungen
 
-1. **Erster ausführbarer Arbeitsfall:** Task-/Thread-/Run-Verknüpfung, erlaubte Daten und menschliche Abnahme konkret festlegen.
-2. **Organisationsmodell:** Definitionen, Rollen, Instanzen, Vorgesetztenbeziehung und Rechtevertrag vor schreibbarer Verwaltung festlegen.
+1. **Betriebsabnahme:** Task-/Thread-/Run-Verknüpfung, echte Modellannahme, QA-Nachweise, Fehler/Stop und Zwei-Browser-Aktualisierung in API-Dev durchgehen.
+2. **Organisationsmodell:** Definitionen, Rollen, Instanzen, Vorgesetztenbeziehung und Rechtevertrag für spätere Delegation ausbauen.
 3. **Agentenübergabe:** Events, Idempotenz, Retry/Resume und Gate bei Mehr-Agenten-Zuweisungen spezifizieren.
 4. **Isolierte Workstation:** Runner-Kandidat, Repository-Rechte, Workspace-Isolation und Cleanup anhand eines begrenzten POC vergleichen.
 5. **Wissensquellen und Aufbewahrung:** Git-Referenzen, private Quellen, Versionen und Zugriffsscope bestimmen.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { AgentSummary, OfficeSnapshot } from "../../types";
 import { loadOfficeState } from "../../actions";
 import { useLiveSocket } from "../live/useLiveSocket";
@@ -16,6 +17,7 @@ export function useOfficeLive(
   initialPresence: OfficeSnapshot | null,
   initialPresenceError: string | null,
 ) {
+  const router = useRouter();
   const [states, setStates] = useState<Record<string, AgentLiveState>>(() =>
     Object.fromEntries(agents.map((agent) => [agent.id, { activity: activityOf(agent.lastEvent), bubble: "" }])),
   );
@@ -74,6 +76,11 @@ export function useOfficeLive(
     },
     onOffice: applySnapshot,
     onEvent: (event) => {
+      if (event.type === "organization_updated" && event.data?.scope === "instance") {
+        void loadOfficeState().then((result) => result.ok && applySnapshot(result.snapshot));
+        router.refresh();
+        return;
+      }
       const agentId = event.agentId;
       if (!agentId) return;
       latestEventIds.current[agentId] = Math.max(latestEventIds.current[agentId] ?? 0, event.id);

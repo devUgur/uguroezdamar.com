@@ -3,6 +3,8 @@ import type { Env } from "./env.ts";
 export interface Caller {
   /** Email of the portal admin on whose behalf the portal calls; for audit only. */
   actor: string;
+  /** Narrow capabilities asserted by the trusted portal server after checking its admin session. */
+  scopes: readonly string[];
 }
 
 /**
@@ -16,7 +18,12 @@ export async function authorize(request: Request, env: Env): Promise<Caller | nu
   const header = request.headers.get("authorization");
   const given = header?.startsWith("Bearer ") ? header.slice(7) : null;
   if (!given || !(await constantTimeEqual(given, expected))) return null;
-  return { actor: (request.headers.get("x-portal-actor") ?? "portal").slice(0, 200) };
+  const allowedScopes = new Set(["organization:write"]);
+  const scopes = (request.headers.get("x-portal-scopes") ?? "")
+    .split(",")
+    .map((scope) => scope.trim())
+    .filter((scope) => allowedScopes.has(scope));
+  return { actor: (request.headers.get("x-portal-actor") ?? "portal").slice(0, 200), scopes };
 }
 
 async function constantTimeEqual(a: string, b: string): Promise<boolean> {

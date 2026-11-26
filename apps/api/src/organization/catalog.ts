@@ -33,6 +33,7 @@ interface InstanceRow {
   active: number;
   desk_x: number | null;
   desk_y: number | null;
+  version: number;
 }
 
 export function parseList(value: string): string[] {
@@ -52,7 +53,7 @@ export async function organizationCatalog(env: Env) {
     env.DB.prepare("SELECT id, role_id, runtime_key, version FROM agent_definitions ORDER BY id").all<DefinitionRow>(),
     env.DB.prepare(
       `SELECT a.id, a.name, a.definition_id, d.role_id AS definition_role_id, r.department_id,
-              a.active, a.desk_x, a.desk_y
+              a.active, a.desk_x, a.desk_y, a.version
          FROM agents a
          LEFT JOIN agent_definitions d ON d.id = a.definition_id
          LEFT JOIN role_profiles r ON r.id = d.role_id
@@ -91,6 +92,7 @@ export async function organizationCatalog(env: Env) {
       active: instance.active === 1,
       executable: Boolean(instance.definition_id),
       desk: { x: instance.desk_x, y: instance.desk_y },
+      version: instance.version,
     })),
   };
 }

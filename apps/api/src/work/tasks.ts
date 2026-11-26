@@ -274,7 +274,9 @@ async function startTaskReview(env: Env, caller: Caller, task: TaskRow): Promise
 
   const reviewId = crypto.randomUUID();
   const threadId = crypto.randomUUID();
-  const claimed = await env.DB.prepare("UPDATE tasks SET status = 'qa', updated_at = unixepoch() WHERE id = ? AND status = 'review'").bind(task.id).run();
+  const claimed = await env.DB.prepare(
+    "UPDATE tasks SET status = 'qa', updated_at = unixepoch() WHERE id = ? AND status = 'review' AND EXISTS (SELECT 1 FROM agents WHERE id = ? AND active = 1)",
+  ).bind(task.id, reviewerId).run();
   if (!claimed.meta.changes) return json({ error: "Aufgabe wurde bereits geändert. Bitte neu laden." }, 409);
 
   try {
@@ -334,8 +336,9 @@ async function startTaskRun(env: Env, caller: Caller, task: TaskRow): Promise<Re
     "Arbeite ausschließlich an diesem Auftrag. Halte dich an Repository-Regeln, Tool-Grenzen und erforderliche Freigaben. Melde Ergebnis, offene Punkte und Verifikationsstatus. Markiere die Aufgabe nicht selbst als abgeschlossen.",
   ].filter(Boolean).join("\n\n");
 
-  const claim = await env.DB.prepare("UPDATE tasks SET agent_id = ?, status = 'in_progress', updated_at = unixepoch() WHERE id = ? AND status = 'ready'")
-    .bind(agentId, task.id).run();
+  const claim = await env.DB.prepare(
+    "UPDATE tasks SET agent_id = ?, status = 'in_progress', updated_at = unixepoch() WHERE id = ? AND status = 'ready' AND EXISTS (SELECT 1 FROM agents WHERE id = ? AND active = 1)",
+  ).bind(agentId, task.id, agentId).run();
   if (!claim.meta.changes) return json({ error: "Aufgabe wurde bereits geändert oder gestartet." }, 409);
   try {
     await env.DB.prepare("INSERT INTO threads (id, agent_id, project_id, task_id, title, created_by) VALUES (?, ?, ?, ?, ?, ?)")

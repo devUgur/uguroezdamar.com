@@ -35,7 +35,7 @@ export function agentsApiOrigin(): string | null {
 export async function agentsApi<T>(
   path: string,
   actor: string,
-  init: { method?: "GET" | "POST" | "PATCH" | "DELETE"; body?: unknown } = {},
+  init: { method?: "GET" | "POST" | "PATCH" | "DELETE"; body?: unknown; scopes?: readonly string[] } = {},
 ): Promise<T> {
   const { origin, token } = config();
   let response: Response;
@@ -45,6 +45,7 @@ export async function agentsApi<T>(
       headers: {
         authorization: `Bearer ${token}`,
         "x-portal-actor": actor,
+        ...(init.scopes?.length ? { "x-portal-scopes": init.scopes.join(",") } : {}),
         ...(init.body === undefined ? {} : { "content-type": "application/json" }),
       },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),

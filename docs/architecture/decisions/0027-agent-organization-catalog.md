@@ -1,6 +1,6 @@
 # ADR 0027: Organisationskatalog im Agenten-Control-Plane
 
-- Status: accepted
+- Status: accepted; Schreibverwaltung ergänzt durch [ADR 0030](0030-owner-geschuetzte-organisationsverwaltung.md)
 - Datum: 2026-11-26
 - Beteiligte: Projektverantwortlicher
 - Ergänzt: [ADR 0024](0024-agent-platform-on-cloudflare.md), [ADR 0026](0026-agent-work-management.md)
@@ -16,7 +16,7 @@ Das Agentenbüro benötigt Abteilungen, Rollenprofile, Definitionen und konkrete
 3. Rollenprofile beschreiben Zweck, Verantwortlichkeiten und Fähigkeiten. Sie verleihen keine Laufzeit- oder Tool-Berechtigung.
 4. Eine Definition ist nur ausführbar, wenn ihr `runtime_key` in der Server-Registry vorhanden ist. Portal-Katalog oder Avatar können keine Runtime registrieren.
 5. Der erste Katalog enthält sieben Rollenprofile, aber nur die bereits vorhandene `chef-v1`-Definition und Chef-Agent-Instanz. Keine weiteren Mitarbeiter werden simuliert.
-6. `/api/organization` liefert einen geschützten Read-Model-Endpunkt. `/organization` zeigt Katalog und echte Instanzen read-only. Änderungen an Runtime-Definitionen, Berechtigungen, Prompts und Instanzen bleiben bis zum Owner-geschützten Verwaltungs- und Scope-Modell versioniert durch Code/Migration.
+6. `/api/organization` liefert einen geschützten Read-Model-Endpunkt. `/organization` zeigt Katalog und echte Instanzen. Das Owner-geschützte Verwaltungs- und Scope-Modell ist in ADR 0030 ergänzt.
 7. Produktionsfreigaben, Secrets und externe Aktionen bleiben den bestehenden Freigaben und Owner-Gates unterstellt.
 
 ## Alternativen
@@ -30,7 +30,7 @@ Das Agentenbüro benötigt Abteilungen, Rollenprofile, Definitionen und konkrete
 - Migration `0007_organization_catalog.sql` legt Katalogtabellen an, versieht die Chef-Instanz mit `chef-v1` und ordnet `ceo` dem stabilen Profil `chief` zu.
 - Die Portalroute `/organization` zeigt gespeicherte Rollen und Instanzen; nicht ausführbare Profile sind sichtbar als Profile und erzeugen keine Avatare.
 - Neue Agenten werden erst aktiviert, wenn Registry-Auflösung, Least-Privilege-Tools, Limits, Berechtigungen, Arbeitszuweisung und Abnahme gemeinsam implementiert sind.
-- Schreibende Organisationsverwaltung ist noch nicht verfügbar. Vor dieser Erweiterung ist ein Rollen-/Scope-Vertrag mit Audit-Ereignissen zu ergänzen.
+- Schreibende Organisationsverwaltung ist in ADR 0030 auf versionierte Rollenprofile und registrierte Instanzen begrenzt. Runtime-Definitionen bleiben codeverwaltet.
 
 ## Rückprüfung
 

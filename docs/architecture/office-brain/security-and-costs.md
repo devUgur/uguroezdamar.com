@@ -1,7 +1,7 @@
 # Office Brain – Sicherheit, Daten und Kosten
 
-- Status: Planung
-- Dieses Dokument erweitert noch keine verbindlichen Security- oder Operations-Regeln. Anforderungen werden vor der ersten Implementierung als ADR/Änderung an die geltenden Richtlinien übernommen.
+- Status: Planungsgrundlage; implementierte Garantien stehen in ADR 0024, ADR 0028 und ADR 0030.
+- Dieses Dokument ersetzt keine verbindlichen Security- oder Operations-Regeln. Neue Anforderungen werden vor der Implementierung als ADR/Änderung an die geltenden Richtlinien übernommen.
 
 ## Berechtigungsmodell
 
@@ -10,6 +10,8 @@
 - Werkzeuge sind serverseitig registriert und erlauben nur benannte Operationen. Versteckte UI-Schaltflächen sind keine Rechteprüfung.
 - Der QA-Reviewer besitzt nur Repo-/PR-/CI-Lesewerkzeuge. Seine Allowlist enthält weder Commit, PR-Erstellung, Memory-Schreibzugriff noch Statusänderungen.
 - QA startet nur über `POST /api/tasks/:id/review`; `qa` kann nicht per Task-PATCH gesetzt werden. Ungültiges oder fehlendes Prüfergebnis wird `needs_human`; ausschließlich eine menschliche Owner-Aktion setzt `done`.
+- Organisationsänderungen setzen eine aktive Owner-Session im Portal voraus. Der Portalserver übermittelt den engen `organization:write`-Scope zusammen mit dem API-Service-Token; die API prüft beide. Rollen-/Instanzänderungen sind versioniert und im D1-Audit nachvollziehbar.
+- Instanzen lassen sich nur ändern, wenn sie in der serverseitigen Runtime-Registry bekannt sind. Deaktivierung ist bei aktiven Tasks/Reviews blockiert; der einzige Coding-Agent bleibt aktiv.
 - Jeder Tool-Aufruf prüft Rolle, Ressource, Scope, Status, Limits und Freigabepflicht.
 - Lesen, Entwurf und Ausführen sind getrennte Berechtigungsstufen.
 - Menschen geben Aktionen mit Außenwirkung ausdrücklich frei. Freigabe wird an konkrete, unveränderliche Tool-Argumente und einen Run gebunden; eine spätere Änderung erfordert eine neue Freigabe.

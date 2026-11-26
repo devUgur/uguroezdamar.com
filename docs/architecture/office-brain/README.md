@@ -1,6 +1,6 @@
 # Office Brain – Architekturplanung
 
-- Status: Agentenchat, synchronisierte Präsenz, erstes Aufgabenboard und read-only Organisationskatalog sind umgesetzt; schreibende Verwaltung und Orchestrierung sind geplant
+- Status: Agentenchat, synchronisierte Präsenz, Aufgabenboard, Repository-Projekte und owner-geschützte Organisationsverwaltung sind umgesetzt; Orchestrierung ist geplant
 - Stand: 26.11.2026
 - Zweck: Zielbild und gestufter Plan für ein webbasiertes Office aus menschlichem Owner, spezialisierten Agenten, Aufgaben, Werkzeugen und gemeinsamem Wissen
 
@@ -29,9 +29,9 @@ Das Admin-Portal soll später ein sicheres Kontrollzentrum erhalten, in dem der 
 
 ## Bestehende Agentenplattform
 
-Das heutige `/agents`-Büro und `/chat` laufen bereits auf der in [ADR 0024](../decisions/0024-agent-platform-on-cloudflare.md) beschriebenen Portal-/Cloudflare-Architektur. [ADR 0025](../decisions/0025-synchronisierte-agentenpraesenz.md) ergänzt einen gemeinsamen, persistenten Bewegungszustand im Cloudflare Durable Object. D1 hält Agentenereignisse und die ersten persistierten Work-Items; die Bürobewegung wird daraus serverautoritatv abgeleitet. Kamera, Auswahl und Darstellungsmodus bleiben lokal je Browser. [ADR 0026](../decisions/0026-agent-work-management.md) legt den Work-Control-Plane fest.
+Das heutige `/agents`-Büro und `/chat` laufen bereits auf der in [ADR 0024](../decisions/0024-agent-platform-on-cloudflare.md) beschriebenen Portal-/Cloudflare-Architektur. [ADR 0025](../decisions/0025-synchronisierte-agentenpraesenz.md) ergänzt einen gemeinsamen, persistenten Bewegungszustand im Cloudflare Durable Object. D1 hält Agentenereignisse und persistierte Work-Items; die Bürobewegung wird daraus serverautoritatv abgeleitet. Kamera, Auswahl und Darstellungsmodus bleiben lokal je Browser. [ADR 0026](../decisions/0026-agent-work-management.md) legt den Work-Control-Plane fest.
 
-Das Aufgabenboard `/work`, der Work-Control-Plane, ein read-only Organisationskatalog unter `/organization` und die explizite QA-Übergabe an einen getrennten read-only Reviewer sind umgesetzt. Der Katalog zeigt Abteilungen, Rollenprofile, Definitionen und echte Agenteninstanzen getrennt. Schreibende Organisationsverwaltung, automatische Planung/Delegation, unabhängige Workstations, Wissensbibliothek, Graph und Kostenübersicht sind weiterhin geplant. Ihre Daten- und Laufzeitgrenzen richten sich nach der [Roadmap](roadmap.md), ADR 0027 und ADR 0028.
+Das Aufgabenboard `/work`, der Work-Control-Plane, der Organisationskatalog und die explizite QA-Übergabe an einen getrennten read-only Reviewer sind umgesetzt. `/organization/manage` ergänzt owner-geschützte, versionierte Profiländerungen, eingeschränkte Pflege registrierter Instanzen und ein D1-Auditlog gemäß ADR 0030. Runtime-Policy, Tools und neue ausführbare Agenten bleiben codeverwaltet. Automatische Planung/Delegation, unabhängige Workstations, Wissensbibliothek, Graph und Kostenübersicht sind weiterhin geplant. Ihre Daten- und Laufzeitgrenzen richten sich nach der [Roadmap](roadmap.md), ADR 0027, ADR 0028 und ADR 0030.
 
 ## Dokumente
 

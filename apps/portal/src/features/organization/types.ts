@@ -19,5 +19,17 @@ export interface OrganizationCatalog {
     active: boolean;
     executable: boolean;
     desk: { x: number | null; y: number | null };
+    version?: number;
   }[];
+}
+
+export interface OrganizationAuditEntry {
+  id: string;
+  actor: string;
+  scope: string;
+  action: string;
+  entityId: string;
+  before: unknown;
+  after: unknown;
+  createdAt: number;
 }

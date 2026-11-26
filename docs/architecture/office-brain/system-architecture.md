@@ -7,7 +7,7 @@
 
 Das Office erweitert das bestehende Portal, statt eine zweite Verwaltungs-App daneben zu stellen. Das Portal bleibt die Bedienoberfläche und Session-Grenze. Agentenarbeit wird über die geschützte `apps/api`-Control-Plane validiert und in D1 gespeichert (ADR 0026); bestehende Portal-Domänen nutzen weiterhin `packages/server` und Neon. Modell- und Ausführungsanbieter hängen hinter schmalen Adaptern.
 
-**Bestand heute:** Agentenchat, Aufgabenboard, read-only Organisationskatalog und Agentenbüro nutzen einen Laufzeitpfad: das Portal auf Vercel ruft `apps/api` auf Cloudflare auf; D1 hält Organisationsprofile, Instanzen, Work-Items und Events, Durable Objects halten Thread-Verlauf und synchronisierte Office-Bewegungspläne. Neon bleibt für bestehende Portal-Daten. Weitere Domänen erhalten einen expliziten Speichervertrag, statt dieselben Aufgaben in Neon und D1 zu duplizieren.
+**Bestand heute:** Agentenchat, Aufgabenboard, Repository-Projekte, owner-verwaltbarer Organisationskatalog und Agentenbüro nutzen einen Laufzeitpfad: das Portal auf Vercel ruft `apps/api` auf Cloudflare auf; D1 hält Organisationsprofile, Instanzen, Work-Items und Events, Durable Objects halten Thread-Verlauf und synchronisierte Office-Bewegungspläne. Neon bleibt für bestehende Portal-Daten. Weitere Domänen erhalten einen expliziten Speichervertrag, statt dieselben Aufgaben in Neon und D1 zu duplizieren.
 
 ~~~mermaid
 flowchart LR
@@ -78,6 +78,8 @@ Eine Quelle besitzt Eigentümer, Herkunft, Zeitstempel, Version, Datenklasse, Um
 ADR 0027 bildet Abteilungen, Rollenprofile, Agent-Definitionen und Agent-Instanzen als getrennte D1-Entitäten ab. Rollen beschreiben fachliche Verantwortung und Fähigkeiten, nicht Tool-Rechte. `chef-v1` und `qa-reviewer-v1` verweisen auf bekannte Registry-Keys; Planungsprofile sind noch nicht ausführbar. Die Office-Ansicht rendert nur aktive Runtime-Instanzen aus `/api/agents`, nicht jedes Rollenprofil.
 
 ADR 0028 bindet QA-Ergebnisse an Task, Reviewer-Thread und PR-Diff. Der Worker begrenzt den gelesenen Diff; für `pass` prüft der Server zusätzlich vorhandene Abnahmekriterien, vollständige PR-Dateien/Diffs und erfolgreich abgeschlossene Check-Runs anhand protokollierter Tool-Ergebnisse. Fehlende Checks oder abgeschnittene Daten führen nicht zu `pass`. D1 batcht Task- und Reviewabschluss; Events werden erst danach live verteilt. Das Board verifiziert alle Statuswechsel einschließlich Done-Gate.
+
+ADR 0030 ergänzt Owner-Schreibaktionen auf Rollenprofilen und registrierten Instanzen. Aktive Portal-Owner erhalten serverseitig den engen `organization:write`-Scope; die API prüft zusätzlich das Portal-Service-Token. Rollenänderungen nutzen optimistische Versionen und ein D1-Audit mit Vorher-/Nachher-Zustand. Neue Runtime-Definitionen, Toolrechte, Prompts und harte Löschungen bleiben außerhalb der UI. `organization_updated` veranlasst offene Organisationsseiten, ihren D1-Read-Model zu aktualisieren.
 
 ## Konzeptionelle Module
 

@@ -17,7 +17,8 @@ export type EventType =
   | "task_created"
   | "task_updated"
   | "task_review_started"
-  | "task_review_completed";
+  | "task_review_completed"
+  | "organization_updated";
 
 export interface AgentEvent {
   agentId?: string;

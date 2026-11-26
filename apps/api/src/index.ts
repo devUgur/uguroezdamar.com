@@ -8,6 +8,7 @@ import { listRepositories, ProjectError, registerProject, unregisterProject } fr
 import { buildOfficeLayout } from "./office/layout.ts";
 import { officeActivityOf } from "./office/presence.ts";
 import { organizationCatalog } from "./organization/catalog.ts";
+import { handleOrganizationManagement } from "./organization/manage.ts";
 import { SubrequestBudget } from "./runtime/budget.ts";
 import { toolByName } from "./tools/registry.ts";
 import { handleTasks } from "./work/tasks.ts";
@@ -202,6 +203,8 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
   if (path === "/api/threads" && method === "POST") {
     const input = await body<{ agentId: string; projectId: string; title: string; model: { provider: string; model: string } | null }>(request);
     const agentId = input.agentId && AGENTS[input.agentId] ? input.agentId : DEFAULT_AGENT;
+    const activeAgent = await env.DB.prepare("SELECT 1 FROM agents WHERE id = ? AND active = 1").bind(agentId).first();
+    if (!activeAgent) return json({ error: "Der ausgewählte Agent ist nicht aktiv." }, 409);
     if (input.projectId) {
       const project = await env.DB.prepare("SELECT 1 FROM projects WHERE id = ? AND status = 'active'").bind(input.projectId).first();
       if (!project) return json({ error: "Unbekanntes oder entferntes Projekt" }, 400);
@@ -252,6 +255,8 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
     const input = await body<{ text: string }>(request);
     const text = input.text?.trim();
     if (!text) return json({ error: "Leere Nachricht" }, 400);
+    const activeAgent = await env.DB.prepare("SELECT 1 FROM agents WHERE id = ? AND active = 1").bind(thread.agent_id).first();
+    if (!activeAgent) return json({ error: "Der Agent dieser Unterhaltung ist deaktiviert." }, 409);
     // The first message names the thread.
     await env.DB.prepare("UPDATE threads SET title = COALESCE(title, ?), updated_at = unixepoch() WHERE id = ?")
       .bind(text.replace(/\s+/g, " ").slice(0, 80), threadId)
@@ -285,7 +290,11 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   }
 
   if (path === "/api/office/state" && method === "GET") return json(await officeSnapshot(env));
-  if (path === "/api/organization" && method === "GET") return json(await organizationCatalog(env));
+  if (path === "/api/organization" || path.startsWith("/api/organization/")) {
+    const managed = await handleOrganizationManagement(request, env, caller, path);
+    if (managed) return managed;
+    if (path === "/api/organization" && method === "GET") return json(await organizationCatalog(env));
+  }
 
   const tasks = await handleTasks(request, env, caller, path);
   if (tasks) return tasks;
