@@ -19,6 +19,10 @@ export interface CatalogModel {
   label: string;
   inputUsdPerM: number;
   outputUsdPerM: number;
+  /** Own endpoint for this model, when a provider serves each model separately (Modal). */
+  baseUrl?: string;
+  /** Shown next to the name in the portal, e.g. cost or cold start. */
+  note?: string;
 }
 
 export interface ProviderConfig {
@@ -60,6 +64,31 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
       baseUrl: "https://openrouter.ai/api/v1",
       gatewayPath: "openrouter",
       apiKeySecret: "OPENROUTER_API_KEY",
+    },
+    // Own GPUs on Modal (apps/api/modal/llm.py), billed per second and idle at zero. Never part of
+    // an alias chain: only used when a thread picks one of these models explicitly.
+    modal: {
+      kind: "openai-compatible",
+      label: "Modal (eigene GPUs)",
+      apiKeySecret: "MODAL_LLM_API_KEY",
+      models: [
+        {
+          id: "mistralai/Ministral-3-8B-Instruct-2512",
+          label: "Ministral 3 8B",
+          baseUrl: "https://ugur44ist--uguroezdamar-llm-ministral.modal.run/v1",
+          note: "L40S, ca. 1,95 $/h, Kaltstart 1–2 min",
+          inputUsdPerM: 0,
+          outputUsdPerM: 0,
+        },
+        {
+          id: "google/gemma-4-26B-A4B-it",
+          label: "Gemma 4 26B-A4B",
+          baseUrl: "https://ugur44ist--uguroezdamar-llm-gemma.modal.run/v1",
+          note: "H100, ca. 3,95 $/h, Kaltstart 1–3 min",
+          inputUsdPerM: 0,
+          outputUsdPerM: 0,
+        },
+      ],
     },
     "workers-ai": {
       kind: "workers-ai",

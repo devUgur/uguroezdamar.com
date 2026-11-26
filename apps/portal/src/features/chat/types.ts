@@ -65,7 +65,7 @@ export interface CatalogProvider {
   id: string;
   label: string;
   available: boolean;
-  models: { id: string; label: string; inputUsdPerM: number; outputUsdPerM: number }[];
+  models: { id: string; label: string; note?: string; inputUsdPerM: number; outputUsdPerM: number }[];
 }
 
 export interface ModelCatalog {

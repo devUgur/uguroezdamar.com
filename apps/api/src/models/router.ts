@@ -26,7 +26,7 @@ export interface CatalogEntry {
   label: string;
   /** False while the provider's key is missing; the portal shows it greyed out. */
   available: boolean;
-  models: { id: string; label: string; inputUsdPerM: number; outputUsdPerM: number }[];
+  models: { id: string; label: string; note?: string; inputUsdPerM: number; outputUsdPerM: number }[];
 }
 
 export interface RoutedResult extends ChatResult {
@@ -56,8 +56,8 @@ export class ModelRouter {
     const providers = Object.entries(this.config.providers).map(([id, provider]) => ({
       id,
       label: provider.label ?? id,
-      available: Boolean(this.port(id)?.available()),
-      models: (provider.models ?? []).map(({ id: model, label, inputUsdPerM, outputUsdPerM }) => ({ id: model, label, inputUsdPerM, outputUsdPerM })),
+      available: this.hasCredentials(id),
+      models: (provider.models ?? []).map(({ id: model, label, note, inputUsdPerM, outputUsdPerM }) => ({ id: model, label, note, inputUsdPerM, outputUsdPerM })),
     }));
     return { providers, aliases: this.config.aliases };
   }
@@ -75,7 +75,7 @@ export class ModelRouter {
     const attempts: string[] = [];
     let lastError: unknown;
     for (const target of targets) {
-      const port = this.port(target.provider);
+      const port = this.port(target.provider, target.model);
       if (!port?.available()) {
         attempts.push(`${target.provider}/${target.model}: skipped (no credentials)`);
         continue;
@@ -101,15 +101,23 @@ export class ModelRouter {
     return { ...pinned, inputUsdPerM: entry?.inputUsdPerM ?? 0, outputUsdPerM: entry?.outputUsdPerM ?? 0 };
   }
 
-  private port(providerId: string): ModelPort | undefined {
+  private hasCredentials(providerId: string): boolean {
+    const provider = this.config.providers[providerId];
+    if (!provider) return false;
+    return provider.kind === "workers-ai" || !provider.apiKeySecret || Boolean(secret(this.env, provider.apiKeySecret));
+  }
+
+  private port(providerId: string, model?: string): ModelPort | undefined {
     const provider: ProviderConfig | undefined = this.config.providers[providerId];
     if (!provider) return undefined;
     if (provider.kind === "workers-ai") return new WorkersAiModel(this.env.AI);
 
-    const viaGateway = this.env.MODEL_VIA_GATEWAY === "true" && provider.gatewayPath && this.env.CF_ACCOUNT_ID;
-    const baseUrl = viaGateway
+    // A model with its own endpoint (Modal) is called there directly, never through the gateway.
+    const ownUrl = provider.models?.find((entry) => entry.id === model)?.baseUrl;
+    const viaGateway = !ownUrl && this.env.MODEL_VIA_GATEWAY === "true" && provider.gatewayPath && this.env.CF_ACCOUNT_ID;
+    const baseUrl = ownUrl ?? (viaGateway
       ? `https://gateway.ai.cloudflare.com/v1/${this.env.CF_ACCOUNT_ID}/${this.env.AI_GATEWAY_ID}/${provider.gatewayPath}`
-      : provider.baseUrl;
+      : provider.baseUrl);
     if (!baseUrl) return undefined;
     const apiKey = provider.apiKeySecret ? secret(this.env, provider.apiKeySecret) : undefined;
     return new OpenAICompatibleModel(providerId, baseUrl, apiKey);

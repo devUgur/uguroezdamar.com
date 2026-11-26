@@ -15,6 +15,7 @@ Regeln für Skills:
 | --- | --- |
 | `design-system` | Rangfolge Briefing → Tokens → Design-Skills, Regeln aus `AGENTS.md` |
 | `release` | Push, PR `dev` → `main`, Deploy-Wirkung, Prüfung danach |
+| `modal-llm` | Eigene Modelle auf Modal: Workspace, Kosten, Schlüssel, Deploy, neues Modell |
 
 ## Übernommene Skills
 

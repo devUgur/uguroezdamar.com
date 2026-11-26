@@ -39,6 +39,12 @@ const REPO_SECRETS: RepoSecret[] = [
     howTo: ["https://aistudio.google.com/apikey → „Create API key“ → kopieren"],
   },
   {
+    name: "MODAL_LLM_API_KEY",
+    required: false,
+    purpose: "Eigene Modelle auf Modal (apps/api/modal/llm.py); gleicher Wert wie Modal-Secret uguroezdamar-llm",
+    howTo: ["Wird beim Einrichten von Modal erzeugt (apps/api/README.md, Abschnitt Modal); nicht von Hand eintippen."],
+  },
+  {
     name: "AGENT_GITHUB_TOKEN",
     required: false,
     purpose: "Repo lesen, Commits und Pull Requests des Agenten",

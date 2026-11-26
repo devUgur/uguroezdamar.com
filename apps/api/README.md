@@ -15,6 +15,7 @@ Agenten-Backend des Admin-Portals: Threads, Agentenschleife, Modelle, Werkzeuge,
 | `src/tools/` | `ToolPort`, GitHub-Werkzeuge, Projekt- und Notiz-Werkzeuge |
 | `src/agents/registry.ts` | die Agenten: Prompt, Modell-Alias, Werkzeuge |
 | `migrations/` | D1-Schema |
+| `modal/llm.py` | eigene Open-Weight-Modelle auf Modal (vLLM, OpenAI-kompatibel), nicht Teil des Worker-Bundles |
 
 ## API
 
@@ -41,6 +42,17 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 
 Lokal läuft das Backend mit `pnpm dev` (Wrangler). Werte nur per `--var`, nie als Datei im Repository. Die `ai`-Bindung braucht immer eine Remote-Verbindung zu Cloudflare (`wrangler login` mit dem Konto der Zone). Ohne sie: eine Testkonfiguration ohne `ai` verwenden und das Alias `chef-smart` per KV-Schlüssel `models` (`--local`) auf einen OpenAI-kompatiblen Mock zeigen lassen.
 
+## Modal
+
+Eigene Modelle laufen auf Modal (Workspace `ugur44ist`), App `uguroezdamar-llm`. Im Portal stehen sie unter „Modal (eigene GPUs)“:
+
+| Funktion | Modell | GPU | ca. Preis |
+| --- | --- | --- | --- |
+| `ministral` | Ministral 3 8B (FP8) | L40S | 1,95 $/h |
+| `gemma` | Gemma 4 26B-A4B | H100 | 3,95 $/h |
+
+Abgerechnet wird pro Sekunde; nach 5 Minuten ohne Anfrage fährt die GPU herunter. Die erste Anfrage danach wartet auf einen Kaltstart von 1 bis 3 Minuten. Modal-Modelle stehen in keiner Alias-Kette, sie laufen nur auf ausdrückliche Wahl im Thread. Schlüssel: Modal-Secret `uguroezdamar-llm` (`LLM_API_KEY`), gleicher Wert als GitHub-Secret `MODAL_LLM_API_KEY`. Deploy: `MODAL_PROFILE=ugur44ist modal deploy apps/api/modal/llm.py`. Details im Skill `.claude/skills/modal-llm`.
+
 ## Erweitern
 
 - **Neues Modell oder neuer Anbieter:** in `src/models/config.ts` eintragen (Anbieter mit `label`, `models`, Secret-Name) oder ohne Deploy als JSON unter dem KV-Schlüssel `models` überschreiben. Es erscheint danach in der Modellwahl des Portals.
@@ -62,6 +74,7 @@ Jeder Push auf `dev`, der `apps/api/**` ändert, deployt nach Dev; der Merge `de
 | `API_SERVICE_TOKEN` | Environment `api-dev` bzw. `api-production`, gleicher Wert in Infisical dev bzw. prod | ja | Zugang des Portals |
 | `GEMINI_API_KEY` | Repository | nein | Gemini; ohne Schlüssel antwortet Workers AI |
 | `AGENT_GITHUB_TOKEN` | Repository | nein | Repo-Werkzeuge des Agenten |
+| `MODAL_LLM_API_KEY` | Repository, gleicher Wert im Modal-Secret `uguroezdamar-llm` | nein | eigene Modelle auf Modal |
 
 `pnpm ugur api secrets` zeigt, was gesetzt ist (nur Namen). Mit `--apply` erzeugt der Befehl je Stage ein Service-Token und setzt es in GitHub und Infisical, setzt `API_URL` in Infisical, fragt die optionalen Schlüssel verdeckt ab und startet den Dev-Deploy. Danach übernimmt `pnpm ugur hosting env --stage dev --apply` die Portal-Werte in Vercel (Preview).
 

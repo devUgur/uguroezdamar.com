@@ -23,6 +23,8 @@ export interface Env {
   /** Fine-grained GitHub token: contents, pull requests and checks on the managed repositories. */
   AGENT_GITHUB_TOKEN?: string;
   OPENROUTER_API_KEY?: string;
+  /** Key of the vLLM servers on Modal (apps/api/modal/llm.py); same value as the Modal secret uguroezdamar-llm. */
+  MODAL_LLM_API_KEY?: string;
 }
 
 /** Reads a secret by the name a model provider is configured with. */
