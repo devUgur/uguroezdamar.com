@@ -18,6 +18,18 @@ export {
   AvatarGroup,
   AvatarGroupCount,
 } from "./primitives/avatar";
+export {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+} from "./primitives/Dialog";
 export { Container } from "./primitives/Container";
 export { ScrollProgress } from "./layout/ScrollProgress";
 export { Section } from "./primitives/Section";

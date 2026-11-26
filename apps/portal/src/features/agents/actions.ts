@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { agentsApi, isAgentsApiId } from "@/src/adapters/agents-api";
+import { agentsApi, agentsApiOrigin, isAgentsApiId } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/auth";
-import type { AgentEvent, ModelChoice, Thread } from "./types";
+import type { AgentEvent, AgentSummary, ChatView, ModelCatalog, ModelChoice, Thread, ThreadDetail } from "./types";
 
 export interface ActionResult {
   ok: boolean;
@@ -89,6 +89,31 @@ export async function decideApproval(approvalId: string, decision: "approve" | "
   } catch (error) {
     return failure(error);
   }
+}
+
+async function chatView(threadId: string, who: string): Promise<ChatView> {
+  const [detail, catalog] = await Promise.all([
+    agentsApi<ThreadDetail>(`/api/threads/${threadId}`, who),
+    agentsApi<ModelCatalog>("/api/models", who),
+  ]);
+  return { detail, catalog, liveOrigin: agentsApiOrigin() };
+}
+
+/** The agent's newest open thread, or a new one: what the office's chat dialog shows. */
+export async function openAgentChat(agentId: string, fresh = false): Promise<ChatView> {
+  const who = await actor();
+  if (!/^[a-z0-9-]{1,40}$/.test(agentId)) throw new Error("Unbekannter Agent.");
+  const agents = await agentsApi<AgentSummary[]>("/api/agents", who);
+  const agent = agents.find((entry) => entry.id === agentId);
+  if (!agent) throw new Error("Unbekannter Agent.");
+  const threadId =
+    !fresh && agent.lastThreadId ? agent.lastThreadId : (await agentsApi<Thread>("/api/threads", who, { method: "POST", body: { agentId } })).id;
+  return chatView(threadId, who);
+}
+
+export async function loadChat(threadId: string): Promise<ChatView> {
+  assertThread(threadId);
+  return chatView(threadId, await actor());
 }
 
 /** One-time ticket for the live WebSocket; valid for 60 seconds, consumed on connect. */

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Button } from "@ugur/ui";
-import { createThread, listThreads } from "@/src/features/chat";
+import { createThread, listThreads } from "@/src/features/agents";
 
 export const metadata: Metadata = { title: "Chat" };
 

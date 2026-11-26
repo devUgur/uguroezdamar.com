@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "@ugur/ui";
-import { archiveThread, sendMessage, stopThread } from "../actions";
-import type { ModelCatalog, ThreadDetail } from "../types";
+import { sendMessage, stopThread } from "../../actions";
+import type { ModelCatalog, ThreadDetail } from "../../types";
 import { ApprovalCard } from "./ApprovalCard";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
@@ -16,23 +15,25 @@ interface ChatRoomProps {
   detail: ThreadDetail;
   catalog: ModelCatalog;
   liveOrigin: string | null;
+  /** Reloads the stored history after a run or a model change: a router refresh on the page, a refetch in a dialog. */
+  onRefresh: () => void;
+  /** Extra controls in the header, e.g. archiving on the chat page. */
+  headerActions?: ReactNode;
 }
 
 /** One thread: stored history, the run in progress, open approvals and the composer. */
-export function ChatRoom({ detail, catalog, liveOrigin }: ChatRoomProps) {
+export function ChatRoom({ detail, catalog, liveOrigin, onRefresh, headerActions }: ChatRoomProps) {
   const { thread, messages, status, approvals, events } = detail;
-  const router = useRouter();
-  const [, startRefresh] = useTransition();
   const [pending, setPending] = useState<string[]>([]);
   const bottom = useRef<HTMLDivElement>(null);
 
-  const { run, markRunning, reset, dropApproval } = useLiveRun({
+  const { run, connected, markRunning, reset, dropApproval } = useLiveRun({
     threadId: thread.id,
     origin: liveOrigin,
     initialRunning: status.running,
     initialApprovals: approvals,
     lastEventId: events.at(-1)?.id ?? 0,
-    onSettled: () => startRefresh(() => router.refresh()),
+    onSettled: onRefresh,
   });
 
   // Fresh server data replaces the live layer: the stored history now holds what streamed in.
@@ -68,21 +69,23 @@ export function ChatRoom({ detail, catalog, liveOrigin }: ChatRoomProps) {
       <header className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-3">
         <h1 className="min-w-0 flex-1 truncate font-serif text-xl">{thread.title ?? "Neuer Chat"}</h1>
         <span className="text-xs text-muted-foreground" title="Live-Verbindung zur Agenten-API">
-          {liveOrigin ? (run.connected ? "live" : "verbindet …") : "API nicht konfiguriert"}
+          {liveOrigin ? (connected ? "live" : "verbindet …") : "API nicht konfiguriert"}
         </span>
-        <ModelPicker threadId={thread.id} value={thread.model} catalog={catalog} defaultAlias={catalog.agentAliases[thread.agentId] ?? "Standard"} />
-        <form action={archiveThread.bind(null, thread.id)}>
-          <button type="submit" className="text-xs text-muted-foreground underline-offset-4 hover:text-destructive hover:underline">
-            Archivieren
-          </button>
-        </form>
+        <ModelPicker
+          threadId={thread.id}
+          value={thread.model}
+          catalog={catalog}
+          defaultAlias={catalog.agentAliases[thread.agentId] ?? "Standard"}
+          onChanged={onRefresh}
+        />
+        {headerActions}
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8">
           {messages.length === 0 && !pending.length ? (
             <p className="text-sm text-muted-foreground">
-              Schreib dem Chef-Agenten einen Auftrag. Er liest das Repository, schlägt Änderungen vor und führt Commits oder Pull Requests erst nach deiner Freigabe aus.
+              Schreib dem Agenten einen Auftrag. Er liest das Repository, schlägt Änderungen vor und führt Commits oder Pull Requests erst nach deiner Freigabe aus.
             </p>
           ) : null}
           <MessageList messages={messages} />

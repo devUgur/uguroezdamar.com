@@ -243,10 +243,33 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   if (threads) return threads;
 
   if (path === "/api/agents" && method === "GET") {
+    // Everything the office view needs per agent: who it is, where it sits, what it did last.
     const { results } = await env.DB.prepare(
-      "SELECT id, name, role, model_alias, daily_budget_usd, desk_x, desk_y FROM agents WHERE active = 1 ORDER BY created_at",
-    ).all();
-    return json(results.map((row) => ({ ...row, configured: Boolean(AGENTS[String(row.id)]) })));
+      `SELECT a.id, a.name, a.role, a.model_alias, a.daily_budget_usd, a.desk_x, a.desk_y,
+              (SELECT type FROM events e WHERE e.agent_id = a.id ORDER BY e.id DESC LIMIT 1) AS last_event,
+              (SELECT ts FROM events e WHERE e.agent_id = a.id ORDER BY e.id DESC LIMIT 1) AS last_event_at,
+              (SELECT id FROM threads t WHERE t.agent_id = a.id AND t.archived = 0 ORDER BY t.updated_at DESC LIMIT 1) AS last_thread_id
+         FROM agents a WHERE a.active = 1 ORDER BY a.created_at`,
+    ).all<Record<string, unknown>>();
+    return json(
+      results
+        .filter((row) => AGENTS[String(row.id)])
+        .map((row) => {
+          const definition = AGENTS[String(row.id)];
+          return {
+            id: String(row.id),
+            name: definition?.name ?? String(row.name),
+            role: String(row.role),
+            summary: definition?.summary ?? "",
+            modelAlias: definition?.modelAlias ?? String(row.model_alias),
+            dailyBudgetUsd: Number(row.daily_budget_usd),
+            desk: { x: Number(row.desk_x ?? 0), y: Number(row.desk_y ?? 0) },
+            lastEvent: row.last_event ? String(row.last_event) : null,
+            lastEventAt: row.last_event_at ? Number(row.last_event_at) : null,
+            lastThreadId: row.last_thread_id ? String(row.last_thread_id) : null,
+          };
+        }),
+    );
   }
 
   if (path === "/api/models" && method === "GET") {

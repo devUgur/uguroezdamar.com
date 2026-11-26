@@ -26,7 +26,9 @@ URL-Schema: `https://ugur44ist--uguroezdamar-llm-<funktion>.modal.run/v1`.
 
 ## Abläufe
 
-**Deployen:** `MODAL_PROFILE=ugur44ist modal deploy apps/api/modal/llm.py`. Der erste Build (CUDA plus vLLM) dauert einige Minuten.
+**Deployen:** `MODAL_PROFILE=ugur44ist modal deploy apps/api/modal/llm.py`. Der erste Build (CUDA plus vLLM) dauert einige Minuten. Modal verlangt für L40S und H100 ein Zahlungsmittel im Workspace.
+
+**Freischalten:** Erst nach erfolgreichem Test `MODAL_ENABLED` in `apps/api/wrangler.jsonc` (oben für Produktion, `env.dev` für Dev) auf `"true"` setzen. Vorher erscheint Modal in der Modellauswahl als „nicht verfügbar“ und der Router überspringt es.
 
 **Testen** (kostet GPU-Zeit, also kurz halten): `GET <url>/health` ohne Schlüssel, danach `POST <url>/v1/chat/completions` mit `Authorization: Bearer <Schlüssel>` und einem Werkzeug in `tools`. Den Schlüssel dafür nur im Prozess halten, zum Beispiel aus einer Datei in `RUNNER_TEMP` oder im Scratchpad, die danach gelöscht wird.
 

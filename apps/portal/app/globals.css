@@ -23,6 +23,19 @@
 	--radius-md: var(--radius);
 	--radius-lg: calc(var(--radius) + 2px);
 	--radius-xl: calc(var(--radius) + 4px);
+
+	/* Agent office (/agents): legs while walking, hands while typing. */
+	--animate-agent-step: agent-step 0.32s ease-in-out infinite alternate;
+	--animate-agent-type: agent-type 0.22s steps(2) infinite;
+
+	@keyframes agent-step {
+		from { transform: translateY(0); }
+		to { transform: translateY(-3px); }
+	}
+	@keyframes agent-type {
+		from { transform: translateY(0); }
+		to { transform: translateY(2px); }
+	}
   
 	--color-background: hsl(var(--background));
 	--color-foreground: hsl(var(--foreground));

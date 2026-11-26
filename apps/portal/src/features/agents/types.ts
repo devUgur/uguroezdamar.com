@@ -64,6 +64,7 @@ export interface ThreadDetail {
 export interface CatalogProvider {
   id: string;
   label: string;
+  shortLabel: string;
   available: boolean;
   models: { id: string; label: string; note?: string; inputUsdPerM: number; outputUsdPerM: number }[];
 }
@@ -71,4 +72,24 @@ export interface CatalogProvider {
 export interface ModelCatalog {
   providers: CatalogProvider[];
   agentAliases: Record<string, string>;
+}
+
+export interface AgentSummary {
+  id: string;
+  name: string;
+  role: string;
+  summary: string;
+  modelAlias: string;
+  dailyBudgetUsd: number;
+  desk: { x: number; y: number };
+  lastEvent: string | null;
+  lastEventAt: number | null;
+  lastThreadId: string | null;
+}
+
+/** Everything a chat needs, loaded together for a dialog that has no page around it. */
+export interface ChatView {
+  detail: ThreadDetail;
+  catalog: ModelCatalog;
+  liveOrigin: string | null;
 }

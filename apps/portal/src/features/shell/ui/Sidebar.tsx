@@ -13,6 +13,9 @@ export function Sidebar() {
         <Link href="/" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Dashboard
         </Link>
+        <Link href="/agents" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
+          Agenten
+        </Link>
         <Link href="/chat" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Chat
         </Link>

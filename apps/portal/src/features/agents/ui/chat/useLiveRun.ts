@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { eventsSince, liveTicket } from "../actions";
-import type { AgentEvent, Approval } from "../types";
+import { useCallback, useRef, useState } from "react";
+import { eventsSince } from "../../actions";
+import type { AgentEvent, Approval } from "../../types";
+import { useLiveSocket } from "../live/useLiveSocket";
 
 export interface ActivityLine {
   key: string;
@@ -12,7 +13,6 @@ export interface ActivityLine {
 }
 
 export interface LiveRun {
-  connected: boolean;
   running: boolean;
   status: string;
   streaming: string;
@@ -33,14 +33,13 @@ interface Options {
 const SETTLED = new Set(["message", "error", "stopped", "budget_blocked"]);
 
 /**
- * Live view of the thread's current run. Events and streamed text arrive over the API's
- * WebSocket (one-time ticket). The stored history stays server-rendered; once a run settles
- * the page refreshes and this state starts empty again.
+ * Live view of the thread's current run. Events and streamed text arrive over the shared live
+ * socket. The stored history comes from the server; once a run settles the caller reloads it
+ * (onSettled) and this state starts empty again.
  */
 export function useLiveRun(options: Options) {
   const { threadId, origin, onSettled } = options;
   const [run, setRun] = useState<LiveRun>({
-    connected: false,
     running: options.initialRunning,
     status: options.initialRunning ? "arbeitet …" : "",
     streaming: "",
@@ -62,49 +61,14 @@ export function useLiveRun(options: Options) {
     [threadId],
   );
 
-  useEffect(() => {
-    if (!origin) return;
-    let socket: WebSocket | undefined;
-    let heartbeat: ReturnType<typeof setInterval> | undefined;
-    let retry: ReturnType<typeof setTimeout> | undefined;
-    let closed = false;
-    let first = true;
-
-    const connect = async () => {
-      try {
-        if (!first) (await eventsSince(threadId, lastId.current)).forEach(apply);
-        first = false;
-        const ticket = await liveTicket();
-        socket = new WebSocket(`${origin.replace(/^http/, "ws")}/api/live?ticket=${encodeURIComponent(ticket)}`);
-      } catch {
-        if (!closed) retry = setTimeout(connect, 5000);
-        return;
-      }
-      socket.onopen = () => setRun((current) => ({ ...current, connected: true }));
-      socket.onmessage = (message) => {
-        if (message.data === "pong") return;
-        const payload = JSON.parse(String(message.data)) as { type: string; event?: AgentEvent; threadId?: string; text?: string };
-        if (payload.type === "event" && payload.event) apply(payload.event);
-        if (payload.type === "delta" && payload.threadId === threadId && payload.text) {
-          const text = payload.text;
-          setRun((current) => ({ ...current, running: true, streaming: current.streaming + text }));
-        }
-      };
-      socket.onclose = () => {
-        setRun((current) => ({ ...current, connected: false }));
-        if (!closed) retry = setTimeout(connect, 3000);
-      };
-      heartbeat = setInterval(() => socket?.readyState === WebSocket.OPEN && socket.send("ping"), 25_000);
-    };
-
-    void connect();
-    return () => {
-      closed = true;
-      clearInterval(heartbeat);
-      clearTimeout(retry);
-      socket?.close();
-    };
-  }, [origin, threadId, apply]);
+  const { connected } = useLiveSocket(origin, {
+    onEvent: apply,
+    onDelta: (delta) => {
+      if (delta.threadId !== threadId) return;
+      setRun((current) => ({ ...current, running: true, streaming: current.streaming + delta.text }));
+    },
+    onReconnect: async () => (await eventsSince(threadId, lastId.current)).forEach(apply),
+  });
 
   const markRunning = useCallback(() => setRun((current) => ({ ...current, running: true, status: "arbeitet …" })), []);
   const reset = useCallback(
@@ -117,7 +81,7 @@ export function useLiveRun(options: Options) {
     [],
   );
 
-  return { run, markRunning, reset, dropApproval };
+  return { run, connected, markRunning, reset, dropApproval };
 }
 
 function text(value: unknown): string {

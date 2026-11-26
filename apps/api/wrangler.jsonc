@@ -19,7 +19,9 @@
     "AI_GATEWAY_ID": "uguroezdamar",
     // "true" routes Gemini and OpenRouter through the AI Gateway (logs, caching). Off until the gateway exists.
     "MODEL_VIA_GATEWAY": "false",
-    "API_ENV": "production"
+    "API_ENV": "production",
+    // "true" once apps/api/modal/llm.py is deployed and tested (see .claude/skills/modal-llm).
+    "MODAL_ENABLED": "false"
   },
   "d1_databases": [
     {
@@ -48,7 +50,8 @@
         "CF_ACCOUNT_ID": "4a35dadb67f662616fe6911bfbeecc0b",
         "AI_GATEWAY_ID": "uguroezdamar",
         "MODEL_VIA_GATEWAY": "false",
-        "API_ENV": "dev"
+        "API_ENV": "dev",
+        "MODAL_ENABLED": "false"
       },
       "d1_databases": [
         {

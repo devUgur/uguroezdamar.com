@@ -23,6 +23,7 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 
 | Route | Zweck |
 | --- | --- |
+| `GET /api/agents` | Agenten mit Rolle, Modell-Alias, letztem Event und neuestem Thread (für das Büro) |
 | `GET /api/threads`, `POST /api/threads` | Threads auflisten, anlegen |
 | `GET/PATCH/DELETE /api/threads/:id` | Verlauf, Status, offene Freigaben und Events; Titel oder Modell ändern; archivieren |
 | `POST /api/threads/:id/chat`, `…/stop` | Auftrag annehmen, Lauf abbrechen |
@@ -40,7 +41,9 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 
 ## Lokal
 
-Lokal läuft das Backend mit `pnpm dev` (Wrangler). Werte nur per `--var`, nie als Datei im Repository. Die `ai`-Bindung braucht immer eine Remote-Verbindung zu Cloudflare (`wrangler login` mit dem Konto der Zone). Ohne sie: eine Testkonfiguration ohne `ai` verwenden und das Alias `chef-smart` per KV-Schlüssel `models` (`--local`) auf einen OpenAI-kompatiblen Mock zeigen lassen.
+**Portal lokal, Backend in Dev (Standard):** `pnpm dev:portal` startet das Portal auf `http://localhost:3101` mit den Infisical-Werten der Stage `dev`. `API_URL` zeigt auf `https://api-dev.uguroezdamar.com`, `API_SERVICE_TOKEN` ist das Dev-Token. Der Chat und das Agenten-Büro sprechen also lokal mit dem deployten Dev-Backend; Cloudflare-Login oder Modell-Schlüssel braucht es lokal nicht. Nach einer Änderung an Infisical-Werten den Dev-Server neu starten, Werte werden nur beim Start gelesen.
+
+**Backend lokal (optional):** Lokal läuft das Backend mit `pnpm dev` (Wrangler). Werte nur per `--var`, nie als Datei im Repository. Die `ai`-Bindung braucht immer eine Remote-Verbindung zu Cloudflare (`wrangler login` mit dem Konto der Zone). Ohne sie: eine Testkonfiguration ohne `ai` verwenden und das Alias `chef-smart` per KV-Schlüssel `models` (`--local`) auf einen OpenAI-kompatiblen Mock zeigen lassen.
 
 ## Modal
 
@@ -51,7 +54,7 @@ Eigene Modelle laufen auf Modal (Workspace `ugur44ist`), App `uguroezdamar-llm`.
 | `ministral` | Ministral 3 8B (FP8) | L40S | 1,95 $/h |
 | `gemma` | Gemma 4 26B-A4B | H100 | 3,95 $/h |
 
-Abgerechnet wird pro Sekunde; nach 5 Minuten ohne Anfrage fährt die GPU herunter. Die erste Anfrage danach wartet auf einen Kaltstart von 1 bis 3 Minuten. Modal-Modelle stehen in keiner Alias-Kette, sie laufen nur auf ausdrückliche Wahl im Thread. Schlüssel: Modal-Secret `uguroezdamar-llm` (`LLM_API_KEY`), gleicher Wert als GitHub-Secret `MODAL_LLM_API_KEY`. Deploy: `MODAL_PROFILE=ugur44ist modal deploy apps/api/modal/llm.py`. Details im Skill `.claude/skills/modal-llm`.
+Freigeschaltet wird Modal mit der Variable `MODAL_ENABLED` in `wrangler.jsonc` (je Umgebung), erst wenn die Modelle laufen. Abgerechnet wird pro Sekunde; nach 5 Minuten ohne Anfrage fährt die GPU herunter. Die erste Anfrage danach wartet auf einen Kaltstart von 1 bis 3 Minuten. Modal-Modelle stehen in keiner Alias-Kette, sie laufen nur auf ausdrückliche Wahl im Thread. Schlüssel: Modal-Secret `uguroezdamar-llm` (`LLM_API_KEY`), gleicher Wert als GitHub-Secret `MODAL_LLM_API_KEY`. Deploy: `MODAL_PROFILE=ugur44ist modal deploy apps/api/modal/llm.py`. Details im Skill `.claude/skills/modal-llm`.
 
 ## Erweitern
 

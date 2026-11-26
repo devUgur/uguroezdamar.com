@@ -2,8 +2,8 @@
 
 import { useTransition } from "react";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue, toast } from "@ugur/ui";
-import { chooseModel } from "../actions";
-import type { ModelCatalog, ModelChoice } from "../types";
+import { chooseModel } from "../../actions";
+import type { ModelCatalog, ModelChoice } from "../../types";
 
 interface ModelPickerProps {
   threadId: string;
@@ -11,13 +11,14 @@ interface ModelPickerProps {
   catalog: ModelCatalog;
   /** The agent's alias, shown for the default choice. */
   defaultAlias: string;
+  onChanged: () => void;
 }
 
 const DEFAULT = "default";
 const SEPARATOR = "::";
 
 /** Provider and model for this thread. Providers without a key stay visible but cannot be chosen. */
-export function ModelPicker({ threadId, value, catalog, defaultAlias }: ModelPickerProps) {
+export function ModelPicker({ threadId, value, catalog, defaultAlias, onChanged }: ModelPickerProps) {
   const [pending, startTransition] = useTransition();
   const current = value ? `${value.provider}${SEPARATOR}${value.model}` : DEFAULT;
 
@@ -26,6 +27,7 @@ export function ModelPicker({ threadId, value, catalog, defaultAlias }: ModelPic
     startTransition(async () => {
       const result = await chooseModel(threadId, provider && model ? { provider, model } : null);
       if (!result.ok) toast.error(result.error ?? "Modell konnte nicht gesetzt werden.");
+      else onChanged();
     });
   }
 
@@ -44,11 +46,11 @@ export function ModelPicker({ threadId, value, catalog, defaultAlias }: ModelPic
             <SelectGroup key={provider.id}>
               <SelectLabel>
                 {provider.label}
-                {provider.available ? "" : " – kein Schlüssel"}
+                {provider.available ? "" : " – nicht verfügbar"}
               </SelectLabel>
               {provider.models.map((model) => (
                 <SelectItem key={model.id} value={`${provider.id}${SEPARATOR}${model.id}`} disabled={!provider.available}>
-                  {model.label}
+                  {provider.shortLabel} · {model.label}
                   {model.note ? <span className="ml-2 text-xs text-muted-foreground">{model.note}</span> : null}
                 </SelectItem>
               ))}

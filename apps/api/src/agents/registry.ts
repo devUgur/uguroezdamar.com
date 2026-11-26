@@ -5,6 +5,8 @@
 export interface AgentDefinition {
   id: string;
   name: string;
+  /** One line for the office view in the portal. */
+  summary: string;
   modelAlias: string;
   tools: readonly string[];
   systemPrompt: (context: { repo: string; projectName: string; memories: string[] }) => string;
@@ -24,6 +26,7 @@ export const AGENTS: Record<string, AgentDefinition> = {
   chef: {
     id: "chef",
     name: "Chef-Agent",
+    summary: "Verwaltet das Monorepo: liest Code und Doku, schlägt Änderungen vor, committet und öffnet Pull Requests nach Freigabe.",
     modelAlias: "chef-smart",
     tools: [...REPO_TOOLS, "projects_list", "memory_save"],
     systemPrompt: ({ repo, projectName, memories }) => `Du bist der Chef-Agent von Ugur Özdamar. Ugur spricht mit dir im Chat seines Admin-Portals.

@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { Button, toast } from "@ugur/ui";
 import { cn } from "@ugur/core";
-import { decideApproval } from "../actions";
-import type { Approval } from "../types";
+import { decideApproval } from "../../actions";
+import type { Approval } from "../../types";
 
 interface ApprovalCardProps {
   approval: Approval;

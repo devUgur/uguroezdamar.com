@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { listThreads, ThreadList, type Thread } from "@/src/features/chat";
+import { listThreads, ThreadList, type Thread } from "@/src/features/agents";
 
 export default async function ChatLayout({ children }: { children: ReactNode }) {
   let threads: Thread[] = [];

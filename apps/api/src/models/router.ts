@@ -24,6 +24,7 @@ export interface PinnedModel {
 export interface CatalogEntry {
   id: string;
   label: string;
+  shortLabel: string;
   /** False while the provider's key is missing; the portal shows it greyed out. */
   available: boolean;
   models: { id: string; label: string; note?: string; inputUsdPerM: number; outputUsdPerM: number }[];
@@ -56,6 +57,7 @@ export class ModelRouter {
     const providers = Object.entries(this.config.providers).map(([id, provider]) => ({
       id,
       label: provider.label ?? id,
+      shortLabel: provider.shortLabel ?? provider.label ?? id,
       available: this.hasCredentials(id),
       models: (provider.models ?? []).map(({ id: model, label, note, inputUsdPerM, outputUsdPerM }) => ({ id: model, label, note, inputUsdPerM, outputUsdPerM })),
     }));
@@ -75,7 +77,7 @@ export class ModelRouter {
     const attempts: string[] = [];
     let lastError: unknown;
     for (const target of targets) {
-      const port = this.port(target.provider, target.model);
+      const port = this.hasCredentials(target.provider) ? this.port(target.provider, target.model) : undefined;
       if (!port?.available()) {
         attempts.push(`${target.provider}/${target.model}: skipped (no credentials)`);
         continue;
@@ -104,6 +106,7 @@ export class ModelRouter {
   private hasCredentials(providerId: string): boolean {
     const provider = this.config.providers[providerId];
     if (!provider) return false;
+    if (provider.enabledVar && secret(this.env, provider.enabledVar) !== "true") return false;
     return provider.kind === "workers-ai" || !provider.apiKeySecret || Boolean(secret(this.env, provider.apiKeySecret));
   }
 

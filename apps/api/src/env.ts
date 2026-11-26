@@ -16,6 +16,8 @@ export interface Env {
   MODEL_VIA_GATEWAY: string;
   /** "production" (branch main) or "dev" (branch dev). */
   API_ENV: string;
+  /** "true" once the models in apps/api/modal/llm.py are deployed; until then Modal stays unselectable. */
+  MODAL_ENABLED?: string;
 
   /** Shared with the portal server, one value per environment; the browser never sees it. */
   API_SERVICE_TOKEN?: string;

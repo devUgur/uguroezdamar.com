@@ -37,6 +37,10 @@ export interface ProviderConfig {
   gatewayPath?: string;
   /** Name of the Worker secret that holds the API key. */
   apiKeySecret?: string;
+  /** Worker variable that must be "true" before the provider can be chosen (e.g. once its servers are deployed). */
+  enabledVar?: string;
+  /** Short name in front of each model in the portal's list. */
+  shortLabel?: string;
 }
 
 export interface ModelConfig {
@@ -49,6 +53,7 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
     gemini: {
       kind: "openai-compatible",
       label: "Google Gemini",
+      shortLabel: "Gemini",
       models: [
         { id: "gemini-flash-latest", label: "Gemini Flash (aktuell)", inputUsdPerM: 0, outputUsdPerM: 0 },
         { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite", inputUsdPerM: 0, outputUsdPerM: 0 },
@@ -60,6 +65,7 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
     openrouter: {
       kind: "openai-compatible",
       label: "OpenRouter",
+      shortLabel: "OpenRouter",
       models: [],
       baseUrl: "https://openrouter.ai/api/v1",
       gatewayPath: "openrouter",
@@ -70,7 +76,9 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
     modal: {
       kind: "openai-compatible",
       label: "Modal (eigene GPUs)",
+      shortLabel: "Modal",
       apiKeySecret: "MODAL_LLM_API_KEY",
+      enabledVar: "MODAL_ENABLED",
       models: [
         {
           id: "mistralai/Ministral-3-8B-Instruct-2512",
@@ -93,6 +101,7 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
     "workers-ai": {
       kind: "workers-ai",
       label: "Cloudflare Workers AI",
+      shortLabel: "Workers AI",
       models: [
         { id: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", label: "Llama 3.3 70B", inputUsdPerM: 0, outputUsdPerM: 0 },
         { id: "@cf/meta/llama-3.1-8b-instruct-fast", label: "Llama 3.1 8B (schnell)", inputUsdPerM: 0, outputUsdPerM: 0 },

@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@ugur/core";
 import { Button } from "@ugur/ui";
-import { createThread } from "../actions";
-import type { Thread } from "../types";
+import { createThread } from "../../actions";
+import type { Thread } from "../../types";
 
 const WORKING = new Set(["user_message", "thinking", "model_result", "tool_call", "tool_result", "stage_paused", "approval_decided"]);
 

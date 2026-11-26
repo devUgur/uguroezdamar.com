@@ -3,7 +3,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { agentsApi, agentsApiOrigin, isAgentsApiId } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/auth";
-import type { ModelCatalog, Thread, ThreadDetail } from "./types";
+import type { AgentSummary, ModelCatalog, Thread, ThreadDetail } from "./types";
 
 /** Every chat read runs as the signed-in admin; without a session the portal login takes over. */
 export async function requireActor(): Promise<string> {
@@ -29,6 +29,10 @@ export async function getThread(threadId: string): Promise<ThreadDetail | null> 
 
 export async function getModelCatalog(): Promise<ModelCatalog> {
   return agentsApi<ModelCatalog>("/api/models", await requireActor());
+}
+
+export async function listAgents(): Promise<AgentSummary[]> {
+  return agentsApi<AgentSummary[]>("/api/agents", await requireActor());
 }
 
 export function liveOrigin(): string | null {
