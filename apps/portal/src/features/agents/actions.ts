@@ -71,6 +71,18 @@ export async function chooseModel(threadId: string, model: ModelChoice | null): 
   }
 }
 
+export async function chooseProject(threadId: string, projectId: string): Promise<ActionResult> {
+  try {
+    assertThread(threadId);
+    if (!/^[a-z0-9-]{1,60}$/.test(projectId)) return { ok: false, error: "Ungültiges Projekt." };
+    await agentsApi(`/api/threads/${threadId}`, await actor(), { method: "PATCH", body: { projectId } });
+    revalidatePath(`/chat/${threadId}`);
+    return { ok: true };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
 export async function archiveThread(threadId: string): Promise<void> {
   assertThread(threadId);
   await agentsApi(`/api/threads/${threadId}`, await actor(), { method: "DELETE" });

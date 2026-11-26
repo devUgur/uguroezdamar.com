@@ -79,6 +79,11 @@ export class ModelRouter {
     }));
   }
 
+  /** True when the pinned model's provider does not evaluate prompts (so private content may go to it). */
+  keepsContentPrivate(pinned: PinnedModel): boolean {
+    return this.offers(pinned) && this.config.providers[pinned.provider]?.trainsOnData === false;
+  }
+
   /** True when the provider exists and offers this model in the catalog. */
   offers(pinned: PinnedModel): boolean {
     return Boolean(this.config.providers[pinned.provider]?.models?.some((model) => model.id === pinned.model));

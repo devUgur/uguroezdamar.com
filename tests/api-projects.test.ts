@@ -232,10 +232,10 @@ describe("answering questions about repositories", () => {
     expect(JSON.stringify(result)).not.toContain("secret-client");
   });
 
-  it("names private repositories in a private project, where only models without training run", async () => {
+  it("names private repositories when the chat runs only on models without training", async () => {
     stubRepos();
-    const { env } = envWith(rows("private"));
-    const context: ToolContext = { env, agentId: "chef", projectId: "p", repo: "devUgur/open", budget: new SubrequestBudget() };
+    const { env } = envWith(rows("public"));
+    const context: ToolContext = { env, agentId: "chef", projectId: "p", repo: "devUgur/open", budget: new SubrequestBudget(), allowPrivate: true };
     const result = (await tool("github_repositories_list")?.run({}, context)) as { repositories: { fullName: string }[] };
     expect(result.repositories.map((repo) => repo.fullName)).toContain("devUgur/secret-client");
   });
@@ -246,5 +246,16 @@ describe("answering questions about repositories", () => {
     const budget = new SubrequestBudget();
     await tool("github_repositories_list")?.run({}, { env, agentId: "chef", projectId: "p", repo: "devUgur/open", budget });
     expect(budget.spent).toBe(1);
+  });
+});
+
+describe("private content follows the model the chat is pinned to", () => {
+  it("treats a pinned Workers AI or Modal model as private-safe and a pinned Gemini model as not", async () => {
+    const { env } = envWith([]);
+    const router = await ModelRouter.load(env);
+    expect(router.keepsContentPrivate({ provider: "workers-ai", model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast" })).toBe(true);
+    expect(router.keepsContentPrivate({ provider: "modal", model: "mistralai/Ministral-3-8B-Instruct-2512" })).toBe(true);
+    expect(router.keepsContentPrivate({ provider: "gemini", model: "gemini-flash-latest" })).toBe(false);
+    expect(router.keepsContentPrivate({ provider: "modal", model: "unbekannt" })).toBe(false);
   });
 });

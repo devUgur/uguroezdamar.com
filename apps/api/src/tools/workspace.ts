@@ -25,9 +25,8 @@ const listGithubRepositories: Tool = {
     parameters: { type: "object", properties: {} },
   },
   async run(_args, context) {
-    const project = await context.env.DB.prepare("SELECT visibility FROM projects WHERE id = ?").bind(context.projectId).first<{ visibility: string }>();
-    // A public project may be answered by a model that evaluates requests; names of private repositories stay out of its view.
-    const mayShowPrivate = project?.visibility === "private";
+    // Names of private repositories reach only models that do not evaluate requests (see ToolContext.allowPrivate).
+    const mayShowPrivate = context.allowPrivate === true;
     const repositories = (await listRepositories(context.env, () => context.budget.take())).filter((repo) => !repo.archived);
     const visible = repositories.filter((repo) => mayShowPrivate || !repo.private);
     const privateCount = repositories.filter((repo) => repo.private).length;
@@ -37,7 +36,11 @@ const listGithubRepositories: Tool = {
       private: privateCount,
       registered: repositories.filter((repo) => repo.projectId).length,
       repositories: visible.map(({ fullName, private: isPrivate, description, projectId }) => ({ fullName, private: isPrivate, description, registeredAs: projectId })),
-      ...(mayShowPrivate ? {} : { note: `${privateCount} private Repositories werden in diesem Projekt nicht namentlich genannt, weil das Modell hier Inhalte auswerten dürfte.` }),
+      ...(mayShowPrivate
+        ? {}
+        : {
+            note: `${privateCount} private Repositories existieren, werden aber in diesem Chat nicht namentlich genannt: Das Modell dürfte Inhalte auswerten. Sage Ugur das so und nenne die Lösung: im Chat ein Modell ohne Datenauswertung wählen (Workers AI oder Modal), dann stehen die Namen hier. Behaupte nicht, es gäbe keine privaten Repositories.`,
+          }),
     };
   },
 };

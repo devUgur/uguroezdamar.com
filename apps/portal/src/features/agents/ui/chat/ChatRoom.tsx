@@ -8,6 +8,7 @@ import { ApprovalCard } from "./ApprovalCard";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
 import { ModelPicker } from "./ModelPicker";
+import { ProjectPicker } from "./ProjectPicker";
 import { RunActivity } from "./RunActivity";
 import { useLiveRun } from "./useLiveRun";
 
@@ -23,7 +24,7 @@ interface ChatRoomProps {
 
 /** One thread: stored history, the run in progress, open approvals and the composer. */
 export function ChatRoom({ detail, catalog, liveOrigin, onRefresh, headerActions }: ChatRoomProps) {
-  const { thread, messages, status, approvals, events } = detail;
+  const { thread, messages, status, approvals, events, projects } = detail;
   const [pending, setPending] = useState<string[]>([]);
   const bottom = useRef<HTMLDivElement>(null);
 
@@ -71,6 +72,9 @@ export function ChatRoom({ detail, catalog, liveOrigin, onRefresh, headerActions
         <span className="text-xs text-muted-foreground" title="Live-Verbindung zur Agenten-API">
           {liveOrigin ? (connected ? "live" : "verbindet …") : "API nicht konfiguriert"}
         </span>
+        {(projects ?? []).length > 1 ? (
+          <ProjectPicker threadId={thread.id} value={thread.projectId} projects={projects} disabled={run.running} onChanged={onRefresh} />
+        ) : null}
         <ModelPicker
           threadId={thread.id}
           value={thread.model}

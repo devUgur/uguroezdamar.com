@@ -54,8 +54,18 @@ export interface AgentEvent {
   costUsd?: number;
 }
 
+/** A registered project a chat can work in (the repository its agent may read and write). */
+export interface ThreadProject {
+  id: string;
+  name: string;
+  repo: string | null;
+  visibility: "public" | "private";
+}
+
 export interface ThreadDetail {
   thread: Thread;
+  /** Active projects, for switching the chat's repository. */
+  projects: ThreadProject[];
   messages: ChatMessage[];
   status: { running: boolean; step: number; startedAt?: number };
   approvals: Approval[];

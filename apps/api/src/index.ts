@@ -228,20 +228,26 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
   if (!action && method === "GET") {
     const [messages, status, approvals] = await Promise.all([stub.history(), stub.status(), pendingApprovals(env, threadId)]);
     const events = await recentEvents(env, { threadId, limit: 200 });
-    return json({ thread: toThread(thread), messages, status, approvals, events });
+    const { results: projects } = await env.DB.prepare("SELECT id, name, repo, visibility FROM projects WHERE status = 'active' ORDER BY name").all();
+    return json({ thread: toThread(thread), messages, status, approvals, events, projects });
   }
 
   if (!action && method === "PATCH") {
-    const input = await body<{ title: string; model: { provider: string; model: string } | null }>(request);
+    const input = await body<{ title: string; projectId: string; model: { provider: string; model: string } | null }>(request);
+    if (input.projectId !== undefined) {
+      const project = await env.DB.prepare("SELECT 1 FROM projects WHERE id = ? AND status = 'active'").bind(input.projectId).first();
+      if (!project) return json({ error: "Unbekanntes oder entferntes Projekt" }, 400);
+      if ((await stub.status()).running) return json({ error: "Das Projekt lässt sich nicht wechseln, solange der Agent arbeitet." }, 409);
+    }
     if (input.model) {
       const router = await ModelRouter.load(env);
       if (!router.offers(input.model)) return json({ error: "Unbekanntes Modell" }, 400);
       await router.warmUp(input.model);
     }
     await env.DB.prepare(
-      `UPDATE threads SET title = COALESCE(?, title), model = CASE WHEN ? THEN ? ELSE model END, updated_at = unixepoch() WHERE id = ?`,
+      `UPDATE threads SET title = COALESCE(?, title), project_id = COALESCE(?, project_id), model = CASE WHEN ? THEN ? ELSE model END, updated_at = unixepoch() WHERE id = ?`,
     )
-      .bind(input.title?.slice(0, 120) ?? null, input.model !== undefined ? 1 : 0, input.model ? JSON.stringify(input.model) : null, threadId)
+      .bind(input.title?.slice(0, 120) ?? null, input.projectId ?? null, input.model !== undefined ? 1 : 0, input.model ? JSON.stringify(input.model) : null, threadId)
       .run();
     return json(toThread((await loadThread(env, threadId)) ?? thread));
   }

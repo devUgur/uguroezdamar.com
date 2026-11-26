@@ -270,9 +270,12 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
 
     const repo = project?.repo ?? this.env.DEFAULT_REPO;
     const budget = new SubrequestBudget();
-    const context: ToolContext = { env: this.env, agentId, projectId, repo, budget };
     const router = await ModelRouter.load(this.env);
     const pinned = parsePinned(thread?.model);
+    // Private content stays on models that do not evaluate it: always in a private project, and in any chat
+    // whose pinned model is such a model (then a failing model never falls back to an evaluating provider).
+    const privateContent = project?.visibility === "private" || Boolean(pinned && router.keepsContentPrivate(pinned));
+    const context: ToolContext = { env: this.env, agentId, projectId, repo, budget, allowPrivate: privateContent };
     const deltas = new DeltaBuffer(this.env, agentId, threadId);
 
     const outcome = await runAgentLoop({
@@ -289,7 +292,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
         const result = await router.chat(
           definition.modelAlias,
           { ...request, temperature: 0.3, maxTokens: 8192 },
-          { budget, onDelta, pinned: pinned && router.offers(pinned) ? pinned : undefined, privateContent: project?.visibility === "private" },
+          { budget, onDelta, pinned: pinned && router.offers(pinned) ? pinned : undefined, privateContent },
         );
         await deltas.flush();
         return {
