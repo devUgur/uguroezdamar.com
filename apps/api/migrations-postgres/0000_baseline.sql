@@ -363,6 +363,17 @@ CREATE TABLE runs (
   outcome TEXT
 );
 
+CREATE TABLE scheduled_jobs (
+  thread_key TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  due_at BIGINT NOT NULL,
+  version BIGINT NOT NULL DEFAULT 1,
+  lease_owner TEXT,
+  lease_until BIGINT,
+  attempts BIGINT NOT NULL DEFAULT 0,
+  updated_at BIGINT NOT NULL
+);
+
 CREATE TABLE task_dependencies (
   tenant_id TEXT NOT NULL,
   task_id TEXT NOT NULL REFERENCES tasks(id),
@@ -415,6 +426,27 @@ CREATE TABLE tenant_model_defaults (
   updated_by TEXT,
   updated_at BIGINT NOT NULL DEFAULT (CAST(EXTRACT(EPOCH FROM now()) AS BIGINT)),
   PRIMARY KEY (tenant_id, alias)
+);
+
+CREATE TABLE thread_messages (
+  thread_key TEXT NOT NULL,
+  id BIGINT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  content TEXT,
+  tool_calls TEXT,
+  tool_call_id TEXT,
+  raw TEXT,
+  ts BIGINT NOT NULL,
+  PRIMARY KEY (thread_key, id)
+);
+
+CREATE TABLE thread_values (
+  thread_key TEXT NOT NULL,
+  key TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  value TEXT NOT NULL,
+  PRIMARY KEY (thread_key, key)
 );
 
 CREATE TABLE tool_calls (
@@ -506,6 +538,7 @@ CREATE INDEX idx_portfolio_projects_tenant_status ON portfolio_projects(tenant_i
 CREATE INDEX idx_projects_tenant ON projects(tenant_id, status);
 CREATE INDEX idx_runs_tenant_started ON runs(tenant_id, started_at DESC);
 CREATE INDEX idx_runs_tenant_thread ON runs(tenant_id, thread_id);
+CREATE INDEX idx_scheduled_jobs_due ON scheduled_jobs(due_at);
 CREATE INDEX idx_sprints_project ON sprints(tenant_id, project_id, status);
 CREATE INDEX idx_task_reviews_task_created ON task_reviews(task_id, created_at DESC);
 CREATE INDEX idx_task_reviews_tenant ON task_reviews(tenant_id);

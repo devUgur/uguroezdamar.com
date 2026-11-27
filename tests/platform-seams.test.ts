@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { OfficePresenceCore } from "../apps/api/src/office/presence.ts";
 import { ThreadRuntime } from "../apps/api/src/runtime/thread-runtime.ts";
+import { actorThread } from "../apps/api/src/runtime/thread-store.ts";
 import { SET_LIVE_VIEWERS } from "../apps/api/src/live/presence.ts";
 import { emit } from "../apps/api/src/events.ts";
 import { apiHarness } from "./_helpers/api-env.ts";
@@ -16,7 +17,7 @@ describe("thread runtime without Cloudflare", () => {
   it("queues a chat, schedules its stage, reports the run and stops it", async () => {
     const { env, db } = apiHarness();
     const { state, values, clock } = memoryActorState();
-    const runtime = new ThreadRuntime(state, env);
+    const runtime = new ThreadRuntime(actorThread(state), env);
 
     expect(await runtime.chat(input)).toEqual({ accepted: true });
     expect(clock.alarm).not.toBeNull();
@@ -34,7 +35,7 @@ describe("thread runtime without Cloudflare", () => {
   it("keeps its conversation in the actor's own SQL", async () => {
     const { env } = apiHarness();
     const { state, db } = memoryActorState();
-    const runtime = new ThreadRuntime(state, env);
+    const runtime = new ThreadRuntime(actorThread(state), env);
     expect(await runtime.history()).toEqual([]);
     expect(db.prepare("SELECT name FROM pragma_table_info('messages')").all().map((row) => row.name)).toContain("raw");
     await runtime.reset();
@@ -128,7 +129,7 @@ describe("live hub only when someone listens", () => {
   it("shows a conversation's history and status in one call", async () => {
     const { env } = apiHarness();
     const { state } = memoryActorState();
-    const runtime = new ThreadRuntime(state, env);
+    const runtime = new ThreadRuntime(actorThread(state), env);
     expect(await runtime.view()).toEqual({ messages: [], status: await runtime.status() });
   });
 });

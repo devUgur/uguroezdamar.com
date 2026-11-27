@@ -10,7 +10,7 @@ export default mergeConfig(
   defineConfig({
     test: {
       env: { API_TEST_SQL: "postgres" },
-      include: ["tests/api-*.test.ts", "tests/platform-seams.test.ts", "tests/node-host.test.ts", "tests/*workflow*.test.ts", "tests/policy-engine.test.ts", "tests/office-*.test.ts"],
+      include: ["tests/api-*.test.ts", "tests/platform-seams.test.ts", "tests/node-host.test.ts", "tests/*workflow*.test.ts", "tests/policy-engine.test.ts", "tests/office-*.test.ts", "tests/thread-scheduler.test.ts"],
       maxWorkers: 4,
     },
   }),

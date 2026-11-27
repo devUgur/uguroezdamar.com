@@ -2,6 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import type { ChatMessage } from "../models/port.ts";
 import type { Accepted, AgentRuntimePort, AgentStatus, ChatInput, ResumeInput } from "../runtime/port.ts";
 import { ThreadRuntime } from "../runtime/thread-runtime.ts";
+import { actorThread } from "../runtime/thread-store.ts";
 import { actorState, platformFrom, type CloudflareBindings } from "./platform.ts";
 
 /** One Durable Object per chat thread; the runtime itself is platform-free (runtime/thread-runtime.ts). */
@@ -10,7 +11,7 @@ export class AgentRuntime extends DurableObject<CloudflareBindings> implements A
 
   constructor(ctx: DurableObjectState, bindings: CloudflareBindings) {
     super(ctx, bindings);
-    this.runtime = new ThreadRuntime(actorState(ctx), platformFrom(bindings));
+    this.runtime = new ThreadRuntime(actorThread(actorState(ctx)), platformFrom(bindings));
   }
 
   chat(input: ChatInput): Promise<Accepted> {

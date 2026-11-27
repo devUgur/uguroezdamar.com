@@ -6,7 +6,7 @@ import { anyStrict, effectivePolicy } from "../projects/policy.ts";
 import { AGENTS } from "../agents/registry.ts";
 import { APPROVAL_TTL_SECONDS, describeApproval } from "../approvals.ts";
 import type { Env } from "../env.ts";
-import type { ActorStatePort } from "../platform/ports.ts";
+import type { ThreadHost, ThreadStorePort, SchedulerPort } from "./thread-store.ts";
 import { decide, loadProjectPolicy, recordDecision } from "../policy/engine.ts";
 import { stepFinished } from "../workflow/engine.ts";
 import { liveViewers } from "../live/presence.ts";
@@ -24,15 +24,6 @@ import { toolsByName } from "../tools/registry.ts";
 
 export type { ChatInput, ResumeInput } from "./port.ts";
 
-
-interface MessageRow {
-  [key: string]: SqlStorageValue;
-  role: string;
-  content: string | null;
-  tool_calls: string | null;
-  tool_call_id: string | null;
-  raw: string | null;
-}
 
 interface ProjectRow {
   id: string;
@@ -143,27 +134,21 @@ function reviewHasPassingEvidence(
 }
 
 /**
- * The runtime of one chat thread, implementing AgentRuntimePort. On Cloudflare a Durable Object per thread hosts it
- * (cloudflare/agent-object.ts); it only needs ActorStatePort and Env (ADR 0040). It keeps the thread's conversation in its own SQLite and runs the loop in stages: every stage is an alarm with
+ * The runtime of one chat thread, implementing AgentRuntimePort. It only needs a ThreadHost (its store and its
+ * scheduler, ADR 0045) and Env: a Durable Object hosts it on Cloudflare (cloudflare/agent-object.ts), shared SQL on the
+ * Node host. It keeps the thread's conversation in the store and runs the loop in stages: every stage is a wake-up with
  * a fresh subrequest budget (Workers Free: 50 external calls per invocation). chat() and
  * resume() only queue work; results reach the portal as events through the live hub.
  */
 export class ThreadRuntime implements AgentRuntimePort {
-  constructor(
-    private readonly state: ActorStatePort,
-    private readonly env: Env,
-  ) {
-    state.sql.exec(`CREATE TABLE IF NOT EXISTS messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      role TEXT NOT NULL,
-      content TEXT,
-      tool_calls TEXT,
-      tool_call_id TEXT,
-      ts INTEGER NOT NULL
-    )`);
-    // Added with native provider adapters (ADR 0033); older threads get the column on first start.
-    const columns = state.sql.exec<{ name: string }>("SELECT name FROM pragma_table_info('messages')").toArray();
-    if (!columns.some((column) => column.name === "raw")) state.sql.exec("ALTER TABLE messages ADD COLUMN raw TEXT");
+  private readonly state: ThreadStorePort;
+  private readonly scheduler: SchedulerPort;
+  private readonly env: Env;
+
+  constructor(host: ThreadHost, env: Env) {
+    this.state = host.store;
+    this.scheduler = host.scheduler;
+    this.env = env;
   }
 
   async chat(input: ChatInput): Promise<Accepted> {
@@ -190,7 +175,7 @@ export class ThreadRuntime implements AgentRuntimePort {
   async stop(): Promise<void> {
     const run = await this.state.get<RunState>(RUN);
     await this.state.delete([RUN, INBOX]);
-    await this.state.deleteAlarm();
+    await this.scheduler.cancel();
     if (run) {
       if (run.runId) await finishRun(this.env, run.tenantId ?? OWNER_TENANT, run.runId, "stopped", { steps: run.steps, stages: run.stages, outcome: "gestoppt" });
       await emit(this.env, { tenantId: run.tenantId, threadId: run.threadId, agentId: run.agentId, projectId: run.projectId, taskId: run.taskId, type: "stopped", data: { steps: run.steps } });
@@ -223,7 +208,7 @@ export class ThreadRuntime implements AgentRuntimePort {
 
   async reset(): Promise<void> {
     await this.stop();
-    this.state.sql.exec("DELETE FROM messages");
+    await this.state.messages.clear();
     await this.state.delete([PRIVATE_THREAD, SUMMARY]);
   }
 
@@ -237,7 +222,7 @@ export class ThreadRuntime implements AgentRuntimePort {
     }
     const now = Date.now();
     await this.state.put<RunState>(RUN, await this.openRun({ tenantId, threadId, agentId, projectId, taskId, steps: 0, stages: 0, startedAt: now, touchedAt: now }));
-    await this.state.setAlarm(now);
+    await this.scheduler.wakeAt(now);
     return { accepted: true };
   }
 
@@ -260,10 +245,10 @@ export class ThreadRuntime implements AgentRuntimePort {
     if (!run.runId) Object.assign(run, await this.openRun(run));
     const base = { tenantId: run.tenantId, threadId: run.threadId, agentId: run.agentId, projectId: run.projectId, taskId: run.taskId };
     try {
-      run.historyFrom ??= this.nextMessageId();
+      run.historyFrom ??= await this.state.messages.nextId();
       const inbox = (await this.state.get<string[]>(INBOX)) ?? [];
       if (inbox.length) {
-        for (const text of inbox) this.append({ role: "user", content: text });
+        for (const text of inbox) await this.append({ role: "user", content: text });
         await this.state.delete(INBOX);
       }
 
@@ -271,7 +256,7 @@ export class ThreadRuntime implements AgentRuntimePort {
       if (outcome.kind === "paused") {
         await this.state.put<RunState>(RUN, { ...run, stages: run.stages + 1, touchedAt: Date.now() });
         await emit(this.env, { ...base, type: "stage_paused", data: { steps: run.steps, stage: run.stages + 1 } });
-        await this.state.setAlarm(Date.now() + 200);
+        await this.scheduler.wakeAt(Date.now() + 200);
         return;
       }
       if (run.runId) await finishRun(this.env, run.tenantId, run.runId, outcome.kind === "done" ? "done" : "failed", { steps: run.steps, stages: run.stages + 1, outcome: outcome.reply });
@@ -282,7 +267,7 @@ export class ThreadRuntime implements AgentRuntimePort {
       if (((await this.state.get<string[]>(INBOX)) ?? []).length) {
         const now = Date.now();
         await this.state.put<RunState>(RUN, await this.openRun({ ...base, steps: 0, stages: 0, startedAt: now, touchedAt: now }));
-        await this.state.setAlarm(now);
+        await this.scheduler.wakeAt(now);
       }
     } catch (error) {
       // No rethrow: a retried alarm would repeat side effects. Report and end the run.
@@ -599,35 +584,15 @@ export class ThreadRuntime implements AgentRuntimePort {
     });
   }
 
-  private append(message: ChatMessage): void {
-    this.state.sql.exec(
-      "INSERT INTO messages (role, content, tool_calls, tool_call_id, raw, ts) VALUES (?, ?, ?, ?, ?, ?)",
-      message.role,
-      message.content,
-      message.toolCalls ? JSON.stringify(message.toolCalls) : null,
-      message.toolCallId ?? null,
-      message.raw ? JSON.stringify(message.raw) : null,
-      Date.now(),
-    );
-  }
-
-  private nextMessageId(): number {
-    const row = this.state.sql.exec<{ next: number }>("SELECT COALESCE(MAX(id), 0) + 1 AS next FROM messages").one();
-    return Number(row.next);
+  private append(message: ChatMessage): Promise<void> {
+    return this.state.messages.append(message);
   }
 
   /** The thread as the model sees it in this run (runtime/context.ts); runs from before the builder keep the old window. */
-  private context(runFrom: number | undefined): ChatMessage[] {
+  private async context(runFrom: number | undefined): Promise<ChatMessage[]> {
     if (runFrom === undefined) return this.recent(HISTORY_LIMIT);
-    const rows = this.state.sql
-      .exec<MessageRow & { id: number }>(
-        "SELECT id, role, content, tool_calls, tool_call_id, raw FROM messages WHERE id >= ? OR id IN (SELECT id FROM messages WHERE id < ? ORDER BY id DESC LIMIT ?) ORDER BY id",
-        runFrom,
-        runFrom,
-        PRIOR_MESSAGES,
-      )
-      .toArray();
-    return buildContext(rows.map((row) => ({ id: Number(row.id), ...toMessage(row) })), runFrom, this.summaryCache, this.workingMemory);
+    const rows = await this.state.messages.window(runFrom, PRIOR_MESSAGES);
+    return buildContext(rows, runFrom, this.summaryCache, this.workingMemory);
   }
 
   private summaryCache: ThreadSummary | null = null;
@@ -639,10 +604,7 @@ export class ThreadRuntime implements AgentRuntimePort {
    */
   private async summarize(input: { tenantId: string; agentId: string; projectId: string; threadId: string; taskId?: string; runId?: string; runFrom: number; router: ModelRouter; budget: SubrequestBudget; strict: boolean }): Promise<void> {
     this.summaryCache = (await this.state.get<ThreadSummary>(SUMMARY)) ?? null;
-    const rows = this.state.sql
-      .exec<MessageRow & { id: number }>("SELECT id, role, content, tool_calls, tool_call_id, raw FROM messages WHERE id > ? AND id < ? ORDER BY id", this.summaryCache?.upTo ?? 0, input.runFrom)
-      .toArray()
-      .map((row) => ({ id: Number(row.id), ...toMessage(row) }));
+    const rows = await this.state.messages.between(this.summaryCache?.upTo ?? 0, input.runFrom);
     const pending = unsummarized(rows, input.runFrom, this.summaryCache);
     if (pending.length < SUMMARIZE_AFTER) return;
     const started = Date.now();
@@ -670,26 +632,12 @@ export class ThreadRuntime implements AgentRuntimePort {
     }
   }
 
-  private recent(limit: number): ChatMessage[] {
-    const rows = this.state.sql
-      .exec<MessageRow>("SELECT role, content, tool_calls, tool_call_id, raw FROM messages ORDER BY id DESC LIMIT ?", limit)
-      .toArray()
-      .reverse();
-    const messages: ChatMessage[] = rows.map(toMessage);
+  private async recent(limit: number): Promise<ChatMessage[]> {
+    const messages: ChatMessage[] = (await this.state.messages.recent(limit)).map(({ id: _id, ...message }) => message);
     // A window must not open with tool results whose call fell outside it.
     while (messages.length && messages[0]?.role === "tool") messages.shift();
     return messages;
   }
-}
-
-function toMessage(row: MessageRow): ChatMessage {
-  return {
-    role: row.role as ChatMessage["role"],
-    content: row.content,
-    toolCalls: row.tool_calls ? (JSON.parse(row.tool_calls) as ToolCall[]) : undefined,
-    toolCallId: row.tool_call_id ?? undefined,
-    raw: row.raw ? (JSON.parse(row.raw) as ChatMessage["raw"]) : undefined,
-  };
 }
 
 function parsePinned(value: string | null | undefined): PinnedModel | undefined {

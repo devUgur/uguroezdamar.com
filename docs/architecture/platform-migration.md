@@ -187,7 +187,7 @@
 | **R0 Audit** (erledigt) | Lokale Läufe starten keine API und nutzen `API_URL` aus Infisical `dev` = api-dev auf Cloudflare (ADR 0045, Befund). | Ursache der lokalen Kontingent-Fehler geklärt |
 | **R1 Lokaler Node-Host** (erledigt) | `apps/node-host`: Node 24, derselbe Fetch-Handler, `ActorDirectory` im Prozess für Threads, Hub und Office, Scheduler-Schleife statt Alarmen. `pnpm dev:office` startet ihn mit und setzt `API_URL` auf `http://localhost:3103`. Ein Integrationstest führt einen Agenten-Chat mit gesperrtem Cloudflare-Zugriff aus. | Agenten lokal ohne Cloudflare |
 | **R2 Postgres lokal** (erledigt) | `SqlPort` auf PostgreSQL (Docker), Migrationen der API für Postgres, Übersetzung der SQLite-Stellen (`unixepoch()`, `INSERT OR IGNORE`, FTS5). SQLite bleibt Testhilfe. | Eine Datenbanktechnologie überall |
-| **R3 ThreadStore und Scheduler** | `ThreadStorePort` (asynchron: Nachrichten, Laufzustand, Eingang, Zusammenfassung, Privat-Markierung) und `SchedulerPort` mit Aufträgen und Lease (`scheduled_jobs`). `ThreadRuntime` nutzt nur noch diese beiden Ports. Bestehende Verläufe aus Durable Objects werden beim ersten Zugriff übernommen. | Agentenläufe hostunabhängig |
+| **R3 ThreadStore und Scheduler** (erledigt) | `ThreadStorePort` (asynchron: Nachrichten, Laufzustand, Eingang, Zusammenfassung, Privat-Markierung) und `SchedulerPort` mit Aufträgen und Lease (`scheduled_jobs`). `ThreadRuntime` nutzt nur noch diese beiden Ports. Bestehende Verläufe aus Durable Objects werden beim ersten Zugriff übernommen. | Agentenläufe hostunabhängig |
 | **R4 Docker Compose** | `deployments/docker/`: Node-Host, Portal, Office, Postgres; ein Befehl startet alles. Die Anbieterwahl (Betriebsart local, cloud-dev, cloud) wird an einer Stelle beim Start geprüft. | Selbsthosting-Grundlage (alte P4) |
 | **R5 Cloud-Host** | Dasselbe Image auf Northflank (Test) und Railway Hobby, gemeinsames Neon Postgres. Portal und Office schalten `API_URL` nach Gesundheitsprüfung um, Rückfall auf SSE oder Polling ab der letzten Ereignis-ID. | Zweite Cloud-Runtime, Node primär |
 | **R6 Cloudflare-Adapter und Failover** | Der Worker nutzt dieselbe Datenbank und denselben Scheduler, Gespräche laufen nicht mehr in Durable Objects. Werkzeuge mit Außenwirkung bekommen Idempotenzschlüssel. Probe: Cloudflare mitten im Lauf abschalten, Node übernimmt, der Host-Wechsel steht im Ereignisprotokoll. | Kein Single Point of Failure |
@@ -226,6 +226,16 @@
   - Ein Docker-Lauf mit postgres.js ist erst typgeprüft, nicht ausgeführt.
   - Die Reihenfolge von `NULL` in `ORDER BY` unterscheidet sich (SQLite zuerst, Postgres zuletzt).
   - `INSERT OR REPLACE` hat keine allgemeine Übersetzung.
+
+**Stand R3 (27.11.2026):**
+- **Ports:** `ThreadRuntime` spricht nur noch mit `ThreadStorePort` (Werte und Nachrichten, asynchron) und `SchedulerPort` (`wakeAt`, `cancel`), beide in `apps/api/src/runtime/thread-store.ts`. Die Agenten-Schleife wartet auf den Verlauf, statt ihn synchron zu lesen.
+- **Cloudflare:** `actorThread` legt beide Ports auf Speicher und Alarm des Durable Objects. Das Verhalten bleibt gleich, und es wandern keine Daten. Die Übernahme bestehender Verläufe kommt mit R6.
+- **Node-Host:** Mit `sqlThread` liegen Gespräche in der gemeinsamen Datenbank (Migration 0032): `thread_messages`, `thread_values`, `scheduled_jobs`. `apps/api/src/runtime/scheduler.ts` übernimmt fällige Aufträge mit einer Lease von 15 Minuten.
+  - Ein zweiter Host übernimmt, sobald die Lease abgelaufen ist.
+  - Plant ein Lauf seine nächste Stufe, erhöht das `version`, und der Auftrag bleibt bestehen.
+  - Der Host fragt jede Sekunde nach und sofort, wenn ein Gespräch jetzt fällig wird.
+- **Tests:** `tests/thread-scheduler.test.ts` prüft Trennung je Gespräch und Mandant, Übernahme nach abgelaufener Lease und Neuplanung, auf SQLite und Postgres.
+- **Offen bis R6:** Eine Stufe, die beim Absturz halb fertig war, läuft nach der Übernahme ganz neu. Werkzeuge mit Außenwirkung brauchen dafür noch Idempotenzschlüssel.
 
 **Bis R5 trägt:** die Verbrauchssenkung aus ADR 0025 (Nachträge 1 und 2) und, falls der Owner sie bucht, Workers Paid als Brücke (O-R4).
 

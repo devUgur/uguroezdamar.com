@@ -36,7 +36,8 @@ export interface LoopEvent {
 
 export interface LoopDeps {
   system: ChatMessage;
-  history: { recent(): ChatMessage[]; append(message: ChatMessage): void };
+  /** The thread so far; a store may answer later (shared SQL, ADR 0045). */
+  history: { recent(): ChatMessage[] | Promise<ChatMessage[]>; append(message: ChatMessage): void | Promise<void> };
   model(request: { messages: ChatMessage[]; tools: ToolSpec[] }, onDelta: (text: string) => void): Promise<ModelTurn>;
   /** Tools this agent may use. */
   tools: Tool[];
@@ -95,7 +96,7 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
     try {
       const reminder = nudgeNext ? [NUDGE] : [];
       nudgeNext = false;
-      turn = await deps.model({ messages: [deps.system, ...deps.history.recent(), ...reminder], tools: specs }, (text) => deps.delta(step, text));
+      turn = await deps.model({ messages: [deps.system, ...(await deps.history.recent()), ...reminder], tools: specs }, (text) => deps.delta(step, text));
     } catch (error) {
       if (error instanceof BudgetExhausted) return { kind: "paused", steps: step - 1 };
       const message = error instanceof Error ? error.message : String(error);
@@ -110,7 +111,7 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
       tokensOut: turn.usage.outputTokens,
       costUsd: turn.costUsd,
     });
-    deps.history.append(turn.message);
+    await deps.history.append(turn.message);
 
     const calls = turn.message.toolCalls ?? [];
     if (!calls.length) {
@@ -131,7 +132,7 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
       // Every call needs a result message; once the budget is low the rest wait for the next stage.
       if (deferred || deps.budget.remaining < TOOL_RESERVE) {
         deferred = true;
-        deps.history.append({
+        await deps.history.append({
           role: "tool",
           toolCallId: call.id,
           content: JSON.stringify({ deferred: true, note: "Neue Etappe: rufe dieses Werkzeug erneut auf." }),
@@ -139,7 +140,7 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
         continue;
       }
       const output = await runTool(call, deps, step);
-      deps.history.append({ role: "tool", toolCallId: call.id, content: output.slice(0, TOOL_RESULT_CHARS) });
+      await deps.history.append({ role: "tool", toolCallId: call.id, content: output.slice(0, TOOL_RESULT_CHARS) });
     }
     if (deferred) return { kind: "paused", steps: step };
   }
