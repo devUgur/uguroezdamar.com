@@ -6,7 +6,7 @@ import { DatabaseSync } from "node:sqlite";
 import type { Env } from "../env.ts";
 import { KnowledgeIndexerCore } from "../knowledge/indexer.ts";
 import { OfficePresenceCore } from "../office/presence.ts";
-import { claim, dueJobs, release } from "../runtime/scheduler.ts";
+import { claim, dueJobs, jobOf, release, type DueJob } from "../runtime/scheduler.ts";
 import { ThreadRuntime } from "../runtime/thread-runtime.ts";
 import { sqlThread } from "../runtime/thread-store.ts";
 import { actorHost, type ActorHost } from "./actors.ts";
@@ -27,6 +27,8 @@ export interface NodePlatformOptions {
   vars: Record<string, string | undefined>;
   /** The API's database; default PGlite (`dataDir/pg`, or in memory). */
   sql?: SqlPort & { close?(): Promise<void> | void };
+  /** Sweep interval for foreign due jobs (default 30 minutes; NODE_HOST_SWEEP_MS). */
+  sweepMs?: number;
 }
 
 export interface NodePlatform {
@@ -36,7 +38,7 @@ export interface NodePlatform {
   rearm(): number;
   /** This host's name on the leases it takes (ADR 0045, R3). */
   owner: string;
-  /** One pass over the due threads; the host runs it every POLL_MS and whenever a thread wakes up now. */
+  /** One sweep over due jobs this host did not set itself; runs every `sweepMs` and once at start. */
   poll(): Promise<number>;
   close(): void;
 }
@@ -48,8 +50,8 @@ export interface NodePlatform {
   return left.length === right.length && timingSafeEqual(left, right);
 };
 
-/** How often the host looks for due threads. */
-const POLL_MS = 1_000;
+/** How often the host sweeps the database for due jobs it did not set itself (another host's, after a crash). */
+const SWEEP_MS = 30 * 60_000;
 
 /** Only plain configuration of the core; the ports below always win. */
 const PORT_NAMES = new Set(["DB", "CONFIG", "FILES", "AI", "AGENTS", "HUB", "OFFICE", "KNOWLEDGE", "INDEXER", "WORKSTATION", "NODE_SESSIONS", "INFRA_USAGE"]);
@@ -94,45 +96,76 @@ export function nodePlatform(options: NodePlatformOptions): NodePlatform {
   } as unknown as Env;
 
   // Threads live in the shared database (ADR 0045, R3): any host continues any of them once it holds the lease.
+  // Own wake-ups fire from a timer in this process; the database is swept only now and then for jobs of a host that
+  // died, so an idle host lets Neon scale to zero (R5).
   const owner = `node:${hostname()}:${process.pid}:${randomUUID().slice(0, 8)}`;
   const threads = new Map<string, ThreadRuntime>();
   const running = new Set<string>();
+  const wakes = new Map<string, NodeJS.Timeout>();
   let closed = false;
-  let timer: NodeJS.Timeout | undefined;
+  const report = (what: string) => (error: unknown) => console.error(what, error);
   const thread = (name: string): ThreadRuntime => {
     let known = threads.get(name);
     if (!known) {
-      known = new ThreadRuntime(sqlThread(DB, name, (at) => at <= Date.now() + 50 && kick()), env);
+      known = new ThreadRuntime(sqlThread(DB, name, (at) => wakeAt(name, at)), env);
       threads.set(name, known);
     }
     return known;
   };
   const agents = { get: thread };
+
+  function wakeAt(key: string, at: number): void {
+    if (closed) return;
+    clearTimeout(wakes.get(key));
+    const timer = setTimeout(() => {
+      wakes.delete(key);
+      void runThread(key).catch(report("thread wake-up failed"));
+    }, Math.max(0, at - Date.now()));
+    timer.unref?.();
+    wakes.set(key, timer);
+  }
+
+  /** Runs the thread's next stage if it is due and free; afterwards follows its next wake-up. */
+  async function runThread(key: string, known?: DueJob): Promise<boolean> {
+    if (closed || running.has(key)) return false;
+    const job = known ?? (await jobOf(DB, key));
+    if (!job || ("dueAt" in job && (job.dueAt as number) > Date.now())) {
+      if (job && "dueAt" in job) wakeAt(key, job.dueAt as number);
+      return false;
+    }
+    if (!(await claim(DB, job, owner))) return false;
+    running.add(key);
+    try {
+      await thread(key).alarm();
+    } catch (error) {
+      console.error("thread stage failed", key, error);
+    } finally {
+      running.delete(key);
+      if (!closed) {
+        await release(DB, job, owner).catch(report("lease release failed"));
+        const next = await jobOf(DB, key).catch(() => null);
+        if (next) wakeAt(key, next.dueAt);
+      }
+    }
+    return true;
+  }
+
+  /** The sweep: due jobs nobody holds, e.g. of a host that stopped. Returns how many this host took. */
   async function poll(): Promise<number> {
     if (closed) return 0;
     let started = 0;
     for (const job of await dueJobs(DB)) {
-      if (running.has(job.threadKey) || !(await claim(DB, job, owner))) continue;
-      running.add(job.threadKey);
+      if (running.has(job.threadKey)) continue;
       started += 1;
-      void thread(job.threadKey)
-        .alarm()
-        .catch((error) => console.error("thread stage failed", job.threadKey, error))
-        .finally(async () => {
-          running.delete(job.threadKey);
-          if (closed) return;
-          await release(DB, job, owner).catch((error) => console.error("lease release failed", job.threadKey, error));
-          kick();
-        });
+      void runThread(job.threadKey, job).catch(report("thread stage failed"));
     }
     return started;
   }
-  function kick(): void {
-    if (closed) return;
-    setTimeout(() => void poll().catch((error) => console.error("scheduler poll failed", error)), 0).unref?.();
-  }
-  timer = setInterval(() => void poll().catch((error) => console.error("scheduler poll failed", error)), POLL_MS);
-  timer.unref?.();
+  const sweepMs = options.sweepMs ?? SWEEP_MS;
+  const sweep = setInterval(() => void poll().catch(report("scheduler sweep failed")), sweepMs);
+  sweep.unref?.();
+  // Right after the start: whatever was due while no host ran.
+  setTimeout(() => void poll().catch(report("scheduler sweep failed")), 0).unref?.();
   const office: ActorHost<OfficePresenceCore> = actorHost(dir ? join(dir, "actors", "office") : null, (state) => new OfficePresenceCore(state, env));
   const indexer: ActorHost<KnowledgeIndexerCore> = actorHost(dir ? join(dir, "actors", "indexer") : null, (state) => new KnowledgeIndexerCore(state, env));
   Object.assign(env, { AGENTS: agents, OFFICE: office, INDEXER: indexer });
@@ -145,7 +178,8 @@ export function nodePlatform(options: NodePlatformOptions): NodePlatform {
     rearm: () => office.rearm() + indexer.rearm(),
     close() {
       closed = true;
-      if (timer) clearInterval(timer);
+      clearInterval(sweep);
+      for (const timer of wakes.values()) clearTimeout(timer);
       hub.closeAll();
       office.close();
       indexer.close();

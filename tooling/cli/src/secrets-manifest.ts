@@ -64,6 +64,7 @@ export const SECRETS: readonly SecretSpec[] = [
   // Settings of a local run with the Node host (ADR 0045); never stored anywhere, defaults in apps/node-host/src/main.ts.
   ...optional("Node host: port, bind address, data folder and API_ENV label (defaults 3103, 127.0.0.1, apps/node-host/.data, local)", ["NODE_HOST_PORT", "NODE_HOST_BIND", "NODE_HOST_DATA", "NODE_HOST_ENV"], { stages: ["dev"] }),
   ...optional("Node host: operating mode local, cloud-dev or cloud, checked at start (ADR 0045)", ["NODE_HOST_MODE"], { stages: ["dev"] }),
+  ...optional("Node host: sweep for jobs of another host in ms (default 30 minutes; lets Neon scale to zero)", ["NODE_HOST_SWEEP_MS"], { stages: ["dev"] }),
   ...optional("Origin of the agent API as the browser reaches it (live WebSocket), when it differs from API_URL (Docker)", ["API_PUBLIC_URL"], { apps: ["portal"] }),
   ...optional("Node host: the API's Postgres (Docker or Neon); without it PGlite in the data folder (ADR 0045, R2)", ["NODE_HOST_DATABASE_URL"], { stages: ["dev"] }),
   ...optional("Local runs: `dev` points portal and office at api-dev on Cloudflare instead of the local Node host", ["UGUR_API"], { stages: ["dev"], cliOnly: true }),

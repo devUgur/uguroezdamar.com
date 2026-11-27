@@ -48,7 +48,7 @@ services:
       NODE_HOST_ENV: docker
       NODE_HOST_DATABASE_URL: postgres://postgres@postgres:5432/agents
       API_SERVICE_TOKEN: ${API_SERVICE_TOKEN:?API_SERVICE_TOKEN fehlt (mindestens 32 Zeichen)}
-      PROVIDER_KEYS_SECRET: ${PROVIDER_KEYS_SECRET:-}
+      PROVIDER_KEYS_SECRET: ${PROVIDER_KEYS_SECRET:?PROVIDER_KEYS_SECRET fehlt (fester Schlüssel für die Modellschlüssel im Portal)}
     ports:
       - "127.0.0.1:3103:3103"
     volumes:

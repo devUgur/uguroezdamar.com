@@ -18,7 +18,7 @@ try {
 }
 
 const sql = config.databaseUrl ? await postgresJsSql(config.databaseUrl) : undefined;
-const platform = nodePlatform({ dataDir: resolve(config.dataDir), sql, vars: { ...process.env, API_ENV: config.apiEnv } });
+const platform = nodePlatform({ dataDir: resolve(config.dataDir), sql, sweepMs: config.sweepMs, vars: { ...process.env, API_ENV: config.apiEnv } });
 const armed = platform.rearm();
 const server = startServer(platform, { port: config.port, host: config.bind });
 server.on("listening", () => {

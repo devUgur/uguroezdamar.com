@@ -15,7 +15,10 @@ describe("node host mode", () => {
   it("needs Postgres and a long token outside local, and listens on all interfaces in the cloud", () => {
     expect(() => hostConfig({ NODE_HOST_MODE: "cloud", API_SERVICE_TOKEN: TOKEN }, defaults)).toThrow(ConfigError);
     expect(() => hostConfig({ NODE_HOST_MODE: "cloud", API_SERVICE_TOKEN: "short", NODE_HOST_DATABASE_URL: "postgres://db/agents" }, defaults)).toThrow(/zu kurz/);
-    const cloud = hostConfig({ NODE_HOST_MODE: "cloud", API_SERVICE_TOKEN: TOKEN, NODE_HOST_DATABASE_URL: "postgres://user:secret@db:5432/agents" }, defaults);
+    const base = { NODE_HOST_MODE: "cloud", API_SERVICE_TOKEN: TOKEN, NODE_HOST_DATABASE_URL: "postgres://user:secret@db:5432/agents" };
+    // Model keys stored in the portal would be unreadable after a restart with a generated key.
+    expect(() => hostConfig(base, defaults)).toThrow(/PROVIDER_KEYS_SECRET/);
+    const cloud = hostConfig({ ...base, PROVIDER_KEYS_SECRET: "fixed" }, defaults);
     expect(cloud).toMatchObject({ bind: "0.0.0.0", databaseUrl: "postgres://user:secret@db:5432/agents" });
     // The log names the database host, never its credentials.
     expect(describeConfig(cloud)).toContain("db:5432");
@@ -27,5 +30,7 @@ describe("node host mode", () => {
     expect(() => hostConfig({ NODE_HOST_PORT: "99999", API_SERVICE_TOKEN: TOKEN }, defaults)).toThrow(/Port/);
     expect(() => hostConfig({ NODE_HOST_DATABASE_URL: "mysql://x", API_SERVICE_TOKEN: TOKEN }, defaults)).toThrow(/postgres/);
     expect(() => hostConfig({}, defaults)).toThrow(/API_SERVICE_TOKEN/);
+    expect(() => hostConfig({ API_SERVICE_TOKEN: TOKEN, NODE_HOST_SWEEP_MS: "500" }, defaults)).toThrow(/SWEEP/);
+    expect(hostConfig({ API_SERVICE_TOKEN: TOKEN }, defaults).sweepMs).toBe(30 * 60_000);
   });
 });

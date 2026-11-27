@@ -2,7 +2,7 @@
 
 **Zweck:** Die Agenten-API von dev läuft als Node-Host in der Cloud, auf Neon-Postgres, und Portal und Office von dev sprechen mit ihr. Damit hängt dev nicht mehr am Kontingent der Durable Objects. Entscheidung und Rahmen: [ADR 0045](decisions/0045-agent-runtime-independent-of-durable-objects.md), Owner-Entscheidungen O-R1 bis O-R3. Vorher: R1 bis R4 ([Plattform-Migration](platform-migration.md#p4-neu-zweite-runtime)).
 
-**Stand:** Plan vom 27.11.2026, noch nicht umgesetzt. Produktion bleibt bis R6 und bis zur Freigabe des Owners auf Cloudflare.
+**Stand:** Plan vom 27.11.2026. Die Schritte 1, 2, 3 und 10 sind umgesetzt; die übrigen warten auf den Owner. Produktion bleibt bis R6 und bis zur Freigabe des Owners auf Cloudflare.
 
 ## Was die Recherche ergab
 
@@ -22,19 +22,19 @@ Die Zahlen stammen aus Sekundärquellen und Neons FAQ. Vor dem Anlegen prüft de
 
 | Nr. | Schritt | Ergebnis | Wer |
 | --- | --- | --- | --- |
-| 1 | **Neon schonen:** Timer für eigene Aufträge statt Abfrage jede Sekunde; Durchgang für fremde Aufträge alle `NODE_HOST_SWEEP_MS` (Standard 30 Minuten). Kein Health-Check fragt die Datenbank. | Leerlauf ohne Dauerlast auf Neon | Agent |
-| 2 | **Cloud-Pflichten in `mode.ts`:** In `cloud` sind `PROVIDER_KEYS_SECRET` (ein im Container erzeugter Schlüssel ginge beim Neustart verloren) und `GITHUB_*`/`AGENT_*` Pflicht oder ausdrücklich abgeschaltet. `NODE_HOST_PUBLIC_URL` für Rückruf-URLs. | Ein falsch konfigurierter Host startet nicht, statt halb zu laufen | Agent |
-| 3 | **Image-Pipeline:** Workflow `node-host-image.yml` baut bei Push auf `dev` das Ziel `api` aus `deployments/docker/Dockerfile` und legt es als `ghcr.io/devugur/uguroezdamar-api:dev-<sha>` ab, dazu `:dev`. Northflank zieht das fertige Image, kein Build beim Anbieter. | Dasselbe Image für Northflank, Railway und Docker, kein anbieterspezifischer Build | Agent |
+| 1 ✓ | **Neon schonen:** Timer für eigene Aufträge statt Abfrage jede Sekunde; Durchgang für fremde Aufträge alle `NODE_HOST_SWEEP_MS` (Standard 30 Minuten). Kein Health-Check fragt die Datenbank. | Leerlauf ohne Dauerlast auf Neon | Agent |
+| 2 ✓ | **Cloud-Pflichten in `mode.ts`:** In `cloud` ist `PROVIDER_KEYS_SECRET` Pflicht, denn ein im Container erzeugter Schlüssel ginge beim Neustart verloren. Der Durchgang ist über `NODE_HOST_SWEEP_MS` einstellbar, mindestens 10 Sekunden. Rückruf-URLs folgen, sobald der Host welche braucht (Schritt 6). | Ein falsch konfigurierter Host startet nicht, statt halb zu laufen | Agent |
+| 3 ✓ | **Image-Pipeline** (`.github/workflows/node-host-image.yml`, startet das Image danach einmal mit Postgres zur Probe): Workflow `node-host-image.yml` baut bei Push auf `dev` das Ziel `api` aus `deployments/docker/Dockerfile` und legt es als `ghcr.io/devugur/uguroezdamar-api:dev-<sha>` ab, dazu `:dev`. Northflank zieht das fertige Image, kein Build beim Anbieter. | Dasselbe Image für Northflank, Railway und Docker, kein anbieterspezifischer Build | Agent |
 | 4 | **Konten anlegen:** Northflank-Konto mit Projekt `uguroezdamar` und Neon-Projekt `uguroezdamar-agents` mit den Branches `dev` und `prod`. Northflank-API-Token (nur dieses Projekt) und Neon-Verbindung `dev` kommen nach Infisical. | Zugänge, ohne dass ein Agent ein Konto anlegt | **Owner** |
 | 5 | **Secrets in den Host:** `pnpm ugur northflank secrets --stage dev --apply` überträgt die nötigen Namen aus Infisical in eine Northflank-Secret-Group. Es zeigt nur Namen und folgt dem Muster von `pnpm ugur api secrets`. Neue Namen kommen zuerst ins Manifest. | Werte nie im Repository, nie im Log | Agent baut, **Owner** führt aus |
 | 6 | **Dienst anlegen:** Northflank-Dienst `agents-dev` aus dem GHCR-Image, Port 3103 (HTTP, WebSocket), Health-Check `GET /api/health`, eine Instanz, Plan nf-compute-50. Die Einstellungen stehen versioniert in `deployments/northflank/agents-dev.json`, angewendet über die Northflank-API. | Laufender Host mit Neon `dev` | Agent bereitet vor, **Owner** gibt frei |
 | 7 | **Adresse:** `agents-dev.uguroezdamar.com` als CNAME auf Northflank, nach dem DNS-Verfahren aus ADR 0023 mit Freigabe des Owners. `api-dev.uguroezdamar.com` bleibt der Cloudflare-Worker. | Feste Adresse, Cloudflare unberührt | **Owner** gibt frei |
 | 8 | **Daten von dev:** Entweder übernimmt ein Export von D1 nach Neon Aufgaben, Projekte, Initiativen und Ereignisse, oder dev beginnt leer (O-R5). Verläufe in Durable Objects lassen sich erst in R6 übertragen. | dev ohne Datenverlust oder bewusst frisch | **Owner** entscheidet |
 | 9 | **Umschalten von dev:** `API_URL` in Infisical `dev` zeigt auf `https://agents-dev.uguroezdamar.com` (Portal-Preview und Office `office-dev.`); der Rückweg ist der alte Wert. `pnpm ugur smoke` prüft beide Wege. | dev läuft auf dem Node-Host, Cloudflare bleibt Rückfall | Agent, nach Freigabe des Owners |
-| 10 | **Rückfall ohne WebSocket:** Bricht die Live-Verbindung dreimal ab, holen Portal und Office Ereignisse ab der letzten ID alle 5 Sekunden ab (`/api/events?after=`), bis die Verbindung wieder steht. | Live-Ansicht ohne WebSocket | Agent |
+| 10 ✓ | **Rückfall ohne WebSocket:** Bricht die Live-Verbindung dreimal ab, gleichen Office (Chat ab der letzten Ereignis-ID, Raum über den Snapshot) und die Arbeitsansicht des Portals alle 5 Sekunden ab, bis die Verbindung wieder steht. Das Portal zeigt „Live getrennt, Abgleich alle 5 s“. | Live-Ansicht ohne WebSocket | Agent |
 | 11 | **Abnahme:** Siehe unten. Erst danach geht es an R6. | | Agent prüft, **Owner** nimmt ab |
 
-Die Schritte 1, 2, 3 und 10 brauchen nichts vom Owner und können sofort beginnen.
+Die Schritte 1, 2, 3 und 10 sind erledigt (27.11.2026). Ein Test belegt, dass ein ruhender Host keine Anweisung an die Datenbank schickt.
 
 ## Owner-Entscheidungen in R5
 

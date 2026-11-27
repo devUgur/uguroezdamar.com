@@ -80,6 +80,11 @@ export function useOfficeLive(
       if (result.ok) applySnapshot(result.snapshot);
       else if (!snapshotRef.current) setPresenceError(result.error);
     },
+    // Without a socket the room still follows: every reconnect attempt reloads it (ADR 0045, R5).
+    onReconnect: async () => {
+      const result = await loadOfficeState();
+      if (result.ok) applySnapshot(result.snapshot);
+    },
     onOffice: applySnapshot,
     onEvent: (event) => {
       onAnyEventRef.current?.(event);

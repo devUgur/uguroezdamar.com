@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import api from "../apps/api/src/index.ts";
 import { actorHost } from "../apps/api/src/node/actors.ts";
 import { nodePlatform, type NodePlatform } from "../apps/api/src/node/platform.ts";
+import { sqliteD1 } from "./_helpers/sqlite-d1.ts";
 
 /**
  * ADR 0045, R1: the agent API on Node runs a whole chat without Cloudflare. Every outgoing request is recorded;
@@ -62,6 +63,17 @@ describe("node host without Cloudflare", () => {
     expect(messages.map((message) => [message.role, message.content])).toContainEqual(["assistant", "Hallo, ich bin lokal."]);
     expect(outgoing.length).toBeGreaterThan(0);
     expect(outgoing.every((url) => url.startsWith("https://api.deepseek.com/"))).toBe(true);
+  });
+
+  it("leaves the database alone while idle, so Neon can scale to zero (R5)", async () => {
+    const db = sqliteD1();
+    let statements = 0;
+    const counting = { prepare: (sql: string) => (statements++, db.prepare(sql)), batch: db.batch };
+    platform = nodePlatform({ dataDir: null, sql: counting, vars: { API_SERVICE_TOKEN: TOKEN } });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const afterStart = statements;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(statements - afterStart).toBe(0);
   });
 
   it("issues one-time live tickets and records who listens", async () => {

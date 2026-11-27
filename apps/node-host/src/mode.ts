@@ -15,6 +15,8 @@ export interface HostConfig {
   dataDir: string;
   databaseUrl: string | null;
   apiEnv: string;
+  /** How often the database is swept for jobs of another host (ms). */
+  sweepMs: number;
 }
 
 export class ConfigError extends Error {}
@@ -29,6 +31,10 @@ export function hostConfig(env: Record<string, string | undefined>, defaults: { 
   if (databaseUrl && !/^postgres(ql)?:\/\//.test(databaseUrl)) throw new ConfigError("NODE_HOST_DATABASE_URL muss mit postgres:// beginnen.");
   if (!env.API_SERVICE_TOKEN) throw new ConfigError("API_SERVICE_TOKEN fehlt: Portal und Office könnten sich nicht anmelden.");
   if (mode === "cloud" && env.API_SERVICE_TOKEN.length < 32) throw new ConfigError("API_SERVICE_TOKEN ist für einen gehosteten Betrieb zu kurz (mindestens 32 Zeichen).");
+  // A key made inside a container would be gone after the next deploy, and with it every stored model key.
+  if (mode === "cloud" && !env.PROVIDER_KEYS_SECRET) throw new ConfigError("PROVIDER_KEYS_SECRET fehlt: ohne festen Schlüssel wären die im Portal hinterlegten Modellschlüssel nach dem nächsten Neustart unlesbar.");
+  const sweepMs = Number(env.NODE_HOST_SWEEP_MS ?? 30 * 60_000);
+  if (!Number.isFinite(sweepMs) || sweepMs < 10_000) throw new ConfigError("NODE_HOST_SWEEP_MS muss mindestens 10000 sein.");
   return {
     mode,
     port,
@@ -36,11 +42,12 @@ export function hostConfig(env: Record<string, string | undefined>, defaults: { 
     dataDir: env.NODE_HOST_DATA ?? defaults.dataDir,
     databaseUrl,
     apiEnv: env.NODE_HOST_ENV ?? mode,
+    sweepMs,
   };
 }
 
 /** One line for the log: which provider serves which port. Never prints a value of a secret. */
 export function describe(config: HostConfig): string {
   const database = config.databaseUrl ? `Postgres (${new URL(config.databaseUrl).host})` : "PGlite";
-  return `Betriebsart ${config.mode}: Datenbank ${database}, Live im Prozess, Dateien und Actors in ${config.dataDir}, Modelle direkt beim Anbieter, kein Cloudflare`;
+  return `Betriebsart ${config.mode}: Datenbank ${database}, Aufträge per Timer und Durchgang alle ${Math.round(config.sweepMs / 60_000)} min, Live im Prozess, Dateien und Actors in ${config.dataDir}, Modelle direkt beim Anbieter, kein Cloudflare`;
 }

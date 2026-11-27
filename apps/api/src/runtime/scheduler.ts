@@ -21,6 +21,15 @@ export async function dueJobs(db: SqlPort, now = Date.now(), limit = 10): Promis
   return results.map((row) => ({ threadKey: row.thread_key, version: Number(row.version) }));
 }
 
+/** The job of one thread, due or not; null when it has none. */
+export async function jobOf(db: SqlPort, threadKey: string): Promise<(DueJob & { dueAt: number; leaseUntil: number | null }) | null> {
+  const row = await db
+    .prepare("/* tenant:platform */ SELECT thread_key, version, due_at, lease_until FROM scheduled_jobs WHERE thread_key = ?")
+    .bind(threadKey)
+    .first<{ thread_key: string; version: number; due_at: number; lease_until: number | null }>();
+  return row ? { threadKey: row.thread_key, version: Number(row.version), dueAt: Number(row.due_at), leaseUntil: row.lease_until === null ? null : Number(row.lease_until) } : null;
+}
+
 /** Takes the job for `owner`; false when another host was quicker or the job changed. */
 export async function claim(db: SqlPort, job: DueJob, owner: string, now = Date.now()): Promise<boolean> {
   const result = await db

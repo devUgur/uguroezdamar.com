@@ -24,9 +24,16 @@ interface Handlers {
  * One WebSocket to the agent API's live hub. The portal server hands out a one-time ticket, so the
  * service token never reaches the browser. Reconnects on its own and pings every 30 seconds; the hub answers the ping
  * automatically without waking its Durable Object, so the heartbeat costs no request.
+ *
+ * Without a socket the view still follows (ADR 0045, R5): every attempt to reconnect first catches up through
+ * `onReconnect`; after three failed attempts `polling` is true and the attempts come every 5 seconds.
  */
-export function useLiveSocket(origin: string | null, handlers: Handlers): { connected: boolean } {
+const FAILURES_BEFORE_POLLING = 3;
+const POLL_MS = 5_000;
+
+export function useLiveSocket(origin: string | null, handlers: Handlers): { connected: boolean; polling: boolean } {
   const [connected, setConnected] = useState(false);
+  const [failures, setFailures] = useState(0);
   const latest = useRef(handlers);
   latest.current = handlers;
 
@@ -37,6 +44,12 @@ export function useLiveSocket(origin: string | null, handlers: Handlers): { conn
     let retry: ReturnType<typeof setTimeout> | undefined;
     let closed = false;
     let first = true;
+    let failed = 0;
+    let opened = false;
+    const fail = () => {
+      failed += 1;
+      setFailures(failed);
+    };
 
     const connect = async () => {
       try {
@@ -45,10 +58,15 @@ export function useLiveSocket(origin: string | null, handlers: Handlers): { conn
         const ticket = await liveTicket();
         socket = new WebSocket(`${origin.replace(/^http/, "ws")}/api/live?ticket=${encodeURIComponent(ticket)}`);
       } catch {
-        if (!closed) retry = setTimeout(connect, 5000);
+        fail();
+        if (!closed) retry = setTimeout(connect, POLL_MS);
         return;
       }
+      opened = false;
       socket.onopen = () => {
+        opened = true;
+        failed = 0;
+        setFailures(0);
         setConnected(true);
         if (latest.current.onOffice) socket?.send("subscribe:office");
         void Promise.resolve(latest.current.onOpen?.()).catch(() => undefined);
@@ -65,7 +83,8 @@ export function useLiveSocket(origin: string | null, handlers: Handlers): { conn
       socket.onclose = () => {
         setConnected(false);
         clearInterval(heartbeat);
-        if (!closed) retry = setTimeout(connect, 3000);
+        if (!opened) fail();
+        if (!closed) retry = setTimeout(connect, failed >= FAILURES_BEFORE_POLLING ? POLL_MS : 3000);
       };
       heartbeat = setInterval(() => socket?.readyState === WebSocket.OPEN && socket.send("ping"), 30_000);
     };
@@ -79,5 +98,5 @@ export function useLiveSocket(origin: string | null, handlers: Handlers): { conn
     };
   }, [origin]);
 
-  return { connected };
+  return { connected, polling: !connected && failures >= FAILURES_BEFORE_POLLING };
 }
