@@ -69,8 +69,12 @@ export async function handleInitiatives(request: Request, env: Env, caller: Call
       createdBy: row.created_by,
       createdAt: row.created_at,
       planning: workflows.find((workflow) => workflow.taskId === row.id) ?? null,
-      questions: questions.results.filter((question) => question.initiative_id === row.id).map(({ initiative_id: _, asked_by: askedBy, ...question }) => ({ ...question, askedBy })),
-      artifacts: artifacts.results.filter((artifact) => artifact.initiative_id === row.id).map(({ initiative_id: _, agent_id: agentId, created_at: createdAt, ...artifact }) => ({ ...artifact, agentId, createdAt })),
+      questions: questions.results
+        .filter((question) => question.initiative_id === row.id)
+        .map((question) => ({ id: question.id, question: question.question, why: question.why, proposal: question.proposal, answer: question.answer, askedBy: question.asked_by })),
+      artifacts: artifacts.results
+        .filter((artifact) => artifact.initiative_id === row.id)
+        .map((artifact) => ({ kind: artifact.kind, version: artifact.version, content: artifact.content, agentId: artifact.agent_id, createdAt: artifact.created_at })),
       backlog: Object.fromEntries(counts.results.filter((count) => count.initiative_id === row.id).map((count) => [count.kind, count.n])),
     })));
   }

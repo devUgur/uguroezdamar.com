@@ -7,4 +7,4 @@ export const HISTORY_LIMIT = 60;
 /** A run without progress for this long is treated as dead (e.g. after a deploy). */
 export const STALE_RUN_MS = 15 * 60_000;
 /** Live answer text is sent to browsers in batches, not per token. */
-export const DELTA_FLUSH_MS = 250;
+export const DELTA_FLUSH_MS = 1_000;

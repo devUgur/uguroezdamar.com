@@ -5,8 +5,6 @@ import { distance, randomSpot, type DeskAssignment, type OfficeBounds, type Vec2
 
 const ROOM_KEY = "office";
 const WALK_SPEED = 2.8;
-const MIN_REST_MS = 1_500;
-const MAX_REST_MS = 5_000;
 const MOTION_VERSION = 3;
 
 export type AgentActivity = "idle" | "working" | "waiting" | "error";
@@ -50,12 +48,6 @@ function positionAt(motion: OfficeMotion, now: number): Vec2 {
   if (length < 0.001) return motion.target;
   const progress = Math.min(1, Math.max(0, (now - motion.startedAt) * motion.speed / 1000 / length));
   return { x: motion.from.x + (motion.target.x - motion.from.x) * progress, z: motion.from.z + (motion.target.z - motion.from.z) * progress };
-}
-
-function randomDelay(): number {
-  const bytes = new Uint32Array(1);
-  crypto.getRandomValues(bytes);
-  return MIN_REST_MS + ((bytes[0] ?? 0) / 0xffffffff) * (MAX_REST_MS - MIN_REST_MS);
 }
 
 /**
@@ -109,7 +101,7 @@ export class OfficePresenceCore {
       ROOM_KEY,
       JSON.stringify(state),
     );
-    await this.scheduleNext(state);
+    await this.scheduleNext();
     const snapshot = this.publicSnapshot(state);
     if (publish && state.viewers > 0) {
       try {
@@ -131,20 +123,13 @@ export class OfficePresenceCore {
     };
   }
 
-  private async scheduleNext(state: RoomState): Promise<void> {
-    if (state.viewers <= 0) {
-      await this.state.deleteAlarm();
-      return;
-    }
-    const now = Date.now();
-    const deadlines = Object.values(state.agents).flatMap((motion) => {
-      if (motion.activity !== "idle") return [];
-      if (motion.restUntil !== null) return [motion.restUntil];
-      const arrival = motion.startedAt + (distance(motion.from, motion.target) / motion.speed) * 1000;
-      return arrival > now ? [arrival] : [];
-    });
-    if (deadlines.length) await this.state.setAlarm(Math.max(now + 100, Math.min(...deadlines)));
-    else await this.state.deleteAlarm();
+  /**
+   * Idle wandering is drawn by every browser from the same clock and agent id (office: localFallbackMotion), so the
+   * room needs no wake-ups of its own. A timer here cost one Durable Object request every few seconds per open
+   * office and used up the free daily quota (27.11.2026). Alarms of older versions are cleared.
+   */
+  private async scheduleNext(): Promise<void> {
+    await this.state.deleteAlarm();
   }
 
   async configure(input: {
@@ -248,13 +233,11 @@ export class OfficePresenceCore {
     const changed = motion.activity !== activity;
     if (seat && changed) this.setActivity(motion, activity, seat, state.bounds, Date.now());
     else if (changed) motion.activity = activity;
+    // An event that changes nothing is neither written nor published: no storage write, no broadcast.
+    if (!changed) return;
     motion.lastEventId = event.id;
-    if (changed) {
-      state.revision += 1;
-      await this.save(state);
-    } else {
-      await this.save(state, false);
-    }
+    state.revision += 1;
+    await this.save(state);
   }
 
   private setActivity(motion: OfficeMotion, activity: AgentActivity, seat: Vec2, bounds: OfficeBounds, now: number): void {
@@ -268,32 +251,9 @@ export class OfficePresenceCore {
     motion.restUntil = null;
   }
 
+  /** Only clears alarms an older version left behind; nothing is scheduled any more. */
   async alarm(): Promise<void> {
-    const state = await this.load();
-    if (state.viewers <= 0) {
-      await this.state.deleteAlarm();
-      return;
-    }
-    const now = Date.now();
-    let changed = false;
-    for (const motion of Object.values(state.agents)) {
-      if (motion.activity !== "idle") continue;
-      const current = positionAt(motion, now);
-      const arrived = distance(current, motion.target) < 0.02;
-      if (arrived && motion.restUntil === null) {
-        motion.from = motion.target;
-        motion.restUntil = now + randomDelay();
-        changed = true;
-      } else if (arrived && motion.restUntil !== null && motion.restUntil <= now) {
-        motion.from = motion.target;
-        motion.target = randomSpot(state.bounds);
-        motion.startedAt = now;
-        motion.restUntil = null;
-        changed = true;
-      }
-    }
-    if (changed) state.revision += 1;
-    await this.save(state, changed);
+    await this.state.deleteAlarm();
   }
 }
 

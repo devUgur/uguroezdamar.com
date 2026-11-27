@@ -22,7 +22,8 @@ interface Handlers {
 
 /**
  * One WebSocket to the agent API's live hub. The portal server hands out a one-time ticket, so the
- * service token never reaches the browser. Reconnects on its own and pings every 25 seconds.
+ * service token never reaches the browser. Reconnects on its own and pings every 30 seconds; the hub answers the ping
+ * automatically without waking its Durable Object, so the heartbeat costs no request.
  */
 export function useLiveSocket(origin: string | null, handlers: Handlers): { connected: boolean } {
   const [connected, setConnected] = useState(false);
@@ -66,7 +67,7 @@ export function useLiveSocket(origin: string | null, handlers: Handlers): { conn
         clearInterval(heartbeat);
         if (!closed) retry = setTimeout(connect, 3000);
       };
-      heartbeat = setInterval(() => socket?.readyState === WebSocket.OPEN && socket.send("ping"), 25_000);
+      heartbeat = setInterval(() => socket?.readyState === WebSocket.OPEN && socket.send("ping"), 30_000);
     };
 
     void connect();

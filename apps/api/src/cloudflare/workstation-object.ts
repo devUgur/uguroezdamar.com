@@ -1,6 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import type { Env } from "../env.ts";
-import { platformFrom, type CloudflareBindings } from "./platform.ts";
+import type { CloudflareBindings } from "./platform.ts";
 import { MAX_RUN_SECONDS, previewSteps, stepsFor, tail } from "../workstation/commands.ts";
 import type { GatewayProps } from "./gateways.ts";
 import { type StepResult, WorkstationUnavailable, type WorkstationJob, type WorkstationPort, type WorkstationResult } from "../workstation/port.ts";

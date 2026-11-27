@@ -41,6 +41,24 @@ describe("thread runtime without Cloudflare", () => {
 });
 
 describe("office presence without Cloudflare", () => {
+  it("writes and publishes only real changes of activity", async () => {
+    const { env } = apiHarness();
+    const broadcasts: string[] = [];
+    (env as { HUB: unknown }).HUB = { get: () => ({ broadcast: async (message: string) => void broadcasts.push(message) }) };
+    const { state } = memoryActorState();
+    const office = new OfficePresenceCore(state, env);
+    await office.configure({ bounds: { minX: -6, maxX: 6, minZ: -4, maxZ: 6 }, agents: [{ agentId: "chef", desk: { x: 0, z: 0 }, seat: { x: 0, z: 0.8 }, activity: "idle", lastEventId: 0 }] });
+    await office.setViewers(1);
+    const before = broadcasts.length;
+    await office.recordEvent({ id: 1, agentId: "chef", type: "user_message" });
+    await office.recordEvent({ id: 2, agentId: "chef", type: "user_message" });
+    await office.recordEvent({ id: 3, agentId: "chef", type: "approval_decided" });
+    expect(broadcasts.length - before).toBe(1);
+    await office.recordEvent({ id: 4, agentId: "chef", type: "message" });
+    expect(broadcasts.length - before).toBe(2);
+  });
+
+
   it("plans motion and wakes itself through the port", async () => {
     const { env } = apiHarness();
     const { state, clock } = memoryActorState();
@@ -51,11 +69,22 @@ describe("office presence without Cloudflare", () => {
     });
     expect(Object.keys(snapshot.agents)).toEqual(["chef"]);
     expect(snapshot.placements).toHaveLength(1);
-    // Nobody watches yet: no wake-up. Once a browser looks, idle agents walk and the office schedules its next move.
-    expect(clock.alarm).toBeNull();
+    // Idle agents wander in the browsers; the room never wakes itself, watched or not (DO quota, 27.11.2026).
     await office.setViewers(1);
-    expect(clock.alarm).toBeGreaterThan(Date.now() - 1_000);
-    await office.setViewers(0);
     expect(clock.alarm).toBeNull();
+    await office.alarm();
+    expect(clock.alarm).toBeNull();
+  });
+});
+
+describe("event fan-out", () => {
+  it("calls the office only for events that can change an agent's activity", async () => {
+    const officeCalls: string[] = [];
+    const { env } = apiHarness({ OFFICE: { get: () => ({ recordEvent: async (event: { type: string }) => void officeCalls.push(event.type) }) } });
+    const { emit } = await import("../apps/api/src/events.ts");
+    for (const type of ["user_message", "thinking", "model_result", "tool_call", "tool_result", "stage_paused", "message"] as const) {
+      await emit(env, { tenantId: "owner", agentId: "chef", threadId: "t-1", type });
+    }
+    expect(officeCalls).toEqual(["user_message", "message"]);
   });
 });

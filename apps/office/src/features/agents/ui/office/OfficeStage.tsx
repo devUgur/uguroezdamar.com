@@ -34,6 +34,21 @@ function fallbackPresence(agents: AgentSummary[], states: Record<string, AgentLi
   };
 }
 
+/**
+ * Idle agents wander by a plan every browser computes alike from the clock and the agent id (localFallbackMotion);
+ * the server only decides who works, waits or failed. Before 27.11.2026 the server planned every idle step with a
+ * Durable Object alarm, which used up the free daily request quota while an office stayed open.
+ */
+function withLocalIdle(snapshot: OfficeSnapshot, states: Record<string, AgentLiveState>, now: number): OfficeSnapshot {
+  const agents = { ...snapshot.agents };
+  for (const placement of snapshot.placements) {
+    const shared = snapshot.agents[placement.agentId];
+    const activity = states[placement.agentId]?.activity ?? shared?.activity ?? "idle";
+    if (activity === "idle" || !shared) agents[placement.agentId] = localFallbackMotion(placement.agentId, activity, placement.seat, snapshot.bounds, now);
+  }
+  return { ...snapshot, agents };
+}
+
 // three.js and its helpers load only when the 3D view is shown.
 const OfficeScene3D = dynamic(() => import("./world/OfficeScene3D"), {
   ssr: false,
@@ -67,9 +82,11 @@ export function OfficeStage({ agents, states, presence, serverOffsetMs, selected
   const [view, setView] = useState<View | null>(null);
   const [webgl, setWebgl] = useState(false);
   const [sceneReady, setSceneReady] = useState(false);
-  const [fallbackTime, setFallbackTime] = useState(() => Date.now());
+  const [clock, setClock] = useState(() => Date.now());
   const anchors = useRef<LabelAnchors>({});
-  const renderedPresence = presence ?? fallbackPresence(agents, states, fallbackTime);
+  // The server's clock, so idle agents walk the same way in every browser.
+  const now = clock + (presence ? serverOffsetMs : 0);
+  const renderedPresence = withLocalIdle(presence ?? fallbackPresence(agents, states, now), states, now);
 
   useEffect(() => {
     const supported = canUseWebGL();
@@ -77,11 +94,11 @@ export function OfficeStage({ agents, states, presence, serverOffsetMs, selected
     setView(supported ? (storedView() ?? "3d") : "2d");
   }, []);
 
+  // A new walking segment starts every few seconds; half a second is enough to pick it up.
   useEffect(() => {
-    if (presence) return;
-    const timer = setInterval(() => setFallbackTime(Date.now()), 250);
+    const timer = setInterval(() => setClock(Date.now()), 500);
     return () => clearInterval(timer);
-  }, [presence]);
+  }, []);
 
   function choose(next: View) {
     setView(next);

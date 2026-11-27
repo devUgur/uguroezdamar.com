@@ -47,3 +47,24 @@ Die 3D-Kamera ist eine Bedienpräferenz. Jede Browserinstanz soll unabhängig dr
 - API-Dev vor der Abnahme aktualisieren; bei absichtlich fehlendem oder unerreichbarem Snapshot müssen Agenten sichtbar bleiben, der Status muss „lokale Vorschau“ nennen und nach Wiederherstellung automatisch auf synchronisierte Präsenz wechseln.
 - Die 2D-Rückfallansicht auf dieselben Positionen prüfen; Kameraänderungen in einem Browser dürfen den anderen nicht bewegen.
 - Aufheben oder neu entscheiden, falls ein zweiter Raum, gemessene Koordinatenabweichungen oder Präsenzlast eine andere Raum-Partitionierung erfordern.
+
+## Nachtrag 27.11.2026: Leerlauf-Bewegung im Browser
+
+**Anlass:** Das Durable-Objects-Kontingent von Workers Free (100.000 Requests am Tag) war aufgebraucht. Die größten Verursacher im Code:
+
+- **Bewegungs-Alarme:** `OfficePresence` plante die Leerlauf-Bewegung jedes Agenten mit Alarmen, alle 1,5 bis 5 Sekunden, solange ein Office offen war. Jeder Alarm mit Änderung löste zusätzlich einen Broadcast an den `LiveHub` aus.
+- **Ereignisse:** Jedes Agenten-Ereignis rief das Office und den Hub auf.
+- **Gestreamter Text:** Er ging viermal pro Sekunde an den Hub.
+
+**Änderung:**
+
+- **Gemeinsamer Zustand:** Er umfasst nur noch Tätigkeit (arbeitet, wartet, Fehler, frei), Plätze und Raum.
+  - Ihn ändern nur Ereignisse, die eine Tätigkeit ändern können: `user_message`, Freigaben, `message`, `stopped`, `error`, `budget_blocked`.
+  - Gespeichert und veröffentlicht wird nur eine echte Änderung.
+- **Leerlauf-Bewegung:** Jeder Browser zeichnet sie selbst, aus Uhrzeit (Serverzeit-Abgleich) und Agenten-ID (`localFallbackMotion`).
+  - So sieht sie in allen Browsern gleich aus, ohne Server-Alarm.
+  - `OfficePresence` setzt keine Alarme mehr und löscht alte.
+- **Heartbeat:** Den Ping der Browser beantwortet Cloudflare per `setWebSocketAutoResponse`, ohne das Durable Object zu wecken. Der Abstand beträgt jetzt 30 Sekunden.
+- **Streaming:** Gestreamter Text geht einmal pro Sekunde an den Hub.
+
+**Was bleibt:** Die Kamera ist weiterhin lokal; die gemeinsame Wahrheit ist, wer arbeitet und wo sein Platz ist. Wer gerade frei herumläuft, wird nicht mehr serverseitig geführt.

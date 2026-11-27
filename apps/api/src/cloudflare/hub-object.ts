@@ -1,5 +1,4 @@
 import { DurableObject } from "cloudflare:workers";
-import type { Env } from "../env.ts";
 import { platformFrom, type CloudflareBindings } from "./platform.ts";
 
 const TICKET_TTL_MS = 60_000;
@@ -13,6 +12,12 @@ const TICKET_TTL_MS = 60_000;
  * in this object's storage and is consumed on use; no long-lived token ever appears in a URL.
  */
 export class LiveHub extends DurableObject<CloudflareBindings> {
+  constructor(ctx: DurableObjectState, bindings: CloudflareBindings) {
+    super(ctx, bindings);
+    // "ping" → "pong" without waking the object: the heartbeat no longer counts as a Durable Object request.
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
+  }
+
   async issueTicket(): Promise<string> {
     const ticket = crypto.randomUUID();
     await this.ctx.storage.put(`ticket:${ticket}`, Date.now() + TICKET_TTL_MS);

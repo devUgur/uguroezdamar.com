@@ -66,6 +66,12 @@ interface EventRow {
 }
 
 /** Writes the event to D1, then pushes it to every open portal chat. */
+/**
+ * The events that can change what an agent does in the office (working, waiting, error, idle). Steps in between
+ * (thinking, model and tool results, stage pauses) keep it working and need no call to the office's Durable Object.
+ */
+const ACTIVITY_EVENTS = new Set<string>(["user_message", "approval_requested", "approval_decided", "message", "stopped", "error", "budget_blocked"]);
+
 export async function emit(env: Env, event: AgentEvent): Promise<StoredEvent> {
   const row = await env.DB.prepare(
     `INSERT INTO events (tenant_id, agent_id, thread_id, task_id, project_id, type, data, tokens_in, tokens_out, cost_usd)
@@ -86,7 +92,7 @@ export async function emit(env: Env, event: AgentEvent): Promise<StoredEvent> {
     .first<{ id: number; ts: number }>();
 
   const stored: StoredEvent = { ...event, id: row?.id ?? 0, ts: row?.ts ?? Date.now() };
-  if (stored.agentId && stored.id) {
+  if (stored.agentId && stored.id && ACTIVITY_EVENTS.has(stored.type)) {
     try {
       await env.OFFICE.get(officeObjectName(event.tenantId)).recordEvent({
         agentId: stored.agentId,
