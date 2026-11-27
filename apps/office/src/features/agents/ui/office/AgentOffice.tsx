@@ -10,6 +10,8 @@ import { countByStatus, tasksInScope } from "../board/board";
 import { AgentChatDialog } from "./AgentChatDialog";
 import { AgentConfigSheet } from "./AgentConfigSheet";
 import { AutonomyWidget } from "./AutonomyWidget";
+import { InitiativeDialog } from "../initiatives/InitiativeDialog";
+import { InitiativesWidget } from "../initiatives/InitiativesWidget";
 import { OfficeOverview } from "./OfficeOverview";
 import { OfficeSidebar } from "./OfficeSidebar";
 import { OfficeStage } from "./OfficeStage";
@@ -59,6 +61,8 @@ export function AgentOffice({ room, initialBoard, liveOrigin, portalUrl, canMana
   const scopedTasks = useMemo(() => tasksInScope(board.tasks, scope), [board.tasks, scope]);
   const counts = useMemo(() => countByStatus(scopedTasks), [scopedTasks]);
   const [boardOpen, setBoardOpen] = useState(false);
+  /** undefined: closed; null: new initiative; id: that initiative. */
+  const [initiativeId, setInitiativeId] = useState<string | null | undefined>(undefined);
   const openBoard = useCallback(() => setBoardOpen(true), []);
 
   const searchParams = useSearchParams();
@@ -104,6 +108,7 @@ export function AgentOffice({ room, initialBoard, liveOrigin, portalUrl, canMana
 
         <aside aria-label="Überblick" className="shrink-0 lg:w-80 lg:overflow-y-auto">
           <OfficeOverview scope={scope} counts={counts} usage={board.usage} approvals={board.approvals} portalUrl={portalUrl} onOpenBoard={openBoard}>
+            <InitiativesWidget scope={scope} initiatives={board.initiatives} onOpen={setInitiativeId} />
             <AutonomyWidget scope={scope} projects={projects} policies={board.policies} canManage={canManage} onChanged={reloadBoard} />
           </OfficeOverview>
         </aside>
@@ -120,6 +125,15 @@ export function AgentOffice({ room, initialBoard, liveOrigin, portalUrl, canMana
         deliveries={board.deliveries}
         portalUrl={portalUrl}
         onPickProject={setScope}
+        onChanged={reloadBoard}
+      />
+      <InitiativeDialog
+        openId={initiativeId}
+        onClose={() => setInitiativeId(undefined)}
+        scope={scope}
+        projects={projects}
+        initiatives={board.initiatives}
+        agents={agents}
         onChanged={reloadBoard}
       />
       <AgentConfigSheet

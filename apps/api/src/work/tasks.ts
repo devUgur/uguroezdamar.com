@@ -12,6 +12,8 @@ export const TASK_STATUSES = ["backlog", "ready", "in_progress", "review", "qa",
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
 const PRIORITIES = ["low", "normal", "high", "urgent"] as const;
+export const TASK_KINDS = ["initiative", "epic", "story", "task"] as const;
+type TaskKind = (typeof TASK_KINDS)[number];
 type Priority = (typeof PRIORITIES)[number];
 export const TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
   backlog: ["ready", "blocked"],
@@ -25,6 +27,8 @@ export const TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
 
 export interface TaskRow {
   id: string;
+  kind?: string;
+  role?: string | null;
   project_id: string | null;
   sprint_id?: string | null;
   agent_id: string | null;
@@ -81,6 +85,8 @@ function asTask(row: TaskRow) {
     agent: row.agent_id ? { id: row.agent_id, name: row.agent_name ?? row.agent_id, role: row.agent_role ?? "" } : null,
     threadId: row.thread_id ?? null,
     parentId: row.parent_id,
+    kind: row.kind ?? "task",
+    role: row.role ?? null,
     title: row.title,
     description: row.description,
     acceptanceCriteria: row.acceptance_criteria,
@@ -168,16 +174,39 @@ export async function createTask(env: Env, caller: Caller, input: Record<string,
   if (!project) return { error: "Projekt nicht gefunden oder nicht aktiv." };
   const sprintId = typeof input.sprintId === "string" && input.sprintId ? input.sprintId : null;
   if (sprintId && !(await sprintBelongsTo(env, caller.tenantId, sprintId, projectId))) return { error: "Sprint gehört nicht zu diesem Projekt oder ist abgeschlossen." };
+  // Hierarchy (ADR 0041): initiative → epic → story/task, all in one project; dependencies within the project too.
+  const kind = input.kind === undefined ? "task" : input.kind;
+  if (!TASK_KINDS.includes(kind as TaskKind)) return { error: `Art muss eine von ${TASK_KINDS.join(", ")} sein.` };
+  const parentId = typeof input.parentId === "string" && input.parentId ? input.parentId : null;
+  if (parentId) {
+    const parent = await env.DB.prepare("SELECT kind FROM tasks WHERE tenant_id = ? AND id = ? AND project_id = ?").bind(caller.tenantId, parentId, projectId).first<{ kind: string }>();
+    if (!parent) return { error: "Übergeordnete Aufgabe nicht gefunden (anderes Projekt?)." };
+    if (kind === "epic" && parent.kind !== "initiative") return { error: "Ein Epic hängt an einem Vorhaben." };
+    if ((kind === "story" || kind === "task") && parent.kind === "story") return { error: "Stories und Tasks hängen an einem Epic, nicht an einer Story." };
+  }
+  if (kind === "initiative" && parentId) return { error: "Ein Vorhaben hat keine übergeordnete Aufgabe." };
+  const role = typeof input.role === "string" && input.role ? input.role : null;
+  if (role && !AGENTS[role]) return { error: `Unbekannte Rolle "${role}".` };
+  const dependsOn = Array.isArray(input.dependsOn) ? [...new Set(input.dependsOn.filter((value): value is string => typeof value === "string" && /^[0-9a-f-]{36}$/.test(value)))] : [];
+  if (dependsOn.length) {
+    const { results } = await env.DB.prepare(`SELECT id FROM tasks WHERE tenant_id = ? AND project_id = ? AND id IN (${dependsOn.map(() => "?").join(", ")})`)
+      .bind(caller.tenantId, projectId, ...dependsOn)
+      .all<{ id: string }>();
+    if (results.length !== dependsOn.length) return { error: "Eine Abhängigkeit gehört nicht zu diesem Projekt." };
+  }
   const id = crypto.randomUUID();
-  await env.DB.prepare(
-    `INSERT INTO tasks (id, tenant_id, project_id, sprint_id, title, input, description, acceptance_criteria, priority, story_points, created_by, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'backlog')`,
-  ).bind(
-    id, caller.tenantId, projectId, sprintId, title,
-    // `input` is the legacy copy of the description; the column list needs a value for it.
-    description.slice(0, 10_000) || null, description.slice(0, 10_000) || null,
-    acceptanceCriteria.slice(0, 5_000) || null, priority ?? "normal", storyPoints, caller.actor,
-  ).run();
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO tasks (id, tenant_id, project_id, sprint_id, parent_id, kind, role, title, input, description, acceptance_criteria, priority, story_points, created_by, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'backlog')`,
+    ).bind(
+      id, caller.tenantId, projectId, sprintId, parentId, kind, role, title,
+      // `input` is the legacy copy of the description; the column list needs a value for it.
+      description.slice(0, 10_000) || null, description.slice(0, 10_000) || null,
+      acceptanceCriteria.slice(0, 5_000) || null, priority ?? "normal", storyPoints, caller.actor,
+    ),
+    ...dependsOn.map((dependency) => env.DB.prepare("INSERT OR IGNORE INTO task_dependencies (tenant_id, task_id, depends_on) VALUES (?, ?, ?)").bind(caller.tenantId, id, dependency)),
+  ]);
   const task = await loadTask(env, caller.tenantId, id);
   if (!task) return { error: "Aufgabe konnte nicht geladen werden." };
   await publish(env, caller, task, "task_created");

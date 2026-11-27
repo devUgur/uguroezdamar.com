@@ -85,7 +85,7 @@ describe("board tools", () => {
 });
 
 describe("delivery team", () => {
-  const team = ["chef", "product-owner", "tech-lead", "developer", "reviewer", "devops"];
+  const team = ["chef", "product-owner", "tech-lead", "developer", "reviewer", "devops", "scrum-master"];
 
   it("has every role in the registry, with tools that exist", () => {
     expect(Object.keys(AGENTS).sort()).toEqual([...team].sort());
@@ -108,7 +108,7 @@ describe("delivery team", () => {
   });
 
   it("states the scope and the shared rules in every new role's prompt", () => {
-    for (const id of ["product-owner", "tech-lead", "developer", "devops"]) {
+    for (const id of ["product-owner", "tech-lead", "developer", "devops", "scrum-master"]) {
       const inProject = AGENTS[id]!.systemPrompt({ repo: "devUgur/x", projectName: "x", memories: [] });
       const company = AGENTS[id]!.systemPrompt({ repo: "", projectName: "", memories: ["Merke"] });
       expect(inProject).toContain("Repository devUgur/x");

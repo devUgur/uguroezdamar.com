@@ -132,9 +132,23 @@
 - **Office:**
   - Auf einer bereiten Aufgabe startet „Mit dem Team umsetzen“ den Ablauf.
   - Die Detailansicht zeigt jeden Schritt mit Rolle, Zustand, Übergabe und Gespräch; die Karte zeigt den Stand des Teams.
+- **Vorhaben und Planung ([ADR 0041](decisions/0041-initiatives-and-planning-lifecycle.md), 27.11.2026):**
+  - **Planungsablauf `planning`:** Ugur beschreibt einen Wunsch. Das Team arbeitet ihn in dieser Reihenfolge ab:
+    1. Eingang (Chef)
+    2. Anforderungen (Product Owner)
+    3. Architektur (Tech Lead)
+    4. Konzeptprüfung (QA)
+    5. Backlog (neuer Scrum Master)
+    6. Sprintplanung
+    7. Zusammenfassung
+  - **Artefakte:** Jede Ausgabe ist ein versioniertes Artefakt (`planning_artifacts`).
+  - **Rückfragen:** `ask_owner` lässt den Ablauf warten; mit den Antworten läuft der Schritt erneut.
+  - **Backlog:** Aufgaben haben eine Art (`initiative`, `epic`, `story`, `task`), eine Rolle und Abhängigkeiten (`task_dependencies`, Migration `0026`).
+  - **Freigabe:** Danach wird der Sprint aktiv. Das Team arbeitet die Tickets nacheinander in der Reihenfolge der Abhängigkeiten ab (`continueSprint`).
+  - **Office:** Bereich „Vorhaben“ mit neuem Wunsch, Rückfragen, Artefakten, Planungsstand und „Planung freigeben“.
 - **Noch offen aus P3:**
-  - `task_dependencies`
-  - `project_members` (Teams je Projekt, mehrere Entwickler)
+  - Sprint-Review und nächste Iteration automatisch
+  - `project_members` (Teams je Projekt, mehrere Entwickler parallel)
   - Agenten-Definitionen in der Datenbank
   - Besprechungen im Büro aus den Übergaben (Stufe 5)
 

@@ -5,7 +5,7 @@
 export type DeliveryStep = "intake" | "requirements" | "plan" | "implement" | "qa" | "report";
 
 export interface StepDefinition {
-  id: DeliveryStep;
+  id: string;
   agentId: string;
   label: string;
   /** What the role does in this step; the engine adds the task, earlier handoffs and the handoff rule. */
@@ -61,16 +61,6 @@ export const MAX_REWORK = 2;
 
 export const HANDOFF_RULE =
   "Schließe mit einem Abschnitt „Übergabe:“ in drei bis sechs Stichpunkten für die nächste Rolle: Ergebnis, Entscheidungen, offene Punkte. Markiere die Aufgabe nicht selbst als erledigt.";
-
-export function stepIndex(step: DeliveryStep): number {
-  return DELIVERY.findIndex((definition) => definition.id === step);
-}
-
-export function stepDefinition(step: DeliveryStep): StepDefinition {
-  const definition = DELIVERY.find((entry) => entry.id === step);
-  if (!definition) throw new Error(`Unbekannter Ablaufschritt "${step}".`);
-  return definition;
-}
 
 /** The handoff part of a step's answer, or its end when the agent wrote none. */
 export function handoffOf(output: string, max = 2_000): string {

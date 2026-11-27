@@ -18,7 +18,7 @@ const DONE_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 const PRIORITY_ORDER: Record<OfficeTask["priority"], number> = { urgent: 0, high: 1, normal: 2, low: 3 };
 
 export function tasksInScope(tasks: OfficeTask[], scope: OfficeScope, now = Date.now()): OfficeTask[] {
-  return tasks.filter((task) => (scope === null || task.projectId === scope) && (task.status !== "done" || now - task.updatedAt * 1000 < DONE_WINDOW_MS));
+  return tasks.filter((task) => task.kind !== "initiative" && (scope === null || task.projectId === scope) && (task.status !== "done" || now - task.updatedAt * 1000 < DONE_WINDOW_MS));
 }
 
 export type StatusCounts = Record<TaskStatus, number>;

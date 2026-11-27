@@ -71,6 +71,12 @@ export function classify(tool: string, args: Record<string, unknown>, writeMode:
       return { class: "work", detail: `Aufgabe „${String(args.title ?? "")}“` };
     case "task_refine":
       return { class: "work", detail: "Ziel und Abnahmekriterien der Aufgabe" };
+    case "ask_owner":
+      return { class: "work", detail: "Rückfragen an Ugur" };
+    case "sprint_propose":
+      return { class: "work", detail: `Sprint vorschlagen: ${String(args.name ?? "")}` };
+    case "initiative_start":
+      return { class: "work", detail: `Vorhaben planen: ${String(args.title ?? "")}` };
     case "repo_commit_files": {
       const paths = commitPaths(args);
       const branch = typeof args.branch === "string" && args.branch ? args.branch : writeMode === "dev-first" ? "dev" : "?";

@@ -46,7 +46,7 @@ export const AGENTS: Record<string, AgentDefinition> = {
     name: "Chef-Agent",
     summary: "Verwaltet das Monorepo: liest Code und Doku, schlägt Änderungen vor, committet und öffnet Pull Requests nach Freigabe.",
     modelAlias: "chef-smart",
-    tools: [...REPO_TOOLS, "projects_list", "github_repositories_list", "project_register", "repo_create", "knowledge_search", "memory_update", "code_verify", "preview_deploy"],
+    tools: [...REPO_TOOLS, "projects_list", "github_repositories_list", "project_register", "repo_create", "knowledge_search", "memory_update", "code_verify", "preview_deploy", "initiative_start", "ask_owner"],
     // Short on purpose: prompt and tool descriptions go into every step (plan stage 2). Every rule stays.
     systemPrompt: ({ repo, projectName, memories }) => `Du bist der Chef-Agent von Ugur Özdamar${repo ? ` im Projekt "${projectName}" (Repository ${repo})` : " auf Firmenebene: kein Projekt gewählt, also kein Repository; lesen mit repo=owner/name, schreiben erst in einem Projekt"}. Ugur schreibt dir im Admin-Portal.
 
@@ -57,6 +57,7 @@ Zugriff
 - Welche Modelle Inhalte sehen dürfen, regelt die Datenrichtlinie des Projekts automatisch.
 
 Arbeitsweise
+- Wünsche größer als ein Ticket plant das Team: initiative_start mit Ugurs Worten.
 - Vor jeder Änderung AGENTS.md des Repositories lesen; dessen Regeln haben Vorrang.
 - Erst knowledge_search (Doku, ADRs, frühere Aufgaben), dann gezielt lesen; Wichtiges mit memory_update festhalten.
 - Vor „fertig“ prüfst du mit code_verify deinen Branch nach dem Commit (Workstation oder CI); bei failed behebst du anhand des Logs. Previews schlägst du mit preview_deploy vor (Freigabe).
@@ -100,7 +101,7 @@ ${memories.length ? `\nNotizen zu diesem Projekt:\n${memories.map((memory) => `-
     name: "Product Owner",
     summary: "Macht aus Anliegen Aufgaben im Backlog: Ziel, Kontext und überprüfbare Abnahmekriterien.",
     modelAlias: "chef-smart",
-    tools: [...READ_TOOLS, "projects_list", "tasks_list", "task_create", "task_refine", "memory_update"],
+    tools: [...READ_TOOLS, "projects_list", "tasks_list", "task_create", "task_refine", "ask_owner", "memory_update"],
     systemPrompt: ({ repo, projectName, memories }) =>
       role(
         [
@@ -118,7 +119,7 @@ ${memories.length ? `\nNotizen zu diesem Projekt:\n${memories.map((memory) => `-
     name: "Tech Lead",
     summary: "Plant die technische Umsetzung: Dateien, Schnittstellen, Risiken und Reihenfolge; prüft Architektur.",
     modelAlias: "chef-smart",
-    tools: [...READ_TOOLS, "repo_read_pull_request", "tasks_list", "task_create", "memory_update"],
+    tools: [...READ_TOOLS, "repo_read_pull_request", "tasks_list", "task_create", "ask_owner", "memory_update"],
     systemPrompt: ({ repo, projectName, memories }) =>
       role(
         [
@@ -162,6 +163,23 @@ ${memories.length ? `\nNotizen zu diesem Projekt:\n${memories.map((memory) => `-
           "Du prüfst CI-Status, Deploy-Workflows und Umgebungen, findest die Ursachen fehlgeschlagener Checks mit code_verify und schlägst Previews mit preview_deploy vor (Freigabe).",
           "Für Releases nennst du, welche Commits ein PR dev → main enthält und was er ausliefert. Produktion gibt nur Ugur frei.",
           "Konfiguration änderst du nicht selbst; du beschreibst die Änderung als Vorschlag.",
+        ],
+        memories,
+      ),
+  },
+  "scrum-master": {
+    id: "scrum-master",
+    name: "Scrum Master",
+    summary: "Strukturiert Vorhaben zu Epics und Tickets mit Abhängigkeiten und plant Sprints; schreibt keinen Code.",
+    modelAlias: "chef-smart",
+    tools: [...READ_TOOLS, "projects_list", "tasks_list", "task_create", "sprint_propose", "memory_update"],
+    systemPrompt: ({ repo, projectName, memories }) =>
+      role(
+        [
+          `Du bist der Scrum Master ${where(repo, projectName)}.`,
+          "Du machst aus Anforderungen und Architektur ein Backlog, das ein Team ohne Rückfragen abarbeiten kann: Epics, darunter Stories und technische Tasks, jedes Ticket mit Ziel, Umfang, Abnahmekriterien, Testanforderung, Story Points, Rolle und Abhängigkeiten.",
+          "Ein Ticket passt in einen Pull Request. Du planst Sprints mit einem klaren Ziel und nur sprintbereiten Tickets.",
+          "Du schreibst keinen Code und keine Dateien im Repository.",
         ],
         memories,
       ),

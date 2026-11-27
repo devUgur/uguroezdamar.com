@@ -210,6 +210,9 @@ export interface OfficeTask {
   description: string | null;
   acceptanceCriteria: string | null;
   completionNote: string | null;
+  /** initiative → epic → story/task (ADR 0041). */
+  kind: "initiative" | "epic" | "story" | "task";
+  parentId: string | null;
   latestReview: { status: string; verdict: "pass" | "changes_requested" | "needs_human" | null; summary: string | null; threadId: string | null } | null;
 }
 
@@ -238,6 +241,19 @@ export interface OfficeRoom {
 }
 
 export type AutonomyLevel = "manual" | "balanced" | "high" | "max";
+
+/** A wish Ugur gave the team and its planning (agent API: GET /api/initiatives, ADR 0041). */
+export interface OfficeInitiative {
+  id: string;
+  projectId: string;
+  title: string;
+  brief: string | null;
+  createdAt: number;
+  planning: OfficeDelivery | null;
+  questions: { id: string; question: string; why: string | null; proposal: string | null; answer: string | null; askedBy: string | null }[];
+  artifacts: { kind: string; version: number; content: string; agentId: string | null; createdAt: number }[];
+  backlog: Partial<Record<"epic" | "story" | "task", number>>;
+}
 
 /** A task's way through the team (agent API: GET /api/deliveries, ADR 0040 P3). */
 export interface OfficeDelivery {
@@ -272,4 +288,5 @@ export interface OfficeBoard {
   policies: PolicyCatalog | null;
   /** Open workflows and those of the last two weeks. */
   deliveries: OfficeDelivery[];
+  initiatives: OfficeInitiative[];
 }

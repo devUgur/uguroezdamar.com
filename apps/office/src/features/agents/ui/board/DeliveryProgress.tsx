@@ -11,10 +11,13 @@ interface DeliveryProgressProps {
   delivery: OfficeDelivery;
   agents: AgentSummary[];
   onChanged: () => void;
+  /** The workflow's steps in order; defaults to the delivery workflow. */
+  steps?: { step: string; label: string }[];
+  title?: string;
 }
 
-/** The order of the workflow (apps/api/src/workflow/delivery.ts); steps not reached yet are shown greyed. */
-const STEPS = [
+/** The order of the delivery workflow (apps/api/src/workflow/delivery.ts); steps not reached yet are shown greyed. */
+export const DELIVERY_STEPS = [
   { step: "intake", label: "Eingang" },
   { step: "requirements", label: "Anforderungen" },
   { step: "plan", label: "Technischer Plan" },
@@ -34,7 +37,7 @@ const STATUS_TEXT: Record<OfficeDelivery["status"], string> = {
 const STEP_STATE: Record<string, string> = { running: "arbeitet", waiting_approval: "wartet auf Freigabe", done: "fertig", failed: "fehlgeschlagen", cancelled: "abgebrochen" };
 
 /** A task's way through the team: every step with its role, state and handoff, and what Ugur can do. */
-export function DeliveryProgress({ delivery, agents, onChanged }: DeliveryProgressProps) {
+export function DeliveryProgress({ delivery, agents, onChanged, steps = DELIVERY_STEPS, title = "Team-Ablauf" }: DeliveryProgressProps) {
   const [pending, startTransition] = useTransition();
   const names = new Map(agents.map((agent) => [agent.id, agent.name]));
   const open = delivery.status === "running" || delivery.status === "waiting_owner" || delivery.status === "awaiting_acceptance";
@@ -53,12 +56,12 @@ export function DeliveryProgress({ delivery, agents, onChanged }: DeliveryProgre
   return (
     <section className="flex flex-col gap-2">
       <h4 className="flex items-baseline justify-between text-xs uppercase tracking-wide text-muted-foreground">
-        <span>Team-Ablauf</span>
+        <span>{title}</span>
         <span className={cn(delivery.status === "waiting_owner" && "text-destructive")}>{STATUS_TEXT[delivery.status]}</span>
       </h4>
       {delivery.note ? <p className="rounded-md border border-border p-2 text-xs">{delivery.note}</p> : null}
       <ol className="flex flex-col gap-1.5">
-        {STEPS.map((definition) => {
+        {steps.map((definition) => {
           const runs = delivery.steps.filter((step) => step.step === definition.step);
           const last = runs.at(-1);
           return (

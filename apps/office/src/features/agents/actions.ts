@@ -302,3 +302,35 @@ async function deliveryCall(taskId: string, suffix: "" | "/retry" | "/cancel"): 
     return failure(error);
   }
 }
+
+/** Ugur describes a wish; the team plans it (ADR 0041). */
+export async function createInitiative(input: { projectId: string; title: string; brief: string }): Promise<ActionResult> {
+  try {
+    if (!isProjectId(input.projectId)) return { ok: false, error: "Ungültiges Projekt." };
+    await agentsApi("/api/initiatives", await actor(), { method: "POST", body: { projectId: input.projectId, title: input.title.trim().slice(0, 200), brief: input.brief.trim().slice(0, 10_000) } });
+    return { ok: true };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function answerInitiative(initiativeId: string, answers: { id: string; answer: string }[]): Promise<ActionResult> {
+  try {
+    if (!TASK_ID.test(initiativeId)) return { ok: false, error: "Ungültiges Vorhaben." };
+    await agentsApi(`/api/initiatives/${initiativeId}/answers`, await actor(), { method: "POST", body: { answers } });
+    return { ok: true };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+/** Approves the plan: the proposed sprint becomes active and the team starts on it. */
+export async function approveInitiative(initiativeId: string): Promise<ActionResult> {
+  try {
+    if (!TASK_ID.test(initiativeId)) return { ok: false, error: "Ungültiges Vorhaben." };
+    await agentsApi(`/api/initiatives/${initiativeId}/approve`, await actor(), { method: "POST" });
+    return { ok: true };
+  } catch (error) {
+    return failure(error);
+  }
+}
