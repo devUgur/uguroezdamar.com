@@ -17,7 +17,8 @@ export function ScopeSelect({ projects, value, onChange }: ScopeSelectProps) {
   return (
     <Select value={value ?? COMPANY} onValueChange={(next) => onChange(next === COMPANY ? null : next)}>
       <SelectTrigger className="h-10 w-full rounded-md" aria-label="Bereich">
-        <SelectValue />
+        {/* The label is given directly, so the server-rendered menu is never empty before hydration. */}
+        <SelectValue>{projects.find((project) => project.id === value)?.name ?? "Firma"}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={COMPANY}>

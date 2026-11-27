@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Color, SRGBColorSpace } from "three";
 
-const TOKENS = ["background", "surface", "foreground", "card", "primary", "muted", "border", "accent", "destructive"] as const;
+const TOKENS = ["background", "surface", "foreground", "card", "primary", "muted", "muted-foreground", "border", "accent", "destructive"] as const;
 
 export type ThemeColors = Record<(typeof TOKENS)[number], Color>;
 

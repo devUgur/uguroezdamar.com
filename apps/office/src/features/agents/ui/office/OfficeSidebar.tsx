@@ -37,7 +37,7 @@ export function OfficeSidebar({ projects, portalUrl, scope = null, onScopeChange
   return (
     <aside className="flex shrink-0 flex-col gap-4 border-b border-border bg-card p-3 md:h-full md:w-60 md:border-b-0 md:border-r md:p-4">
       <div className="flex items-center justify-between gap-2">
-        <Link href={roomHref} className="font-serif text-xl">
+        <Link href={roomHref} prefetch={false} className="font-serif text-xl">
           Office
         </Link>
         <ThemeToggle />
@@ -49,7 +49,7 @@ export function OfficeSidebar({ projects, portalUrl, scope = null, onScopeChange
       </div>
 
       <nav aria-label="Office" className="flex gap-1 md:flex-col">
-        <Link href={roomHref} aria-current={inRoom ? "page" : undefined} className={cn(itemClass, inRoom && "bg-accent font-medium")}>
+        <Link href={roomHref} prefetch={false} aria-current={inRoom ? "page" : undefined} className={cn(itemClass, inRoom && "bg-accent font-medium")}>
           Büro
         </Link>
         <Link href="/chat" aria-current={pathname.startsWith("/chat") ? "page" : undefined} className={cn(itemClass, pathname.startsWith("/chat") && "bg-accent font-medium")}>

@@ -34,11 +34,10 @@ export function BoardDialog({ open, onOpenChange, title, tasks, projects, compan
             <DialogClose className="rounded-md px-2 py-1 text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Schließen</DialogClose>
           </div>
         </header>
-        {tasks.length ? (
-          <TaskBoard tasks={tasks} projects={projects} company={company} onPickProject={onPickProject} />
-        ) : (
+        {tasks.length ? null : (
           <p className="text-sm text-muted-foreground">Noch keine Aufgaben in diesem Bereich. Der Product Owner legt sie im Gespräch an, oder du im Portal.</p>
         )}
+        <TaskBoard tasks={tasks} projects={projects} company={company} onPickProject={onPickProject} />
       </DialogContent>
     </Dialog>
   );

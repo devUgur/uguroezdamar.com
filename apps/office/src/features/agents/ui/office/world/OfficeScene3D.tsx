@@ -12,7 +12,7 @@ import { BACK_WALL_Z, buildOffice } from "./layout";
 import { LabelProjector } from "./LabelProjector";
 import type { FigureRegistry, LabelAnchors } from "./labels";
 import { Room3D } from "./Room3D";
-import { Board3D, boardRightEdge } from "./Board3D";
+import { Board3D, BOARD_CLEARANCE, boardCenterX } from "./Board3D";
 import type { StatusCounts } from "../../board/board";
 import { useThemeColors } from "./useThemeColors";
 
@@ -97,7 +97,7 @@ export default function OfficeScene3D({ agents, states, presence, localPreview, 
         shadow-camera-bottom={-12}
       />
 
-      <Room3D colors={colors} halfWidth={halfWidth} depth={depth} windowsFromX={boardRightEdge(halfWidth)} />
+      <Room3D colors={colors} halfWidth={halfWidth} depth={depth} boardX={boardCenterX(halfWidth)} boardClearance={BOARD_CLEARANCE} />
       <Board3D colors={colors} halfWidth={halfWidth} title={board.title} counts={board.counts} onOpen={board.onOpen} />
       <CameraRig halfWidth={halfWidth} depth={depth} target={target} />
       <ReadySignal onReady={onReady} />
