@@ -149,6 +149,40 @@ async function publish(env: Env, caller: Caller, task: TaskRow, type: "task_crea
   });
 }
 
+/**
+ * Creates a backlog task: the board's form and the agents' task_create tool use this one path, so validation, the
+ * event and the GitHub-free default (backlog, no agent) are the same for people and agents.
+ */
+export async function createTask(env: Env, caller: Caller, input: Record<string, unknown>): Promise<{ task: ReturnType<typeof asTask> } | { error: string }> {
+  const title = typeof input.title === "string" ? input.title.trim() : "";
+  if (!title || title.length > 200) return { error: "Titel muss 1–200 Zeichen lang sein." };
+  const description = typeof input.description === "string" ? input.description.trim() : "";
+  const acceptanceCriteria = typeof input.acceptanceCriteria === "string" ? input.acceptanceCriteria.trim() : "";
+  const priority = input.priority;
+  if (priority !== undefined && !PRIORITIES.includes(priority as Priority)) return { error: "Ungültige Priorität." };
+  const storyPoints = input.storyPoints === undefined || input.storyPoints === null || input.storyPoints === "" ? null : Number(input.storyPoints);
+  if (storyPoints !== null && (!Number.isFinite(storyPoints) || storyPoints < 0.5 || storyPoints > 100)) return { error: "Story Points müssen zwischen 0,5 und 100 liegen." };
+  const projectId = typeof input.projectId === "string" && input.projectId ? input.projectId : "uguroezdamar";
+  const project = await env.DB.prepare("SELECT 1 FROM projects WHERE tenant_id = ? AND id = ? AND status = 'active'").bind(caller.tenantId, projectId).first();
+  if (!project) return { error: "Projekt nicht gefunden oder nicht aktiv." };
+  const sprintId = typeof input.sprintId === "string" && input.sprintId ? input.sprintId : null;
+  if (sprintId && !(await sprintBelongsTo(env, caller.tenantId, sprintId, projectId))) return { error: "Sprint gehört nicht zu diesem Projekt oder ist abgeschlossen." };
+  const id = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT INTO tasks (id, tenant_id, project_id, sprint_id, title, input, description, acceptance_criteria, priority, story_points, created_by, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'backlog')`,
+  ).bind(
+    id, caller.tenantId, projectId, sprintId, title,
+    // `input` is the legacy copy of the description; the column list needs a value for it.
+    description.slice(0, 10_000) || null, description.slice(0, 10_000) || null,
+    acceptanceCriteria.slice(0, 5_000) || null, priority ?? "normal", storyPoints, caller.actor,
+  ).run();
+  const task = await loadTask(env, caller.tenantId, id);
+  if (!task) return { error: "Aufgabe konnte nicht geladen werden." };
+  await publish(env, caller, task, "task_created");
+  return { task: asTask(task) };
+}
+
 /** Authenticated work-item API. All writes are validated here and remain visible through the shared event hub. */
 export async function handleTasks(request: Request, env: Env, caller: Caller, path: string): Promise<Response | null> {
   if (path === "/api/tasks" && request.method === "GET") {
@@ -177,33 +211,8 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
   if (path === "/api/tasks" && request.method === "POST") {
     const input = await parseBody(request);
     if (!input) return json({ error: "Ungültiger JSON-Body." }, 400);
-    const title = typeof input?.title === "string" ? input.title.trim() : "";
-    if (!title || title.length > 200) return json({ error: "Titel muss 1–200 Zeichen lang sein." }, 400);
-    const description = typeof input.description === "string" ? input.description.trim() : "";
-    const acceptanceCriteria = typeof input.acceptanceCriteria === "string" ? input.acceptanceCriteria.trim() : "";
-    const priority = input.priority;
-    if (priority !== undefined && !PRIORITIES.includes(priority as Priority)) return json({ error: "Ungültige Priorität." }, 400);
-    const storyPoints = input.storyPoints === undefined || input.storyPoints === null || input.storyPoints === "" ? null : Number(input.storyPoints);
-    if (storyPoints !== null && (!Number.isFinite(storyPoints) || storyPoints < 0.5 || storyPoints > 100)) return json({ error: "Story Points müssen zwischen 0,5 und 100 liegen." }, 400);
-    const projectId = typeof input.projectId === "string" && input.projectId ? input.projectId : "uguroezdamar";
-    const project = await env.DB.prepare("SELECT 1 FROM projects WHERE tenant_id = ? AND id = ? AND status = 'active'").bind(caller.tenantId, projectId).first();
-    if (!project) return json({ error: "Projekt nicht gefunden oder nicht aktiv." }, 400);
-    const sprintId = typeof input.sprintId === "string" && input.sprintId ? input.sprintId : null;
-    if (sprintId && !(await sprintBelongsTo(env, caller.tenantId, sprintId, projectId))) return json({ error: "Sprint gehört nicht zu diesem Projekt oder ist abgeschlossen." }, 400);
-    const id = crypto.randomUUID();
-    await env.DB.prepare(
-      `INSERT INTO tasks (id, tenant_id, project_id, sprint_id, title, input, description, acceptance_criteria, priority, story_points, created_by, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'backlog')`,
-    ).bind(
-      id, caller.tenantId, projectId, sprintId, title,
-      // `input` is the legacy copy of the description; the column list needs a value for it.
-      description.slice(0, 10_000) || null, description.slice(0, 10_000) || null,
-      acceptanceCriteria.slice(0, 5_000) || null, priority ?? "normal", storyPoints, caller.actor,
-    ).run();
-    const task = await loadTask(env, caller.tenantId, id);
-    if (!task) return json({ error: "Aufgabe konnte nicht geladen werden." }, 500);
-    await publish(env, caller, task, "task_created");
-    return json(asTask(task), 201);
+    const created = await createTask(env, caller, input);
+    return "error" in created ? json({ error: created.error }, 400) : json(created.task, 201);
   }
 
   const githubMatch = path.match(/^\/api\/tasks\/([0-9a-f-]{36})\/github$/);

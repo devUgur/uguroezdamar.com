@@ -15,10 +15,10 @@ Agenten-Backend des Admin-Portals: Threads, Agentenschleife, Modelle, Werkzeuge,
 | `src/work/sprints.ts` | Sprints je Projekt; Aufgaben tragen `sprint_id` |
 | `src/knowledge/` | Wissensindex je Projekt (Doku und erledigte Aufgaben, hybride Suche über FTS5 und Vectorize), Indexer als Durable Object, Arbeitsgedächtnis je Mitarbeiter ([ADR 0037](../../docs/architecture/decisions/0037-agent-memory-and-knowledge.md)) |
 | `src/usage/` | Verbrauchsprotokoll: `runs`, `model_calls`, `tool_calls` (Migration `0017`), Auswertung, Lauf-Trace, CSV; das Tagesbudget zählt daraus |
-| `src/tools/` | `ToolPort`, GitHub-Werkzeuge, Projekt- und Notiz-Werkzeuge, `sandbox_run` und `preview_deploy` (`sandbox.ts`), `code_verify` (`verify.ts`: Workstation oder CI des Repositories, ADR 0038); PR-Diff lesen ist nur dem read-only QA-Reviewer freigegeben |
+| `src/tools/` | `ToolPort`, GitHub-Werkzeuge, Projekt- und Notiz-Werkzeuge, `sandbox_run` und `preview_deploy` (`sandbox.ts`), `code_verify` (`verify.ts`: Workstation oder CI des Repositories, ADR 0038), `tasks_list` und `task_create` (`work.ts`: Tafel lesen, Backlog-Aufgaben anlegen); PR-Diff lesen ist nur dem read-only QA-Reviewer freigegeben |
 | `src/workstation/` | Workstations ([ADR 0036](../../docs/architecture/decisions/0036-isolated-workstations-and-previews.md)): Durable Object mit Container je Lauf, Gateways für `github.com`, `registry.npmjs.org` und `api.cloudflare.com` (Zugangsdaten nur im Worker), Befehls-Allowlist, Preview-Regeln |
 | `workstation/Dockerfile` | Image der Workstations (Node, pnpm, git); wird erst gebaut, wenn `wrangler.jsonc` es nennt |
-| `src/agents/registry.ts` | die Agenten: Prompt, Modell-Alias, Werkzeuge |
+| `src/agents/registry.ts` | die Agenten: Chef, Product Owner, Tech Lead, Entwickler, QA-Reviewer, DevOps; Prompt, Modell-Alias, Werkzeuge (Schreibtisch und Budget: Migrationen 0002, 0008, 0023) |
 | `src/agents/describe.ts` | Konfigurationsansicht eines Agenten für das Portal |
 | `src/runtime/limits.ts` | Grenzwerte eines Laufs, von Laufzeit und Ansicht gemeinsam genutzt |
 | `src/organization/` | Organisationskatalog und owner-geschützte Verwaltung über die D1-Control-Plane |
