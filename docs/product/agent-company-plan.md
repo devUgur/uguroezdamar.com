@@ -1,8 +1,9 @@
 # Plan: Von zwei Agenten zur KI-Entwicklungsfirma
 
-- Stand: 26.11.2026 (abends überarbeitet: Workflows, DevOps, Lagebild)
-- Gilt für: `apps/api`, `apps/portal`
-- Ergänzt: [Office-Brain-Roadmap](../architecture/office-brain/roadmap.md), ADR 0024–0035
+- Stand: 27.11.2026 (Plattform-Fahrplan ergänzt, ADR 0040)
+- Gilt für: `apps/api`, `apps/office`, `apps/portal`
+- Ergänzt: [Office-Brain-Roadmap](../architecture/office-brain/roadmap.md), ADR 0024–0040
+- **Technischer Fahrplan:** [Plattform-Migration](../architecture/platform-migration.md) mit den Phasen P1–P6: Nähte, Policy-Engine, Ablauf und Team, Docker, Anbieter und Skills, Open Source. Die Stufen unten sind die Produktsicht darauf: Stufe 4 = P3, Stufe 6 = `ExecutionPort`.
 
 ## 1. Ziel
 
@@ -283,8 +284,18 @@ Danach folgen Kundenanmeldung mit GitHub, Rollen je Mandant, Grenzen und Budgets
 | 12 | Leere Prüf-Worktree-Ordner `C:\v1`–`C:\v6` | Owner | Löschen (für Agenten gesperrt) |
 | 13 | Office in Produktion (`office.uguroezdamar.com`) entsteht erst mit dem Release-PR `dev → main` | Owner | Release nach Abnahme auf `office-dev` (ADR 0039) |
 | 14 | GitHub App ohne „Actions: Read“: `code_verify` sieht nur Annotationen statt Job-Logs | Owner | Recht in der GitHub App ergänzen und Installation bestätigen |
+| 15 | Plattform an Cloudflare gebunden (187 D1-Aufrufe, 6 Durable-Object-Hüllen), keine Policy-Engine, kein Selbsthosting, keine Lizenz | Agent, Owner | Phase P1 (Nähte) aus der [Plattform-Migration](../architecture/platform-migration.md); Owner entscheidet O1–O5 |
 
 ## 7. Entscheidungen des Owners
+
+**Neu mit ADR 0040** (Empfehlung jeweils zuerst):
+- **O1 Lizenz:** Apache-2.0; AGPL-3.0, wenn gehostete Kopien offengelegt werden sollen; sonst MIT.
+- **O2 Datenbank der selbst gehosteten API, Version 1:** SQLite-Datei, PostgreSQL ab Version 2.
+- **O3 Workers Paid:** buchen, sobald der `DeliveryWorkflow` (P3) steht.
+- **O4 Standard-Autonomie eigener Projekte:** `balanced`.
+- **O5 Eigenes Repository und Name der Plattform:** nach P4.
+
+**Aus Stufe 1–4:**
 
 1. **Workers Paid (5 $/Monat):** jetzt buchen. Damit werden Workstations, Workflow-Kapazität und Workers AI über das Gratis-Kontingent hinaus möglich. Ohne ihn bleiben Stufe 6 und die Vektorsuche blockiert.
 2. **Reihenfolge:** Erst Punkt 1–3 aus dem Lagebild (Codex-Arbeit und Sandbox zusammenführen), dann Stufe 4. Oder Stufe 4 sofort, ohne Ausführung in der Workstation.

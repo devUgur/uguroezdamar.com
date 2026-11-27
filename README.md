@@ -1,6 +1,6 @@
 # uguroezdamar.com
 
-Portfolio und Admin-Portal als pnpm-/Turborepo-Monorepo.
+Portfolio, Admin-Portal und die KI-Entwicklungsorganisation (Office und Agenten-API) als pnpm-/Turborepo-Monorepo. Der Weg zur eigenständigen, selbst hostbaren Plattform: [ADR 0040](docs/architecture/decisions/0040-platform-core-and-providers.md) und [Plattform-Migration](docs/architecture/platform-migration.md).
 
 **Einstieg:** [Projekt-Roadmap](PLAN.md) · [Dokumentationsindex](docs/README.md) · [Architekturentscheidungen](docs/architecture/decisions/)
 
@@ -10,7 +10,8 @@ Portfolio und Admin-Portal als pnpm-/Turborepo-Monorepo.
 | --- | --- |
 | `apps/site` | öffentliches Portfolio, Projekte, Blog und Kontakt |
 | `apps/portal` | geschütztes CMS/Admin-Portal |
-| `apps/api` | Agenten-Backend des Portal-Chats auf Cloudflare Workers ([ADR 0024](docs/architecture/decisions/0024-agent-platform-on-cloudflare.md)) |
+| `apps/office` | Office: 3D-Büro, Tafel, Mitarbeiter und Chats der Agenten, Cloudflare Worker per OpenNext ([ADR 0039](docs/architecture/decisions/0039-office-as-own-app-on-workers.md)) |
+| `apps/api` | Agenten-Backend von Office und Portal auf Cloudflare Workers ([ADR 0024](docs/architecture/decisions/0024-agent-platform-on-cloudflare.md)) |
 | `packages/server` | serverseitige Use Cases, Validierung und Datenzugriff |
 | `packages/ui` | gemeinsame UI-Komponenten |
 | `tooling/cli` | `pnpm ugur`: Dev-Start, Secrets, Datenbank, Admin-Konten |
@@ -27,6 +28,7 @@ Projekte, Profil und Werdegang sind Dateien unter `apps/site/content/`, Blogarti
 pnpm install
 pnpm dev          # Site auf :3100
 pnpm dev:portal   # Portal auf :3101
+pnpm dev:office   # Portal :3101 und Office :3102
 pnpm dev:all      # beide
 pnpm dev:clean    # blockierte Ports freigeben und dev starten
 pnpm kill:ports   # blockierte Ports beenden

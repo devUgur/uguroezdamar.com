@@ -1,0 +1,188 @@
+# Plattform-Migration: vom Agenten-Backend zur KI-Entwicklungsorganisation
+
+- Stand: 27.11.2026, geprüft gegen `dev` (Commit nach ADR 0039)
+- Entscheidung: [ADR 0040](decisions/0040-platform-core-and-providers.md)
+- Fortschritt und Stufen des Produkts: [agent-company-plan.md](../product/agent-company-plan.md)
+
+## Grundsätze
+
+1. **Weiterentwickeln, nicht ersetzen.** Agenten-Schleife, Registry, Modell-Router, GitHub App, Freigaben, Tafel und Office bleiben; sie werden entkoppelt, nicht neu geschrieben.
+2. **Jede Phase liefert für sich Nutzen** und läuft danach auf `dev`. Office, Portal und API brechen zwischendurch nicht.
+3. **Erst die eigene Firma, dann Open Source.** Dieselbe Codebasis; nur Konfiguration und Adapter unterscheiden sich.
+4. **Abstraktion nur an echten Grenzen.** Ein Port entsteht, wo es einen zweiten Adapter gibt oder sicher geben wird, nicht für jede Klasse.
+
+## Was bleibt, was sich ändert
+
+| Modul (`apps/api/src`) | Heute | Weg |
+| --- | --- | --- |
+| `runtime/loop.ts`, `runtime/context.ts`, `runtime/budget.ts` | plattformfrei | bleibt, wandert in P4 nach `packages/platform` |
+| `models/*` | `ModelPort`, Router, Katalog; Workers AI direkt über `env.AI` | Workers AI als Adapter; eigene OpenAI-kompatible Endpunkte (P5) |
+| `tools/*` | `Tool`-Port, 20 Werkzeuge | bleibt; die Freigabelogik geht in die Policy-Engine (P2) |
+| `agents/registry.ts`, `agents/settings.ts` | Definitionen im Code | Startbestand; Definitionen und Teams in der Datenbank (P3) |
+| `work/*` (Tasks, Sprints) | D1 direkt | über `SqlPort` (P1); Abhängigkeiten zwischen Aufgaben (P3) |
+| `approvals.ts` | Freigabe je Werkzeug | Teil der Policy-Engine (P2) |
+| `agent.ts` | Durable Object mit Speicher und Alarmen | Kern `ThreadRuntime` plus Cloudflare-Hülle (P1) |
+| `hub.ts`, `office/presence.ts` | Durable Objects | `EventBusPort` und Präsenz-Kern plus Hüllen (P1) |
+| `knowledge/indexer.ts`, `knowledge/store.ts` | Durable Object, Vectorize, Workers AI | `SchedulerPort` und `EmbeddingPort` (P1, P5) |
+| `workstation/*` | `WorkstationPort`, Cloudflare Containers (nicht gebunden) | Docker-Adapter (P4), Cloudflare-Adapter mit Workers Paid |
+| `github/*` | GitHub App | `GitPort` ab einem zweiten Git-Anbieter (P5) |
+| `index.ts` (Routen) | 560 Zeilen, bekommt `Env` | Routen bekommen `Platform` (P1); Aufteilung nach Modulen (P1) |
+
+## Phase P1: Nähte ziehen (ohne Verhaltensänderung)
+
+**Ziel:** Cloudflare steckt nur noch in einem Ordner. Alles andere spricht mit Ports.
+
+**Neu:**
+- `apps/api/src/platform/ports.ts`: `SqlPort` (D1-förmig), `KeyValuePort`, `BlobPort`, `ThreadStorePort`, `SchedulerPort`, `EventBusPort`, `EmbeddingPort`, `SecretPort`, und `Platform` als Bündel davon.
+- `apps/api/src/cloudflare/`: `platform.ts` baut `Platform` aus `Env`. Die Durable-Object-Hüllen ziehen hierher um:
+  - `agent-object.ts` (aus `agent.ts`)
+  - `hub-object.ts`
+  - `presence-object.ts`
+  - `indexer-object.ts`
+  - `workstation-object.ts`
+- `apps/api/src/runtime/thread-runtime.ts`: der Teil von `agent.ts`, der Läufe staffelt, Freigaben fortsetzt und das Budget prüft. Er nutzt `ThreadStorePort` und `SchedulerPort` statt `ctx.storage`.
+
+**Geändert:**
+- **Datenbankaufrufe:** Die 27 Dateien mit `env.DB` erhalten `platform.sql`. Mechanisch: D1 erfüllt den Port bereits, die SQL-Texte bleiben gleich.
+- **Durable-Object-Kennungen:** `env.CONFIG`, `env.HUB`, `env.OFFICE`, `env.AGENTS` und `env.INDEXER` laufen über die passenden Ports.
+- **Einstiegspunkte:** `index.ts` und `wrangler.jsonc` verweisen auf die neuen Hüllen. Die Klassennamen der Durable Objects bleiben gleich, damit keine Migration nötig ist.
+- **Testhilfe:** `tests/_helpers/api-env.ts` baut eine `Platform` aus SQLite und Speicher im Arbeitsspeicher; der Weg bleibt derselbe wie heute.
+
+**Wächter:**
+- Neuer Guard `tooling/guards/no-cloudflare-outside-adapter.mjs`: `cloudflare:workers` und `env.DB` nur in `apps/api/src/cloudflare/`.
+- Der Tenancy-Guard prüft weiter die SQL-Texte.
+
+**Abnahme:**
+- Alle Tests grün, Deploy auf api-dev unverändert, Live-Chat und Office laufen wie vorher.
+- `grep cloudflare:workers` trifft nur noch `apps/api/src/cloudflare/`.
+
+**Aufwand und Risiko:** mittel; mechanisch, aber breit. Darum in drei Commits: Ports und SQL, Durable-Object-Hüllen, Guard.
+
+## Phase P2: Policy-Engine und Autonomie je Projekt
+
+**Ziel:** Der Owner bestimmt je Projekt, wie selbstständig die Agenten arbeiten. Jede automatische Entscheidung ist nachvollziehbar.
+
+**Neu:**
+- `apps/api/src/policy/catalog.ts`: Aktionen mit Risikoklasse.
+
+  | Aktion | Klasse | `manual` | `balanced` | `high` | `max` |
+  | --- | --- | --- | --- | --- | --- |
+  | Lesen, Wissen, Tests (`code_verify`) | read | auto | auto | auto | auto |
+  | Commit auf `agent/…` | branch | Freigabe | auto | auto | auto |
+  | Pull Request nach `dev` | pr | Freigabe | Freigabe | auto | auto |
+  | Commit direkt auf `dev` | dev | Freigabe | Freigabe | Freigabe | auto |
+  | Abhängigkeiten ändern | deps | Freigabe | Freigabe | Freigabe | auto mit Prüfung |
+  | CI/CD- und Deploy-Konfiguration, `.github/` | pipeline | Freigabe | Freigabe | Freigabe | Freigabe |
+  | Preview-Deploy | preview | Freigabe | auto | auto | auto |
+  | Secrets, Produktion, `main`, Rechte, Löschen | hard | verboten oder Freigabe, **unabhängig von der Stufe** | | | |
+
+- `apps/api/src/policy/engine.ts`: `decide(action, { agent, project, branch, paths, costEstimate })` gibt `allow`, `approve` oder `deny` mit Begründung und Policy-Version zurück.
+  - Die Pfadregeln (geschützte Pfade aus `approvals.ts`) und die Datenrichtlinie (ADR 0033) fließen ein.
+- **Migration** `0024_policies.sql`: `project_policies` (Stufe, Ausnahmen, Version) und `policy_decisions` (Protokoll).
+- **Office:** Projekteinstellungen mit Autonomiestufe und Einzelschaltern; die Tafel zeigt automatische Entscheidungen als Ereignis.
+
+**Geändert:**
+- `runtime/loop.ts` ruft vor jedem Werkzeug die Policy-Engine. `requiresApproval` und `requiresProject` an den Werkzeugen werden zu Katalogeinträgen; die Prüfung im Loop entfällt.
+- `tools/github.ts`: `repo_commit_files` meldet Branch und Pfade, damit die Engine nach Branch und Pfaden unterscheiden kann.
+
+**Abnahme:**
+- Eine Tabelle von Testfällen (Stufe × Aktion × Branch × Pfad) legt das Verhalten fest.
+- Mit `balanced` committet der Entwickler auf `agent/…` ohne Rückfrage, ein PR wartet auf Freigabe, `.github/` immer.
+- Jede Entscheidung steht im Protokoll und unter `/usage` beim Lauf.
+
+## Phase P3: Ablauf und Team je Projekt (Stufe 4 des Produktplans)
+
+**Ziel:** Ein Auftrag läuft vom Eingang bis zur Abnahme durch das Team, mit Übergaben statt freier Chats.
+
+**Neu:**
+- `apps/api/src/workflow/port.ts`: `WorkflowPort` mit `start`, `signal` (Freigabe, Abnahme), `status` und `cancel`.
+- `apps/api/src/workflow/delivery.ts`: der `DeliveryWorkflow` als Folge von Schritten, gegen den Port geschrieben:
+  1. Chef: Eingang und Plan
+  2. Product Owner: Anforderungen
+  3. Tech Lead: Architektur und Zerlegung in Teilaufgaben
+  4. Entwickler: Umsetzung, je Teilaufgabe parallel möglich
+  5. QA: Prüfung
+  6. Chef: Bericht
+  7. Owner: Abnahme
+- `apps/api/src/cloudflare/delivery-workflow.ts`: Adapter auf Cloudflare Workflows (`step.do`, `step.waitForEvent`).
+- **Migration** `0025_workflows_and_teams.sql`:
+  - `workflow_runs` und `handoffs` (versionierte Übergaben: Ergebnis, Befund, nächste Rolle)
+  - `task_dependencies`
+  - `project_members`: Rolleninstanzen je Projekt
+  - `agent_definitions` um Prompt-Vorlage, Werkzeuge, Modellprofil und Version erweitert
+- **Ereignis-Verträge:** `apps/api/src/events.ts` bekommt `schemaVersion` je Typ; Übergaben sind eigene Ereignisse, die das Office als Besprechung zeigt (Stufe 5).
+
+**Geändert:**
+- `agents/registry.ts` wird zum Startbestand: Beim Deploy schreibt es fehlende Definitionen; geladen wird aus der Datenbank.
+- Die Tafel im Office zeigt den Ablauf einer Aufgabe: Schritt, wer dran ist, Übergaben.
+
+**Abnahme:** Ein kleiner Auftrag in einem Testrepository läuft auf Dev vom Eingang bis zum PR mit grüner CI. Jede Übergabe steht in `handoffs`, jeder Lauf unter `/usage`; der Owner gibt nur das frei, was die Policy verlangt.
+
+## Phase P4: Selbst gehostet mit Docker
+
+**Ziel:** `docker compose up` startet API, Office und Portal ohne Cloudflare-Konto.
+
+**Neu:**
+- `packages/platform`: Kern aus `apps/api/src` ohne `cloudflare/`, als TypeScript-Quellcode wie die anderen Pakete (ADR 0017). Dazu gehören Runtime, Tools, Policy, Workflow-Definitionen, Work und Modelle.
+- `apps/api/src/cloudflare/` bleibt der Worker-Host.
+- `apps/node-host` (Name offen): Node-24-Server mit demselben Fetch-Handler. Die Adapter:
+
+  | Port | Adapter im Node-Host |
+  | --- | --- |
+  | `SqlPort` | `node:sqlite`; der Adapter aus `tests/_helpers/sqlite-d1.ts` wird Produktionscode |
+  | `ThreadStorePort`, `SchedulerPort` | SQLite-Tabellen und ein Scheduler, der beim Start fällige Wecker nachholt |
+  | `EventBusPort` | WebSocket im Prozess |
+  | `WorkflowPort` | Schrittprotokoll in SQL, Wiederaufnahme nach Neustart |
+  | `ExecutionPort` | `DockerWorkstation`: ein Container je Lauf; Netz nur über einen Proxy für GitHub (nur lesen) und npm; kein Token im Container (gleiche Regeln wie ADR 0036) |
+
+- `deployments/docker/`: Dockerfiles, `docker-compose.yml` mit API, Office, Portal und PostgreSQL (für das Portal) und eine Beispiel-Konfiguration ohne Secrets.
+- **Office auf Node:** dieselbe App mit `next start`; `API_URL` und `PORTAL_URL` aus der Umgebung.
+
+**Abnahme:** Auf einem frischen Rechner mit Docker startet die Plattform. Ein Gespräch mit einem lokalen oder eigenen Modellschlüssel läuft, und eine Aufgabe lässt sich in der Docker-Workstation prüfen.
+
+## Phase P5: Anbieter, Skills, Vorlagen
+
+- **Modelle:**
+  - Anbieter `custom` für beliebige OpenAI-kompatible Endpunkte (Ollama, vLLM, LM Studio) mit Basis-URL und Schlüssel je Mandant.
+  - Modellprofile je Rolle; der Router trennt Anbieter, Profil und Routing-Regel.
+- **Wissen:** `EmbeddingPort` mit Workers AI, OpenAI, Ollama und Voyage; Vektorspeicher sqlite-vec oder pgvector im Node-Host.
+- **Skills:** `.claude/skills` und die Projekt-Skills werden versionierte Skills, die Rollen zugeordnet und in den Prompt geladen werden. Eine Quelle, kein zweites Regelwerk.
+- **Projektvorlagen:** Next.js-SaaS, API-Backend, Python-KI, Monorepo, jeweils mit Team, Autonomiestufe, Skills und Workflow. `repo_create` und `project_register` können eine Vorlage anwenden (Stufe 6b).
+- **Git:** `GitPort` wird aus `github/*` herausgelöst, sobald ein zweiter Anbieter (Gitea/GitLab) ansteht.
+- **PostgreSQL-Adapter für die API**, wenn mehrere Instanzen gebraucht werden. Übersetzt wird:
+  - `unixepoch()` → `extract(epoch …)`
+  - `INSERT OR IGNORE` → `ON CONFLICT DO NOTHING`
+  - FTS5 → `tsvector`
+
+## Phase P6: Open Source
+
+- `LICENSE` (Owner-Entscheidung O1), Lizenzfeld in allen `package.json`.
+- README neu: was die Plattform ist, Schnellstart mit Docker, Cloudflare als Option, Architektur in einem Bild.
+- `CONTRIBUTING.md`, `SECURITY.md` (Meldeweg, Grenzen der Agenten, Datenrichtlinie), `docs/self-hosting.md`.
+- Persönliche Inhalte (`apps/site/content`, Profil) und die Plattform trennen. Wahrscheinlich wird die Plattform ein eigenes Repository mit diesem Monorepo als erster Nutzerin (Owner-Entscheidung O5).
+- Installations-CLI: `pnpm ugur` bekommt `init` für Selbsthoster: Konfiguration erzeugen, Schlüssel abfragen, ohne Infisical.
+
+## Reihenfolge und Begründung
+
+| Phase | Wann | Warum in dieser Reihenfolge |
+| --- | --- | --- |
+| P1 Nähte | zuerst | Klein und mechanisch. Danach schreibt jede neue Funktion gegen Ports statt gegen Cloudflare. |
+| P2 Policy | danach | Größter Nutzen für die eigene Firma: echte Autonomie je Projekt; Voraussetzung für Abläufe ohne ständige Rückfrage. |
+| P3 Ablauf und Team | danach | Macht aus Einzelagenten ein Team (Stufe 4); braucht P2, damit Übergaben nicht an jeder Freigabe hängen. |
+| P4 Docker | danach | Erst wenn Kern und Abläufe stabil sind, lohnt ein zweiter Host; dann entsteht auch `packages/platform`. |
+| P5 Anbieter und Skills | laufend ab P3 | Einzelne Punkte (eigene Endpunkte, Skills) können früher kommen, wenn sie gebraucht werden. |
+| P6 Open Source | zuletzt | Erst veröffentlichen, wenn Selbsthosting wirklich funktioniert. |
+
+Die bisherigen Stufen des Produktplans bleiben gültig:
+- Stufe 4 entspricht P3.
+- Stufe 5 (Büro 2.0) läuft mit P3 mit (Besprechungen aus `handoffs`).
+- Stufe 6 entspricht dem `ExecutionPort` mit beiden Adaptern.
+- Stufe 6b nutzt die Projektvorlagen aus P5.
+- Stufe 7 (Mandanten) bleibt nach P4.
+
+## Was bewusst nicht passiert
+
+- Kein zweites Agenten-Framework (Mastra, LangGraph): Die Konzepte sind übernommen, die Laufzeit bleibt eigene (Plan, Abschnitt 3.1).
+- Kein Temporal und kein Kubernetes für den Start; Hatchet nur, wenn der eigene Ablauf nachweislich nicht reicht.
+- Keine Pakete `domain/`, `application/`, `infrastructure/` und `providers/` auf Vorrat. Die Schichten sind Ordner in `packages/platform`, bis ein zweiter Nutzer sie braucht.
+- Keine Autonomiestufe hebt die globalen Grenzen auf: Secrets, Produktion, `main`, Rechte und Löschen.
