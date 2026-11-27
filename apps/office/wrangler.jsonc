@@ -9,6 +9,9 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  // esbuild's keepNames wraps functions in __name(), which breaks code that Next.js serializes into inline scripts
+  // (next-themes): "__name is not defined" in the browser. The Worker needs no preserved function names.
+  "keep_names": false,
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   "workers_dev": false,
   "preview_urls": false,
