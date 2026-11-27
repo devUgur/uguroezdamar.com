@@ -1,5 +1,5 @@
 import { cn } from "@ugur/core";
-import type { OfficeTask, ThreadProject } from "../../types";
+import type { OfficeDelivery, OfficeTask, ThreadProject } from "../../types";
 import { byColumn, COLUMNS, projectSummaries, type ProjectSummary } from "./board";
 
 interface TaskBoardProps {
@@ -11,11 +11,15 @@ interface TaskBoardProps {
   onPickProject: (projectId: string) => void;
   selectedId: string | null;
   onSelectTask: (task: OfficeTask) => void;
+  /** Open workflows, shown on their task's card. */
+  deliveries: OfficeDelivery[];
 }
 
+const OPEN_DELIVERY = new Set(["running", "waiting_owner", "awaiting_acceptance"]);
+const DELIVERY_LABEL: Record<string, string> = { running: "arbeitet", waiting_owner: "wartet auf dich", awaiting_acceptance: "zur Abnahme" };
 const PRIORITY_LABEL: Record<OfficeTask["priority"], string | null> = { urgent: "dringend", high: "hoch", normal: null, low: "niedrig" };
 
-function TaskCard({ task, projectName, selected, onSelect }: { task: OfficeTask; projectName: string | null; selected: boolean; onSelect: () => void }) {
+function TaskCard({ task, projectName, selected, onSelect, delivery }: { task: OfficeTask; projectName: string | null; selected: boolean; onSelect: () => void; delivery: OfficeDelivery | null }) {
   const priority = PRIORITY_LABEL[task.priority];
   return (
     <button
@@ -32,6 +36,7 @@ function TaskCard({ task, projectName, selected, onSelect }: { task: OfficeTask;
       <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
         {task.agent ? <span>{task.agent.name}</span> : <span>nicht zugewiesen</span>}
         {task.storyPoints ? <span className="font-mono">{task.storyPoints} SP</span> : null}
+        {delivery ? <span className={cn("rounded-full border px-1.5", delivery.status === "waiting_owner" ? "border-destructive text-destructive" : "border-border")}>Team · {DELIVERY_LABEL[delivery.status] ?? delivery.step}</span> : null}
         {priority ? <span className={cn("rounded-full border px-1.5", task.priority === "urgent" || task.priority === "high" ? "border-destructive text-destructive" : "border-border")}>{priority}</span> : null}
       </span>
     </button>
@@ -61,8 +66,9 @@ function ProjectRow({ summary, onPick }: { summary: ProjectSummary; onPick: () =
 }
 
 /** The board: one column per status. On the company level a row of projects leads it, classified by their open work. */
-export function TaskBoard({ tasks, projects, company, onPickProject, selectedId, onSelectTask }: TaskBoardProps) {
+export function TaskBoard({ tasks, projects, company, onPickProject, selectedId, onSelectTask, deliveries }: TaskBoardProps) {
   const columns = byColumn(tasks);
+  const open = new Map(deliveries.filter((delivery) => OPEN_DELIVERY.has(delivery.status)).map((delivery) => [delivery.taskId, delivery]));
   const names = new Map(projects.map((project) => [project.id, project.name]));
   const summaries = company ? projectSummaries(tasks, projects) : [];
 
@@ -91,6 +97,7 @@ export function TaskBoard({ tasks, projects, company, onPickProject, selectedId,
                   projectName={company ? (task.projectId ? (names.get(task.projectId) ?? task.projectId) : "ohne Projekt") : null}
                   selected={task.id === selectedId}
                   onSelect={() => onSelectTask(task)}
+                  delivery={open.get(task.id) ?? null}
                 />
               ))}
             </div>

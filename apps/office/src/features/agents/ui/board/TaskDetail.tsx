@@ -4,14 +4,17 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast } from "@ugur/ui";
-import { startTask, startTaskReview, updateTask } from "../../actions";
-import type { AgentSummary, OfficeTask, TaskPatch } from "../../types";
+import { startDelivery, startTask, startTaskReview, updateTask } from "../../actions";
+import type { AgentSummary, OfficeDelivery, OfficeTask, TaskPatch } from "../../types";
+import { DeliveryProgress } from "./DeliveryProgress";
 import { STATUS_LABEL } from "./board";
 import { COMPLETION_NOTE, MOVES } from "./transitions";
 
 interface TaskDetailProps {
   task: OfficeTask;
   agents: AgentSummary[];
+  /** The task's latest way through the team, if it has one. */
+  delivery: OfficeDelivery | null;
   /** Reloads the board after a change. */
   onChanged: () => void;
   onClose: () => void;
@@ -27,7 +30,7 @@ const PRIORITIES: { value: OfficeTask["priority"]; label: string }[] = [
 const VERDICT: Record<string, string> = { pass: "bestanden", changes_requested: "Nacharbeit nötig", needs_human: "braucht dich" };
 
 /** One task on the board: what it is about and everything Ugur can do with it, each step checked again by the API. */
-export function TaskDetail({ task, agents, onChanged, onClose }: TaskDetailProps) {
+export function TaskDetail({ task, agents, delivery, onChanged, onClose }: TaskDetailProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [note, setNote] = useState("");
@@ -108,9 +111,14 @@ export function TaskDetail({ task, agents, onChanged, onClose }: TaskDetailProps
 
       <div className="flex flex-col gap-2">
         {task.status === "ready" ? (
-          <Button disabled={pending} onClick={() => run(() => startTask(task.id), `${agentName} legt los.`)}>
-            Starten mit {agentName}
-          </Button>
+          <>
+            <Button disabled={pending} onClick={() => run(() => startDelivery(task.id), "Das Team übernimmt.")}>
+              Mit dem Team umsetzen
+            </Button>
+            <Button variant="secondary" disabled={pending} onClick={() => run(() => startTask(task.id), `${agentName} legt los.`)}>
+              Allein mit {agentName}
+            </Button>
+          </>
         ) : null}
         {task.status === "review" ? (
           <Button disabled={pending} onClick={() => run(() => startTaskReview(task.id), "QA-Reviewer prüft.")}>
@@ -148,6 +156,8 @@ export function TaskDetail({ task, agents, onChanged, onClose }: TaskDetailProps
           ))}
         </div>
       </div>
+
+      {delivery ? <DeliveryProgress delivery={delivery} agents={agents} onChanged={onChanged} /> : null}
 
       {task.threadId ? (
         <Link href={`/chat/${task.threadId}`} className="text-sm underline underline-offset-4">

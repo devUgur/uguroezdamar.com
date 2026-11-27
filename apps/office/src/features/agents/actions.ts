@@ -278,3 +278,27 @@ export async function setProjectAutonomy(projectId: string, level: AutonomyLevel
     return failure(error);
   }
 }
+
+/** The team takes a ready task: Chef, Product Owner, Tech Lead, developer, QA, report (ADR 0040, P3). */
+export async function startDelivery(taskId: string): Promise<ActionResult> {
+  return deliveryCall(taskId, "");
+}
+
+/** Lets the step that waits for Ugur run again. */
+export async function retryDelivery(taskId: string): Promise<ActionResult> {
+  return deliveryCall(taskId, "/retry");
+}
+
+export async function cancelDelivery(taskId: string): Promise<ActionResult> {
+  return deliveryCall(taskId, "/cancel");
+}
+
+async function deliveryCall(taskId: string, suffix: "" | "/retry" | "/cancel"): Promise<ActionResult> {
+  try {
+    if (!TASK_ID.test(taskId)) return { ok: false, error: "Ungültige Aufgabe." };
+    await agentsApi(`/api/tasks/${taskId}/delivery${suffix}`, await actor(), { method: "POST" });
+    return { ok: true };
+  } catch (error) {
+    return failure(error);
+  }
+}

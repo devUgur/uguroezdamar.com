@@ -115,6 +115,29 @@
 
 ## Phase P3: Ablauf und Team je Projekt (Stufe 4 des Produktplans)
 
+**Stand 27.11.2026: Kern erledigt.**
+- **Ablauf `delivery`** (`apps/api/src/workflow/`): Chef (Eingang) → Product Owner (Anforderungen, `task_refine`) → Tech Lead (Plan) → Entwickler (Umsetzung) → QA (die bestehende unabhängige Prüfung) → Chef (Bericht) → Abnahme durch Ugur auf der Tafel.
+- **Schritte:** Jeder Schritt ist ein Lauf im eigenen Gespräch und bekommt die Übergaben der vorigen. Das Ende eines Laufs schaltet weiter.
+- **Warten und Nacharbeit:**
+  - Eine offene Freigabe hält den Schritt an.
+  - QA mit „Nacharbeit“ schickt die Aufgabe bis zu zweimal zurück zur Umsetzung.
+  - Danach, bei QA ohne Urteil oder einem fehlgeschlagenen Schritt, wartet der Ablauf auf Ugur („Erneut versuchen“, „Abbrechen“).
+- **Erster Adapter: Zustand in SQL** (Migration `0025`: `workflow_runs`, `workflow_steps`), nicht Cloudflare Workflows.
+  - **Warum:** Er läuft unverändert auf jedem Host und braucht kein weiteres Durable Object.
+  - **Port:** `workflow/port.ts` beschreibt die Schnittstelle für einen späteren zweiten Adapter.
+- **API:**
+  - `POST /api/tasks/:id/delivery`, `…/delivery/retry`, `…/delivery/cancel`
+  - `GET /api/deliveries`
+  - Die Abnahme einer Aufgabe (`done`) schließt den Ablauf.
+- **Office:**
+  - Auf einer bereiten Aufgabe startet „Mit dem Team umsetzen“ den Ablauf.
+  - Die Detailansicht zeigt jeden Schritt mit Rolle, Zustand, Übergabe und Gespräch; die Karte zeigt den Stand des Teams.
+- **Noch offen aus P3:**
+  - `task_dependencies`
+  - `project_members` (Teams je Projekt, mehrere Entwickler)
+  - Agenten-Definitionen in der Datenbank
+  - Besprechungen im Büro aus den Übergaben (Stufe 5)
+
 **Ziel:** Ein Auftrag läuft vom Eingang bis zur Abnahme durch das Team, mit Übergaben statt freier Chats.
 
 **Neu:**

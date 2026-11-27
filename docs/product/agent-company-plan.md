@@ -161,7 +161,7 @@ Jede Stufe ist einzeln auslieferbar, hat Tests gegen echtes SQLite und wird auf 
 
 Jeder Schritt ist ein `step.do` mit eigenem Lauf in `runs` (`parent_run_id` = Workflow-Lauf) und Nachrichten in `agent_messages`. Die Freigaben aus dem Chat und dem Portal senden das passende Ereignis an die Workflow-Instanz.
 
-**Stand 27.11.2026:** Die erste Welle arbeitet schon, noch ohne Workflow.
+**Stand 27.11.2026:** Der `DeliveryWorkflow` läuft (ADR 0040, P3; [Plattform-Migration](../architecture/platform-migration.md)). Auf der Tafel startet „Mit dem Team umsetzen“ den Ablauf Chef → Product Owner → Tech Lead → Entwickler → QA → Bericht → deine Abnahme. Vorher, ebenfalls am 27.11.:
 - Product Owner, Tech Lead, Entwickler und DevOps sind angelegt (Migration `0023_delivery_team.sql`, Registry).
 - Mit `tasks_list` lesen die Agenten die Tafel; mit `task_create` legen Product Owner und Tech Lead Aufgaben mit Abnahmekriterien an, nur in einem Projekt.
 - Zuweisen, Starten, QA-Übergabe und Abnahme macht der Owner auf der Tafel im Office (oder im Portal); die API prüft jeden Übergang.
@@ -284,7 +284,7 @@ Danach folgen Kundenanmeldung mit GitHub, Rollen je Mandant, Grenzen und Budgets
 | 12 | Leere Prüf-Worktree-Ordner `C:\v1`–`C:\v6` | Owner | Löschen (für Agenten gesperrt) |
 | 13 | Office in Produktion (`office.uguroezdamar.com`) entsteht erst mit dem Release-PR `dev → main` | Owner | Release nach Abnahme auf `office-dev` (ADR 0039) |
 | 14 | GitHub App ohne „Actions: Read“: `code_verify` sieht nur Annotationen statt Job-Logs | Owner | Recht in der GitHub App ergänzen und Installation bestätigen |
-| 15 | Plattform: P1 (Nähte) und P2 (Policy-Engine, Autonomie je Projekt im Office) erledigt; alle Projekte stehen auf „Manuell“, bis der Owner sie hochsetzt. Offen: Ablauf und Team (P3), Selbsthosting, Lizenz | Agent, Owner | Phase P3 aus der [Plattform-Migration](../architecture/platform-migration.md); Owner entscheidet O1–O5 und stellt die Autonomie je Projekt ein |
+| 15 | Plattform: P1 (Nähte), P2 (Policy-Engine) und P3-Kern (Team-Ablauf je Aufgabe) erledigt; uguroezdamar.com steht auf „Ausgewogen“. Offen: Abhängigkeiten zwischen Aufgaben, Teams je Projekt, Agenten als Daten, Besprechungen im Büro, Selbsthosting (P4), Lizenz | Agent, Owner | Rest von P3, dann P4; Owner entscheidet O1–O3 und O5 |
 
 ## 7. Entscheidungen des Owners
 

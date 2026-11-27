@@ -239,6 +239,17 @@ export interface OfficeRoom {
 
 export type AutonomyLevel = "manual" | "balanced" | "high" | "max";
 
+/** A task's way through the team (agent API: GET /api/deliveries, ADR 0040 P3). */
+export interface OfficeDelivery {
+  id: string;
+  taskId: string;
+  status: "running" | "waiting_owner" | "awaiting_acceptance" | "done" | "cancelled";
+  step: string;
+  rework: number;
+  note: string | null;
+  steps: { step: string; label: string; agentId: string; threadId: string; attempt: number; status: string; summary: string | null }[];
+}
+
 /** The policy engine as the office shows it (agent API: GET /api/policies, ADR 0040 P2). */
 export interface PolicyCatalog {
   version: string;
@@ -259,4 +270,6 @@ export interface OfficeBoard {
   usage: { costUsd: number; calls: number; running: number; byProject: Record<string, { costUsd: number; calls: number }> } | null;
   /** Autonomy per project; null when the policy engine could not be read. */
   policies: PolicyCatalog | null;
+  /** Open workflows and those of the last two weeks. */
+  deliveries: OfficeDelivery[];
 }

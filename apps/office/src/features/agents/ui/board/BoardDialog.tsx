@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@ugur/ui";
-import type { AgentSummary, OfficeScope, OfficeTask, ThreadProject } from "../../types";
+import type { AgentSummary, OfficeDelivery, OfficeScope, OfficeTask, ThreadProject } from "../../types";
 import { NewTaskForm } from "./NewTaskForm";
 import { TaskBoard } from "./TaskBoard";
 import { TaskDetail } from "./TaskDetail";
@@ -15,6 +15,7 @@ interface BoardDialogProps {
   tasks: OfficeTask[];
   projects: ThreadProject[];
   agents: AgentSummary[];
+  deliveries: OfficeDelivery[];
   portalUrl: string;
   onPickProject: (projectId: string) => void;
   /** Reloads the board data after a change; live events do the same for changes made elsewhere. */
@@ -27,7 +28,7 @@ type Panel = { kind: "task"; id: string } | { kind: "new" } | null;
  * The board on the wall, opened large: the work of the scope, and beside it the selected task with its actions or
  * the form for a new one. Assigning, starting, QA handoff and acceptance happen here; the API checks each step.
  */
-export function BoardDialog({ open, onOpenChange, title, scope, tasks, projects, agents, portalUrl, onPickProject, onChanged }: BoardDialogProps) {
+export function BoardDialog({ open, onOpenChange, title, scope, tasks, projects, agents, deliveries, portalUrl, onPickProject, onChanged }: BoardDialogProps) {
   const [panel, setPanel] = useState<Panel>(null);
   const selected = panel?.kind === "task" ? (tasks.find((task) => task.id === panel.id) ?? null) : null;
   const company = scope === null;
@@ -67,10 +68,20 @@ export function BoardDialog({ open, onOpenChange, title, scope, tasks, projects,
               company={company}
               onPickProject={onPickProject}
               selectedId={selected?.id ?? null}
+              deliveries={deliveries}
               onSelectTask={(task) => setPanel({ kind: "task", id: task.id })}
             />
           </div>
-          {selected ? <TaskDetail key={selected.id} task={selected} agents={agents} onChanged={onChanged} onClose={() => setPanel(null)} /> : null}
+          {selected ? (
+            <TaskDetail
+              key={selected.id}
+              task={selected}
+              agents={agents}
+              delivery={deliveries.find((delivery) => delivery.taskId === selected.id) ?? null}
+              onChanged={onChanged}
+              onClose={() => setPanel(null)}
+            />
+          ) : null}
           {panel?.kind === "new" ? (
             <NewTaskForm
               projects={projects}

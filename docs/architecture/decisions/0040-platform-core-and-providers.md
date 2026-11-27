@@ -57,7 +57,7 @@
    - Globale Grenzen kann kein Projekt aufheben: Secrets, Produktion, Löschen, `main` und Änderungen an Rechten selbst bleiben bei Freigabe oder Verbot.
    - Jede Entscheidung wird protokolliert: Policy-Version, Agent, Projekt, Aktion, Ergebnis und Begründung.
    - `requiresApproval` und `requiresProject` werden zu Einträgen dieses Katalogs.
-5. **Ablauf über `WorkflowPort`:**
+5. **Ablauf über `WorkflowPort`** (Nachtrag 27.11.2026: Der erste Adapter hält den Zustand in SQL statt in Cloudflare Workflows. Er läuft auf jedem Host gleich und braucht kein weiteres Durable Object; Cloudflare Workflows bleibt ein möglicher zweiter Adapter.):
    - Der `DeliveryWorkflow` aus Stufe 4 wird gegen den Port geschrieben. Der erste Adapter sind Cloudflare Workflows (für die eigene Installation), der zweite ein SQL-gestützter Ablauf für Node.
    - Temporal ist für den Start zu schwer; Hatchet wird erneut geprüft, wenn der eigene Ablauf an Grenzen stößt.
 6. **Agenten werden Daten:**

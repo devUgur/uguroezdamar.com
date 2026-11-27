@@ -27,7 +27,7 @@ interface AgentOfficeProps {
 }
 
 /** Live events after which the board data is stale. */
-const WORK_EVENT = /^(task_|approval_|policy_|project_policy_changed$|message$|stopped$|error$)/;
+const WORK_EVENT = /^(task_|approval_|policy_|workflow_|agent_handoff$|project_policy_changed$|message$|stopped$|error$)/;
 
 /**
  * The office: scope menu, 3D room with the wall board, overview and the agent sheets. Room and board data are loaded
@@ -117,6 +117,7 @@ export function AgentOffice({ room, initialBoard, liveOrigin, portalUrl, canMana
         tasks={scopedTasks}
         projects={projects}
         agents={agents}
+        deliveries={board.deliveries}
         portalUrl={portalUrl}
         onPickProject={setScope}
         onChanged={reloadBoard}
