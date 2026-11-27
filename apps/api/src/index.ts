@@ -191,7 +191,11 @@ async function decideApproval(env: Env, caller: Caller, id: string, approve: boo
     data: { approvalId: id, tool: row.action, approved: approve, ok, by: caller.actor, outcome: outcome.slice(0, 600) },
   });
 
-  if (row.thread_id) {
+  // An archived conversation stays quiet: the decision is recorded, the agent is not woken up again.
+  const live = row.thread_id
+    ? await env.DB.prepare("SELECT 1 FROM threads WHERE tenant_id = ? AND id = ? AND archived = 0").bind(caller.tenantId, row.thread_id).first()
+    : null;
+  if (row.thread_id && live) {
     await threadStub(env, caller.tenantId, row.thread_id).resume({
       tenantId: caller.tenantId,
       threadId: row.thread_id,
@@ -304,7 +308,11 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
 
   if (!action && method === "DELETE") {
     await stub.stop();
-    await env.DB.prepare("/* tenant:parent */ UPDATE threads SET archived = 1, updated_at = unixepoch() WHERE id = ?").bind(threadId).run();
+    // Proposals of a deleted conversation are withdrawn; nobody can approve them into a stopped agent.
+    await env.DB.batch([
+      env.DB.prepare("/* tenant:parent */ UPDATE threads SET archived = 1, updated_at = unixepoch() WHERE id = ?").bind(threadId),
+      env.DB.prepare("UPDATE approvals SET status = 'rejected', decided_at = unixepoch() WHERE tenant_id = ? AND thread_id = ? AND status = 'pending'").bind(caller.tenantId, threadId),
+    ]);
     return json({ ok: true });
   }
 

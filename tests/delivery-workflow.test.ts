@@ -110,7 +110,11 @@ describe("delivery workflow", () => {
     expect(await openStep(db)).toMatchObject({ step: "intake", attempt: 2 });
     expect((await db.prepare("SELECT status FROM tasks WHERE id = ?").bind(taskId).first())?.status).toBe("in_progress");
 
+    const retried = await openStep(db);
+    await db.prepare("INSERT INTO approvals (id, tenant_id, agent_id, thread_id, action, details, status) VALUES ('ap-2', 'owner', 'chef', ?, 'repo_commit_files', '{}', 'pending')").bind(retried!.thread_id).run();
     expect((await request(`/api/tasks/${taskId}/delivery/cancel`, { method: "POST" })).status).toBe(200);
+    // the open proposal of the cancelled workflow is withdrawn with it
+    expect((await db.prepare("SELECT status FROM approvals WHERE id = 'ap-2'").first())?.status).toBe("rejected");
     expect(await openStep(db)).toBeNull();
     expect((await db.prepare("SELECT status FROM workflow_runs WHERE task_id = ?").bind(taskId).first())?.status).toBe("cancelled");
     // a run that ends after the cancel changes nothing

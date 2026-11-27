@@ -167,6 +167,10 @@ export async function cancelDelivery(env: Env, caller: Caller, taskId: string): 
   await env.DB.batch([
     env.DB.prepare("UPDATE workflow_runs SET status = 'cancelled', note = ?, updated_at = unixepoch() WHERE tenant_id = ? AND id = ?").bind(`Abgebrochen von ${caller.actor}`, caller.tenantId, run.id),
     env.DB.prepare("UPDATE workflow_steps SET status = 'cancelled', finished_at = unixepoch() WHERE tenant_id = ? AND run_id = ? AND status IN ('running', 'waiting_approval')").bind(caller.tenantId, run.id),
+    // Open proposals of the workflow's conversations are withdrawn with it.
+    env.DB.prepare(
+      "UPDATE approvals SET status = 'rejected', decided_at = unixepoch() WHERE tenant_id = ? AND status = 'pending' AND thread_id IN (SELECT thread_id FROM workflow_steps WHERE tenant_id = ? AND run_id = ?)",
+    ).bind(caller.tenantId, caller.tenantId, run.id),
   ]);
   for (const row of results) await env.AGENTS.get(threadObjectName(caller.tenantId, row.thread_id)).stop().catch(() => undefined);
   await changed(env, run, "cancelled", run.step);

@@ -94,6 +94,15 @@ describe("routes on real SQLite", () => {
     expect(scoped.body).toMatchObject({ projectId: "uguroezdamar" });
   });
 
+  it("withdraws the open proposals of a deleted conversation and does not wake it for a late decision", async () => {
+    const { call, db, chat } = setup();
+    const id = ((await call("/api/threads", { method: "POST", body: { agentId: "chef", projectId: "uguroezdamar" } })).body as { id: string }).id;
+    db.raw.prepare("INSERT INTO approvals (id, tenant_id, agent_id, thread_id, action, details, status) VALUES ('00000000-0000-4000-8000-0000000000a1', 'owner', 'chef', ?, 'repo_commit_files', '{}', 'pending')").run(id);
+    expect((await call(`/api/threads/${id}`, { method: "DELETE" })).status).toBe(200);
+    expect(db.raw.prepare("SELECT status FROM approvals WHERE id = '00000000-0000-4000-8000-0000000000a1'").get()).toEqual({ status: "rejected" });
+    expect(chat).not.toHaveBeenCalled();
+  });
+
   it("answers the list routes the portal uses", async () => {
     const { call } = setup();
     for (const path of ["/api/projects", "/api/threads", "/api/tasks", "/api/agents", "/api/approvals", "/api/events", "/api/office/state", "/api/agents/chef/config"]) {
