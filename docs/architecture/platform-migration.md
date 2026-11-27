@@ -178,7 +178,23 @@
 
 **Abnahme:** Ein kleiner Auftrag in einem Testrepository läuft auf Dev vom Eingang bis zum PR mit grüner CI. Jede Übergabe steht in `handoffs`, jeder Lauf unter `/usage`; der Owner gibt nur das frei, was die Policy verlangt.
 
-## Phase P4: Selbst gehostet mit Docker
+## P4 neu: zweite Runtime
+
+**Anlass:** Das erschöpfte Durable-Objects-Kontingent hat am 27.11.2026 den Agenten-Chat stillgelegt. Entscheidung: [ADR 0045](decisions/0045-agent-runtime-independent-of-durable-objects.md). Der zweite Host kommt deshalb vor dem Docker-Paket. Die Phasen bauen aufeinander auf. Jede ist für sich auslieferbar und ändert das Verhalten für Nutzer nicht, bis R4 umschaltet.
+
+| Phase | Inhalt | Braucht Owner-Entscheidung |
+| --- | --- | --- |
+| **R1 Ports** | `ThreadStorePort` (asynchron: Nachrichten, Laufzustand, Eingang, Zusammenfassung, Privat-Markierung) und `SchedulerPort` (`schedule(at)`, `cancel()`). `ThreadRuntime` nutzt nur noch diese beiden Ports. Der Cloudflare-Adapter legt sie auf den bisherigen Durable-Object-Speicher, ohne Datenwanderung. Tests mit In-Memory-Adaptern. | nein |
+| **R2 Zustand in SQL** | SQL-Adapter auf `SqlPort`: `thread_messages`, `thread_state`, `scheduled_jobs` (ID, Thread, fällig ab, Lease bis, Versuche, Host). Der Cloudflare-Host schreibt in D1. Bestehende Verläufe werden beim ersten Zugriff aus dem Objekt kopiert. Verlauf und Status kommen dann ohne Durable-Objects-Request aus D1 (`view`). | nein |
+| **R3 Node-Host lokal** | `apps/node-host`: Node 24, derselbe Fetch-Handler, eine Scheduler-Schleife mit Lease-Übernahme, WebSocket und SSE im Prozess, `node:sqlite`. `pnpm dev:node-host`. Portal und Office bekommen den Rückfall auf SSE oder Polling ab der letzten Ereignis-ID. | nein |
+| **R4 Gemeinsame Datenbank und Betrieb** | `SqlPort` auf PostgreSQL mit Übersetzung oder Umbau der SQLite-Stellen. Der Node-Host läuft beim Anbieter aus O-R1, Cloudflare verbindet sich mit derselben Datenbank. Gespräche laufen nicht mehr in Durable Objects: Der Worker übernimmt fällige Aufträge über denselben Scheduler. Das Portal schaltet `API_URL` nach Gesundheitsprüfung um. | O-R1, O-R2, O-R3 |
+| **R5 Failover-Probe** | Idempotenzschlüssel für Werkzeuge mit Außenwirkung. Probe: Cloudflare mitten im Lauf abschalten, Node übernimmt. Der Host-Wechsel steht im Ereignisprotokoll und im Portal unter Verbrauch und Betrieb. | nein |
+
+**Bis R4 trägt:** die Verbrauchssenkung aus ADR 0025 (Nachträge 1 und 2) und, falls der Owner sie bucht, Workers Paid als Brücke (O-R4).
+
+**Docker (alte P4)** baut danach auf R3 auf: Dieselben Adapter kommen in `deployments/docker/` dazu, dazu die Docker-Workstation.
+
+## Phase P4: Selbst gehostet mit Docker (nach R3)
 
 **Ziel:** `docker compose up` startet API, Office und Portal ohne Cloudflare-Konto.
 
@@ -229,7 +245,8 @@
 | P1 Nähte | zuerst | Klein und mechanisch. Danach schreibt jede neue Funktion gegen Ports statt gegen Cloudflare. |
 | P2 Policy | danach | Größter Nutzen für die eigene Firma: echte Autonomie je Projekt; Voraussetzung für Abläufe ohne ständige Rückfrage. |
 | P3 Ablauf und Team | danach | Macht aus Einzelagenten ein Team (Stufe 4); braucht P2, damit Übergaben nicht an jeder Freigabe hängen. |
-| P4 Docker | danach | Erst wenn Kern und Abläufe stabil sind, lohnt ein zweiter Host; dann entsteht auch `packages/platform`. |
+| P4 neu R1–R5 | jetzt | Ein erschöpftes Kontingent darf die Agenten nicht stilllegen (ADR 0045). R1 bis R3 brauchen keine Owner-Entscheidung, R4 schon. |
+| P4 Docker | nach R3 | Nutzt die Adapter des Node-Hosts; dann entsteht auch `packages/platform`. |
 | P5 Anbieter und Skills | laufend ab P3 | Einzelne Punkte (eigene Endpunkte, Skills) können früher kommen, wenn sie gebraucht werden. |
 | P6 Open Source | zuletzt | Erst veröffentlichen, wenn Selbsthosting wirklich funktioniert. |
 
