@@ -71,7 +71,7 @@ Vorschläge für einen zweiten Host, solange keine Karte hinterlegt werden kann.
 
 | Weg | Kosten, Karte | Läuft dauerhaft? | Passt, weil | Aufwand |
 | --- | --- | --- | --- | --- |
-| **A: Node-Host beim Owner und Cloudflare Tunnel** (Vorschlag) | 0 €, keine Karte; Tunnel und Zero Trust Free sind enthalten | solange der Rechner läuft | Cloudflare bleibt vorn. Der Host ist unter einer festen Adresse erreichbar (z. B. `agents-local.uguroezdamar.com`), ohne offenen Port. Die Daten liegen in Neon Free oder lokalem Postgres. | Ein Compose-Dienst `tunnel` (cloudflared) mit Token aus Infisical, ein DNS-Eintrag mit Freigabe |
+| **A: Node-Host beim Owner und Cloudflare Tunnel** (gebaut, [Anleitung](../operations/self-hosting.md#erreichbar-über-cloudflare-tunnel)) | 0 €, keine Karte; Tunnel und Zero Trust Free sind enthalten | solange der Rechner läuft | Cloudflare bleibt vorn. Der Host ist unter einer festen Adresse erreichbar (z. B. `agents-local.uguroezdamar.com`), ohne offenen Port. Die Daten liegen in Neon Free oder lokalem Postgres. | Ein Compose-Dienst `tunnel` (cloudflared) mit Token aus Infisical, ein DNS-Eintrag mit Freigabe |
 | **B: Render Free** | 0 €, keine Karte | nein, schläft nach 15 Minuten, etwa 60 Sekunden Aufwachen | Ein Lauf überlebt das Schlafen: Beim Aufwachen übernimmt der Durchgang offene Aufträge (R3). Gut für Tests, nicht für lange Läufe ohne Zuschauer. | Dienst aus dem GHCR-Image, Secrets im Render-Dashboard |
 | **C: Workers Paid** | 5 USD im Monat, Karte nötig | ja | Keine Tagesgrenze für Durable Objects | nur buchen |
 

@@ -50,6 +50,39 @@ $env:DATABASE_URL_DIRECT = "postgres://postgres@127.0.0.1:5433/portal"; node too
 
 Das Passwort fragt der Befehl verdeckt ab.
 
+## Erreichbar über Cloudflare Tunnel
+
+Der Node-Host auf deinem Rechner wird über einen benannten Cloudflare Tunnel unter einer festen Adresse erreichbar, ohne offenen Port und ohne Kreditkarte. Tunnels sind im kostenlosen Plan enthalten. So ist er der Rückfall, wenn das Kontingent der Durable Objects knapp wird ([ADR 0045, Nachtrag](../architecture/decisions/0045-agent-runtime-independent-of-durable-objects.md#nachtrag-27112026-cloudflare-wieder-zuerst)).
+
+**Einmal einrichten (Owner):**
+1. **Tunnel anlegen:** Im Cloudflare-Dashboard des Kontos mit der Zone `uguroezdamar.com` unter *Zero Trust → Networks → Tunnels* einen Tunnel `agents-local` vom Typ *cloudflared* anlegen. Den angezeigten Token direkt in Infisical übernehmen:
+   ```powershell
+   pnpm ugur secrets set AGENTS_TUNNEL_TOKEN --stage dev
+   ```
+2. **Adresse:** Unter *Public Hostname* `agents-local.uguroezdamar.com` mit Service `HTTP` und `api:3103` eintragen. Cloudflare legt dafür einen DNS-Eintrag an; nach ADR 0023 ist das die Freigabe des Owners.
+
+**Starten:** Nur Postgres, API und Tunnel, ohne lokales Portal und Office. Vorher `PROVIDER_KEYS_SECRET` setzen, wie oben beschrieben.
+
+```powershell
+infisical run --env=dev -- docker compose -f deployments/docker/compose.yaml --profile tunnel up -d --build postgres api tunnel
+```
+
+**Prüfen:**
+
+```powershell
+curl.exe https://agents-local.uguroezdamar.com/api/health
+```
+
+Erwartet ist `{"ok":true,"env":"docker"}`. Ohne Service-Token antwortet jede andere Route mit 401.
+
+**Umschalten:** Damit das gehostete Portal (Vercel-Preview) und das Office von dev mit dem Tunnel-Host sprechen, setzt du `API_URL` in Infisical `dev` auf `https://agents-local.uguroezdamar.com` und deployst beide neu; der Rückweg ist der alte Wert `https://api-dev.uguroezdamar.com`. Der Tunnel-Host hat seine eigene Datenbank: Er sieht nicht, was auf Cloudflare (D1) liegt, und umgekehrt. Ein gemeinsamer Stand kommt erst mit R6.
+
+**Probelauf am 27.11.2026:** API-Image aus dem Commit-Stand hinter einem kurzlebigen Quick Tunnel (`trycloudflare.com`), danach wieder abgebaut. Über Cloudflares Netz kamen zurück:
+- Health-Check
+- 401 ohne Token
+- WebSocket mit `hello`, `ping` und `pong`
+- Ablehnung eines zweiten Einsatzes desselben Tickets
+
 ## Daten
 
 - **Volume `postgres`:** Portal und Agenten, also Gespräche, Aufgaben, Ereignisse und Aufträge.

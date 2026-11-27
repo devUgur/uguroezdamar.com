@@ -86,6 +86,21 @@ services:
     depends_on:
       api: { condition: service_started }
 
+  # Optional (ADR 0045, Nachtrag): makes the agent API reachable from the internet through a named Cloudflare Tunnel,
+  # without an open port. The tunnel and its public hostname (e.g. agents-local.uguroezdamar.com -> http://api:3103)
+  # are set up once in the Cloudflare dashboard; its token comes from the shell like every other secret.
+  #   docker compose -f deployments/docker/compose.yaml --profile tunnel up -d postgres api tunnel
+  tunnel:
+    image: cloudflare/cloudflared:2026.11.2
+    profiles: ["tunnel"]
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      # Empty without the profile; cloudflared refuses to start without it.
+      TUNNEL_TOKEN: ${AGENTS_TUNNEL_TOKEN:-}
+    depends_on:
+      api: { condition: service_started }
+    restart: unless-stopped
+
 volumes:
   postgres:
   api-data:

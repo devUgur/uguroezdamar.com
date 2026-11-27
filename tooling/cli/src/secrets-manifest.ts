@@ -67,6 +67,7 @@ export const SECRETS: readonly SecretSpec[] = [
   ...optional("Node host: sweep for jobs of another host in ms (default 30 minutes; lets Neon scale to zero)", ["NODE_HOST_SWEEP_MS"], { stages: ["dev"] }),
   ...optional("Origin of the agent API as the browser reaches it (live WebSocket), when it differs from API_URL (Docker)", ["API_PUBLIC_URL"], { apps: ["portal"] }),
   ...optional("Node host: the API's Postgres (Docker or Neon); without it PGlite in the data folder (ADR 0045, R2)", ["NODE_HOST_DATABASE_URL"], { stages: ["dev"] }),
+  ...optional("Token of the Cloudflare Tunnel that makes the Docker Node host reachable (ADR 0045, Nachtrag)", ["AGENTS_TUNNEL_TOKEN"], { stages: ["dev"], cliOnly: true }),
   ...optional("Local runs: `dev` points portal and office at api-dev on Cloudflare instead of the local Node host", ["UGUR_API"], { stages: ["dev"], cliOnly: true }),
   // The portal's agent chat talks to apps/api (ADR 0024). Dev points at api-dev, prod at api; each
   // stage has its own token, which the API reads from its GitHub environment (api-dev, api-production).
