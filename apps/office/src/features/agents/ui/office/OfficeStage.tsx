@@ -12,6 +12,7 @@ import type { LabelAnchors } from "./world/labels";
 import { SceneBoundary } from "./world/SceneBoundary";
 import { buildOffice, localFallbackMotion } from "./world/layout";
 import { canUseWebGL } from "./world/webgl";
+import type { OfficeWallBoard } from "./world/OfficeScene3D";
 
 type View = "3d" | "2d";
 const STORAGE_KEY = "agents-office-view";
@@ -48,6 +49,8 @@ interface OfficeStageProps {
   onSelect: (id: string) => void;
   /** Fill the parent (fullscreen office) instead of a fixed height inside a page. */
   fill?: boolean;
+  /** The board on the back wall of the 3D room. */
+  board: OfficeWallBoard;
 }
 
 function storedView(): View | null {
@@ -60,7 +63,7 @@ function storedView(): View | null {
 }
 
 /** The office as 3D scene or flat 2D room, with the agents also as buttons below for keyboard and touch. */
-export function OfficeStage({ agents, states, presence, serverOffsetMs, selectedId, onSelect, fill = false }: OfficeStageProps) {
+export function OfficeStage({ agents, states, presence, serverOffsetMs, selectedId, onSelect, fill = false, board }: OfficeStageProps) {
   const [view, setView] = useState<View | null>(null);
   const [webgl, setWebgl] = useState(false);
   const [sceneReady, setSceneReady] = useState(false);
@@ -135,7 +138,7 @@ export function OfficeStage({ agents, states, presence, serverOffsetMs, selected
                 setView("2d");
               }}
             >
-              <OfficeScene3D agents={agents} states={states} presence={renderedPresence} localPreview={!presence} serverOffsetMs={serverOffsetMs} selectedId={selectedId} onSelect={onSelect} anchors={anchors} onReady={() => setSceneReady(true)} />
+              <OfficeScene3D agents={agents} states={states} presence={renderedPresence} localPreview={!presence} serverOffsetMs={serverOffsetMs} selectedId={selectedId} onSelect={onSelect} anchors={anchors} onReady={() => setSceneReady(true)} board={board} />
             </SceneBoundary>
             {sceneReady ? null : (
               <div role="status" className="absolute inset-0 flex items-center justify-center bg-muted text-sm text-muted-foreground">

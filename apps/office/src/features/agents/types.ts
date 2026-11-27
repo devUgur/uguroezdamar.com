@@ -192,17 +192,24 @@ export interface AgentSettingsForm {
 /** Office scope from the navigation: null is the whole company, otherwise one registered project. */
 export type OfficeScope = string | null;
 
-/** A work item as the office's task widget shows it (agent API: GET /api/tasks). */
+export const TASK_STATUSES = ["backlog", "ready", "in_progress", "review", "qa", "blocked", "done"] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+/** A work item as the office board shows it (agent API: GET /api/tasks). */
 export interface OfficeTask {
   id: string;
   projectId: string | null;
   title: string;
-  status: "backlog" | "ready" | "in_progress" | "review" | "qa" | "blocked" | "done";
-  priority: string;
+  status: TaskStatus;
+  priority: "low" | "normal" | "high" | "urgent";
+  storyPoints: number | null;
+  threadId: string | null;
+  /** Seconds since the epoch (D1 unixepoch). */
+  updatedAt: number;
   agent: { id: string; name: string } | null;
 }
 
-/** The room: loaded once by the office layout and kept while the scope changes, so the 3D scene stays alive. */
+/** The room: agents, their shared positions and the projects of the scope menu. Loaded once per page view. */
 export interface OfficeRoom {
   agents: AgentSummary[];
   presence: OfficeSnapshot | null;
@@ -210,11 +217,13 @@ export interface OfficeRoom {
   projects: ThreadProject[];
 }
 
-/** What changes with the scope: only this is loaded again when the navigation switches company or project. */
-export interface OfficeOverview {
-  scope: OfficeScope;
+/**
+ * The work of every scope at once: all tasks, open approvals and today's spend per project. The office filters it in
+ * the browser, so switching the scope needs no request; live events reload it in the background.
+ */
+export interface OfficeBoard {
   tasks: OfficeTask[];
   approvals: Approval[];
-  /** Today (UTC) in this scope; null when the usage ledger could not be read. */
-  today: { costUsd: number; calls: number; runs: number; running: number } | null;
+  /** Today (UTC); null when the usage ledger could not be read. */
+  usage: { costUsd: number; calls: number; running: number; byProject: Record<string, { costUsd: number; calls: number }> } | null;
 }

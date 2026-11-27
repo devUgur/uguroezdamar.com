@@ -1,15 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@ugur/core";
 import { ThemeToggle } from "@ugur/ui";
-import type { ThreadProject } from "../../types";
+import type { OfficeScope, ThreadProject } from "../../types";
+import { ScopeSelect } from "./ScopeSelect";
 
 interface OfficeSidebarProps {
   projects: ThreadProject[];
   /** Origin of the admin portal of the same stage: settings live there. */
   portalUrl: string;
+  /** The room's scope. Outside the room (chats) the menu opens the room in the chosen scope. */
+  scope?: OfficeScope;
+  onScopeChange?: (next: OfficeScope) => void;
 }
 
 const PORTAL_LINKS = [
@@ -20,49 +24,37 @@ const PORTAL_LINKS = [
   { path: "/organization", label: "Organisation" },
 ];
 
-const itemClass = "flex shrink-0 items-baseline justify-between gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const itemClass = "flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-function NavLink({ href, active, label, hint }: { href: string; active: boolean; label: string; hint?: string }) {
-  return (
-    <Link href={href} aria-current={active ? "page" : undefined} className={cn(itemClass, active && "bg-accent font-medium")}>
-      <span className="truncate">{label}</span>
-      {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
-    </Link>
-  );
-}
-
-/**
- * Left navigation of the office: the scope first (company, then each project as an inner layer), then the chats,
- * then the way into the portal. The scope is the route (/ or /projects/:id): switching it is a client-side navigation
- * that keeps the room mounted, and every chat opened from the room inherits it.
- */
-export function OfficeSidebar({ projects, portalUrl }: OfficeSidebarProps) {
+/** Left navigation: the scope menu first, then the office's views, then the way into the portal. */
+export function OfficeSidebar({ projects, portalUrl, scope = null, onScopeChange }: OfficeSidebarProps) {
   const pathname = usePathname();
-  const chatsActive = pathname.startsWith("/chat");
-  const scope = pathname.startsWith("/projects/") ? decodeURIComponent(pathname.split("/")[2] ?? "") : pathname === "/" ? null : undefined;
+  const router = useRouter();
+  const inRoom = pathname === "/";
+  const changeScope = onScopeChange ?? ((next: OfficeScope) => router.push(next ? `/?project=${encodeURIComponent(next)}` : "/"));
+  const roomHref = scope ? `/?project=${encodeURIComponent(scope)}` : "/";
+
   return (
     <aside className="flex shrink-0 flex-col gap-4 border-b border-border bg-card p-3 md:h-full md:w-60 md:border-b-0 md:border-r md:p-4">
       <div className="flex items-center justify-between gap-2">
-        <Link href="/" className="font-serif text-xl">
+        <Link href={roomHref} className="font-serif text-xl">
           Office
         </Link>
         <ThemeToggle />
       </div>
 
-      <nav aria-label="Bereich" className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
-        <p className="hidden px-3 pb-1 text-xs uppercase tracking-wider text-muted-foreground md:block">Bereich</p>
-        <NavLink href="/" active={scope === null} label="Firma" hint="alle" />
-        {projects.map((project) => (
-          <NavLink
-            key={project.id}
-            href={`/projects/${encodeURIComponent(project.id)}`}
-            active={scope === project.id}
-            label={project.name}
-            hint={project.visibility === "private" ? "privat" : undefined}
-          />
-        ))}
-        <p className="hidden px-3 pb-1 pt-3 text-xs uppercase tracking-wider text-muted-foreground md:block">Gespräche</p>
-        <NavLink href="/chat" active={chatsActive} label="Alle Chats" />
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs uppercase tracking-wider text-muted-foreground">Bereich</span>
+        <ScopeSelect projects={projects} value={scope} onChange={changeScope} />
+      </div>
+
+      <nav aria-label="Office" className="flex gap-1 md:flex-col">
+        <Link href={roomHref} aria-current={inRoom ? "page" : undefined} className={cn(itemClass, inRoom && "bg-accent font-medium")}>
+          Büro
+        </Link>
+        <Link href="/chat" aria-current={pathname.startsWith("/chat") ? "page" : undefined} className={cn(itemClass, pathname.startsWith("/chat") && "bg-accent font-medium")}>
+          Chats
+        </Link>
       </nav>
 
       <nav aria-label="Portal" className="mt-auto hidden flex-col gap-1 border-t border-border pt-4 md:flex">

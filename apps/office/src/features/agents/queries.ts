@@ -2,7 +2,7 @@ import "server-only";
 
 import { AgentsApiError, agentsApi, agentsApiOrigin, isAgentsApiId } from "@/src/adapters/agents-api";
 import { requireSession } from "@/src/adapters/session";
-import type { AgentSummary, Approval, ModelCatalog, OfficeOverview, OfficeRoom, OfficeScope, OfficeSnapshot, OfficeTask, Thread, ThreadDetail, ThreadProject } from "./types";
+import type { AgentSummary, Approval, ModelCatalog, OfficeBoard, OfficeRoom, OfficeSnapshot, OfficeTask, Thread, ThreadDetail, ThreadProject } from "./types";
 
 /** Every chat read runs as the signed-in admin; without a session the portal login takes over. */
 export async function requireActor(): Promise<string> {
@@ -64,33 +64,41 @@ async function orFallback<T>(what: string, load: Promise<T>, fallback: T): Promi
   }
 }
 
-/** The room of the office layout: agents, their shared positions and the projects of the navigation. */
+/** The room: agents, their shared positions and the projects of the scope menu. */
 export async function loadOfficeRoom(): Promise<OfficeRoom> {
   const actor = await requireActor();
   const [office, projects] = await Promise.all([loadAgentOffice(), orFallback("projects", agentsApi<ThreadProject[]>("/api/projects", actor), [])]);
   return { ...office, projects };
 }
 
-/** The widgets of one scope (company or a project); the only data a scope switch loads. */
-export async function loadOfficeOverview(scope: OfficeScope): Promise<OfficeOverview> {
-  const actor = await requireActor();
-  const project = scope ? `project=${encodeURIComponent(scope)}` : "";
+interface UsageSummary {
+  totals: { costUsd: number; calls: number } | null;
+  runs: { running: number | null } | null;
+  byProject: { key: string | null; costUsd: number; calls: number }[];
+}
+
+/** All tasks, open approvals and today's usage; shared by the page and the background refresh (actions.ts). */
+export async function fetchOfficeBoard(actor: string): Promise<OfficeBoard> {
   const today = new Date().toISOString().slice(0, 10);
   const [tasks, approvals, usage] = await Promise.all([
-    orFallback("tasks", agentsApi<OfficeTask[]>(`/api/tasks${project ? `?${project}` : ""}`, actor), []),
+    orFallback("tasks", agentsApi<OfficeTask[]>("/api/tasks", actor), []),
     orFallback("approvals", agentsApi<Approval[]>("/api/approvals", actor), []),
     orFallback(
       "usage",
-      agentsApi<{ totals: { costUsd: number; calls: number } | null; runs: { runs: number; running: number | null } | null }>(`/api/usage/summary?from=${today}${project ? `&${project}` : ""}`, actor).then((summary) => ({
+      agentsApi<UsageSummary>(`/api/usage/summary?from=${today}`, actor).then((summary) => ({
         costUsd: summary.totals?.costUsd ?? 0,
         calls: summary.totals?.calls ?? 0,
-        runs: summary.runs?.runs ?? 0,
         running: summary.runs?.running ?? 0,
+        byProject: Object.fromEntries(summary.byProject.filter((row) => row.key).map((row) => [row.key as string, { costUsd: row.costUsd, calls: row.calls }])),
       })),
       null,
     ),
   ]);
-  return { scope, tasks, approvals, today: usage };
+  return { tasks, approvals, usage };
+}
+
+export async function loadOfficeBoard(): Promise<OfficeBoard> {
+  return fetchOfficeBoard(await requireActor());
 }
 
 function officeError(error: unknown): string {

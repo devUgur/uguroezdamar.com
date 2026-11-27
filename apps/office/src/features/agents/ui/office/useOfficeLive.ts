@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { AgentSummary, OfficeSnapshot } from "../../types";
+import type { AgentEvent, AgentSummary, OfficeSnapshot } from "../../types";
 import { loadOfficeState } from "../../actions";
 import { useLiveSocket } from "../live/useLiveSocket";
 import { activityOf, bubbleOf, type AgentLiveState } from "./agentState";
@@ -16,7 +16,13 @@ export function useOfficeLive(
   origin: string | null,
   initialPresence: OfficeSnapshot | null,
   initialPresenceError: string | null,
+  /** Every live event, for views beside the room (the board reloads on work events). */
+  onAnyEvent?: (event: AgentEvent) => void,
 ) {
+  const onAnyEventRef = useRef(onAnyEvent);
+  useEffect(() => {
+    onAnyEventRef.current = onAnyEvent;
+  });
   const router = useRouter();
   const [states, setStates] = useState<Record<string, AgentLiveState>>(() =>
     Object.fromEntries(agents.map((agent) => [agent.id, { activity: activityOf(agent.lastEvent), bubble: "" }])),
@@ -76,6 +82,7 @@ export function useOfficeLive(
     },
     onOffice: applySnapshot,
     onEvent: (event) => {
+      onAnyEventRef.current?.(event);
       if (event.type === "organization_updated" && event.data?.scope === "instance") {
         void loadOfficeState().then((result) => result.ok && applySnapshot(result.snapshot));
         router.refresh();

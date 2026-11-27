@@ -12,6 +12,8 @@ import { BACK_WALL_Z, buildOffice } from "./layout";
 import { LabelProjector } from "./LabelProjector";
 import type { FigureRegistry, LabelAnchors } from "./labels";
 import { Room3D } from "./Room3D";
+import { Board3D, boardRightEdge } from "./Board3D";
+import type { StatusCounts } from "../../board/board";
 import { useThemeColors } from "./useThemeColors";
 
 interface OfficeScene3DProps {
@@ -26,6 +28,15 @@ interface OfficeScene3DProps {
   anchors: RefObject<LabelAnchors>;
   /** Called once the first frame has been drawn, so the page can drop its loading hint. */
   onReady: () => void;
+  /** The board on the back wall for the current scope. */
+  board: OfficeWallBoard;
+}
+
+/** What the wall board shows: the scope's title and its work per status. */
+export interface OfficeWallBoard {
+  title: string;
+  counts: StatusCounts;
+  onOpen: () => void;
 }
 
 function ReadySignal({ onReady }: { onReady: () => void }) {
@@ -57,7 +68,7 @@ function CameraRig({ halfWidth, depth, target }: { halfWidth: number; depth: num
  * The 3D office. It draws what the events say and decides nothing: busy agents sit at their desk,
  * free ones walk, waiting ones raise a hand. Colors come from the portal's design tokens.
  */
-export default function OfficeScene3D({ agents, states, presence, localPreview, serverOffsetMs, selectedId, onSelect, anchors, onReady }: OfficeScene3DProps) {
+export default function OfficeScene3D({ agents, states, presence, localPreview, serverOffsetMs, selectedId, onSelect, anchors, onReady, board }: OfficeScene3DProps) {
   const colors = useThemeColors();
   const reducedMotion = useMemo(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches, []);
   const { placements, halfWidth, depth } = useMemo(() => buildOffice(agents.map((agent) => agent.desk)), [agents]);
@@ -86,7 +97,8 @@ export default function OfficeScene3D({ agents, states, presence, localPreview, 
         shadow-camera-bottom={-12}
       />
 
-      <Room3D colors={colors} halfWidth={halfWidth} depth={depth} />
+      <Room3D colors={colors} halfWidth={halfWidth} depth={depth} windowsFromX={boardRightEdge(halfWidth)} />
+      <Board3D colors={colors} halfWidth={halfWidth} title={board.title} counts={board.counts} onOpen={board.onOpen} />
       <CameraRig halfWidth={halfWidth} depth={depth} target={target} />
       <ReadySignal onReady={onReady} />
       <LabelProjector figures={figures} anchors={anchors} />

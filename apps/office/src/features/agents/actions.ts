@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { AgentsApiError, agentsApi, agentsApiOrigin, isAgentsApiId } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/session";
-import type { AgentConfig, AgentEvent, AgentSettings, AgentSettingsForm, AgentSummary, ChatView, ModelCatalog, ModelChoice, OfficeSnapshot, Thread, ThreadDetail } from "./types";
+import { fetchOfficeBoard } from "./queries";
+import type { AgentConfig, AgentEvent, AgentSettings, AgentSettingsForm, AgentSummary, ChatView, ModelCatalog, ModelChoice, OfficeBoard, OfficeSnapshot, Thread, ThreadDetail } from "./types";
 
 export interface ActionResult {
   ok: boolean;
@@ -211,4 +212,9 @@ export async function saveAgentSettings(
   } catch (error) {
     return failure(error);
   }
+}
+
+/** Background refresh of the office board after live events; the page itself is not reloaded. */
+export async function refreshOfficeBoard(): Promise<OfficeBoard> {
+  return fetchOfficeBoard(await actor());
 }

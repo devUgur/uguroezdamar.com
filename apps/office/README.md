@@ -11,9 +11,9 @@ Das Office ist die Arbeitsfläche mit den Agenten: 3D-Büro im Vollbild, Bereich
 ## Aufbau
 
 - `app/` ist nur Routing:
-  - `(office)/`: geschützt durch die Office-Session. `(room)/layout.tsx` hält das 3D-Büro dauerhaft; `/` (Firma) und `/projects/:id` laden beim Wechsel nur ihre Widgets nach. `/chat` sind die Chats.
+  - `(office)/`: geschützt durch die Office-Session. `/` ist das Büro; der Bereich ist `?project=<id>` und wird im Browser gewechselt, ohne Anfrage und ohne die 3D-Szene neu aufzubauen. `/chat` sind die Chats.
   - `auth/`: Login, Callback und Logout.
-- `src/features/agents/` enthält Büro, Chat, Einstellungen, Queries und Server Actions.
+- `src/features/agents/` enthält Büro, Tafel (`ui/board/`), Chat, Einstellungen, Queries und Server Actions.
 - `src/adapters/agents-api.ts` ruft die API auf (Service-Token, nur serverseitig).
 - `src/adapters/session*.ts` enthält die signierte Office-Session.
 - Keine Datenbank, kein `@ugur/server`: Alle Daten kommen aus `apps/api`.

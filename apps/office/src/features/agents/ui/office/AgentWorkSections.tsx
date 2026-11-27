@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { AgentConfig } from "../../types";
+import { usePortalUrl } from "../portal";
 import { Facts, mono, Section } from "./ConfigParts";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -16,6 +17,7 @@ const PRIORITY_LABEL: Record<string, string> = { low: "niedrig", normal: "normal
 
 /** Where this agent sits in the organization: department, role profile, executable definition. */
 export function OrganizationSection({ organization }: { organization: AgentConfig["organization"] }) {
+  const portalUrl = usePortalUrl();
   if (!organization) {
     return (
       <Section title="Rolle und Organisation">
@@ -39,15 +41,16 @@ export function OrganizationSection({ organization }: { organization: AgentConfi
           <li key={item}>{item}</li>
         ))}
       </ul>
-      <Link href="/organization" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+      <a href={`${portalUrl}/organization`} className="text-sm text-muted-foreground underline-offset-4 hover:underline">
         Alle Rollen und Abteilungen
-      </Link>
+      </a>
     </Section>
   );
 }
 
 /** What this agent is working on, with a way into the board and into the run of each task. */
 export function WorkSection({ work }: { work: AgentConfig["work"] }) {
+  const portalUrl = usePortalUrl();
   const total = Object.values(work.byStatus).reduce((sum, count) => sum + count, 0);
   return (
     <Section title={`Aufgaben (${total})`}>
@@ -71,9 +74,9 @@ export function WorkSection({ work }: { work: AgentConfig["work"] }) {
       ) : (
         <p className="text-muted-foreground">Keine offenen Aufgaben. Übergib im Board eine Aufgabe mit dem Status „Ready“.</p>
       )}
-      <Link href="/work" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+      <a href={`${portalUrl}/work`} className="text-sm text-muted-foreground underline-offset-4 hover:underline">
         Zum Aufgaben-Board
-      </Link>
+      </a>
     </Section>
   );
 }

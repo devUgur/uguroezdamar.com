@@ -7,16 +7,18 @@ interface Room3DProps {
   colors: ThemeColors;
   halfWidth: number;
   depth: number;
+  /** Windows keep clear of the wall left of this x, where the board hangs. */
+  windowsFromX: number;
 }
 
 const WINDOW_SPACING = 3.5;
 
-/** Floor, back wall with windows, a board and a plant. Purely decorative; nothing here carries data. */
-export function Room3D({ colors, halfWidth, depth }: Room3DProps) {
+/** Floor, back wall with windows and a plant. Decorative; the board with data is Board3D. */
+export function Room3D({ colors, halfWidth, depth, windowsFromX }: Room3DProps) {
   const centerZ = BACK_WALL_Z + depth / 2;
   const width = halfWidth * 2;
   const windowCount = Math.max(1, Math.floor(width / WINDOW_SPACING) - 1);
-  const windowX = Array.from({ length: windowCount }, (_, index) => (index - (windowCount - 1) / 2) * WINDOW_SPACING);
+  const windowX = Array.from({ length: windowCount }, (_, index) => (index - (windowCount - 1) / 2) * WINDOW_SPACING).filter((x) => x - 1.2 > windowsFromX);
   // Floor lines at half strength: visible as a grid, not as a pattern.
   const gridColor = useMemo(() => new Color().lerpColors(colors.muted, colors.border, 0.5), [colors]);
   return (
