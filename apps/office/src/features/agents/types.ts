@@ -202,12 +202,16 @@ export interface OfficeTask {
   agent: { id: string; name: string } | null;
 }
 
-/** Everything the fullscreen office shows for one scope, loaded together on the server. */
-export interface OfficeWorkspace {
+/** The room: loaded once by the office layout and kept while the scope changes, so the 3D scene stays alive. */
+export interface OfficeRoom {
   agents: AgentSummary[];
   presence: OfficeSnapshot | null;
   presenceError: string | null;
   projects: ThreadProject[];
+}
+
+/** What changes with the scope: only this is loaded again when the navigation switches company or project. */
+export interface OfficeOverview {
   scope: OfficeScope;
   tasks: OfficeTask[];
   approvals: Approval[];

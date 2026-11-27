@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import type { Approval, OfficeTask, OfficeWorkspace } from "../../types";
+import type { Approval, OfficeTask, OfficeOverview } from "../../types";
 
 const OPEN_STATUSES: OfficeTask["status"][] = ["in_progress", "review", "qa", "blocked", "ready"];
 const STATUS_LABEL: Record<OfficeTask["status"], string> = {
@@ -73,7 +73,7 @@ function ApprovalsWidget({ approvals }: { approvals: Approval[] }) {
   );
 }
 
-function TodayWidget({ today, scope, portalUrl }: { today: OfficeWorkspace["today"]; scope: string | null; portalUrl: string }) {
+function TodayWidget({ today, scope, portalUrl }: { today: OfficeOverview["today"]; scope: string | null; portalUrl: string }) {
   return (
     <Widget title="Heute" action={<a href={`${portalUrl}/usage${scope ? `?project=${encodeURIComponent(scope)}` : ""}`} className="text-xs underline underline-offset-4">Details</a>}>
       {today ? (
@@ -99,7 +99,7 @@ function TodayWidget({ today, scope, portalUrl }: { today: OfficeWorkspace["toda
 }
 
 /** The office's side widgets for the current scope; approvals are shown for every scope, because all of them wait for Ugur. */
-export function OfficeWidgets({ workspace, portalUrl }: { workspace: Pick<OfficeWorkspace, "tasks" | "approvals" | "today" | "scope">; portalUrl: string }) {
+export function OfficeWidgets({ workspace, portalUrl }: { workspace: OfficeOverview; portalUrl: string }) {
   return (
     <div className="flex flex-col gap-3">
       <TodayWidget today={workspace.today} scope={workspace.scope} portalUrl={portalUrl} />

@@ -2,7 +2,7 @@ import "server-only";
 
 import { AgentsApiError, agentsApi, agentsApiOrigin, isAgentsApiId } from "@/src/adapters/agents-api";
 import { requireSession } from "@/src/adapters/session";
-import type { AgentSummary, Approval, ModelCatalog, OfficeScope, OfficeSnapshot, OfficeTask, OfficeWorkspace, Thread, ThreadDetail, ThreadProject } from "./types";
+import type { AgentSummary, Approval, ModelCatalog, OfficeOverview, OfficeRoom, OfficeScope, OfficeSnapshot, OfficeTask, Thread, ThreadDetail, ThreadProject } from "./types";
 
 /** Every chat read runs as the signed-in admin; without a session the portal login takes over. */
 export async function requireActor(): Promise<string> {
@@ -64,17 +64,16 @@ async function orFallback<T>(what: string, load: Promise<T>, fallback: T): Promi
   }
 }
 
-/**
- * The fullscreen office for one scope: the company (no project) or one registered project. Unknown projects fall back
- * to the company level, so a stale link never opens a scope that does not exist.
- */
-export async function loadOfficeWorkspace(requestedScope: string | null): Promise<OfficeWorkspace> {
+/** The room of the office layout: agents, their shared positions and the projects of the navigation. */
+export async function loadOfficeRoom(): Promise<OfficeRoom> {
   const actor = await requireActor();
-  const [office, projects] = await Promise.all([
-    loadAgentOffice(),
-    orFallback("projects", agentsApi<ThreadProject[]>("/api/projects", actor), []),
-  ]);
-  const scope: OfficeScope = requestedScope && projects.some((project) => project.id === requestedScope) ? requestedScope : null;
+  const [office, projects] = await Promise.all([loadAgentOffice(), orFallback("projects", agentsApi<ThreadProject[]>("/api/projects", actor), [])]);
+  return { ...office, projects };
+}
+
+/** The widgets of one scope (company or a project); the only data a scope switch loads. */
+export async function loadOfficeOverview(scope: OfficeScope): Promise<OfficeOverview> {
+  const actor = await requireActor();
   const project = scope ? `project=${encodeURIComponent(scope)}` : "";
   const today = new Date().toISOString().slice(0, 10);
   const [tasks, approvals, usage] = await Promise.all([
@@ -91,7 +90,7 @@ export async function loadOfficeWorkspace(requestedScope: string | null): Promis
       null,
     ),
   ]);
-  return { ...office, projects, scope, tasks, approvals, today: usage };
+  return { scope, tasks, approvals, today: usage };
 }
 
 function officeError(error: unknown): string {

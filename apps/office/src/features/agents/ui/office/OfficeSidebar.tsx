@@ -1,14 +1,13 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "@ugur/core";
 import { ThemeToggle } from "@ugur/ui";
-import type { OfficeScope, ThreadProject } from "../../types";
+import type { ThreadProject } from "../../types";
 
 interface OfficeSidebarProps {
   projects: ThreadProject[];
-  /** Current scope; undefined on pages that have none (the chat list). */
-  scope?: OfficeScope;
-  /** The chat pages are open. */
-  chatsActive?: boolean;
   /** Origin of the admin portal of the same stage: settings live there. */
   portalUrl: string;
 }
@@ -34,9 +33,13 @@ function NavLink({ href, active, label, hint }: { href: string; active: boolean;
 
 /**
  * Left navigation of the office: the scope first (company, then each project as an inner layer), then the chats,
- * then the way into the portal. The scope travels as ?project= and every chat opened from the room inherits it.
+ * then the way into the portal. The scope is the route (/ or /projects/:id): switching it is a client-side navigation
+ * that keeps the room mounted, and every chat opened from the room inherits it.
  */
-export function OfficeSidebar({ projects, scope, chatsActive = false, portalUrl }: OfficeSidebarProps) {
+export function OfficeSidebar({ projects, portalUrl }: OfficeSidebarProps) {
+  const pathname = usePathname();
+  const chatsActive = pathname.startsWith("/chat");
+  const scope = pathname.startsWith("/projects/") ? decodeURIComponent(pathname.split("/")[2] ?? "") : pathname === "/" ? null : undefined;
   return (
     <aside className="flex shrink-0 flex-col gap-4 border-b border-border bg-card p-3 md:h-full md:w-60 md:border-b-0 md:border-r md:p-4">
       <div className="flex items-center justify-between gap-2">
@@ -52,7 +55,7 @@ export function OfficeSidebar({ projects, scope, chatsActive = false, portalUrl 
         {projects.map((project) => (
           <NavLink
             key={project.id}
-            href={`/?project=${encodeURIComponent(project.id)}`}
+            href={`/projects/${encodeURIComponent(project.id)}`}
             active={scope === project.id}
             label={project.name}
             hint={project.visibility === "private" ? "privat" : undefined}

@@ -15,7 +15,7 @@ export default async function ChatLayout({ children }: { children: ReactNode }) 
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
-      <OfficeSidebar projects={projects} chatsActive portalUrl={portalUrl()} />
+      <OfficeSidebar projects={projects} portalUrl={portalUrl()} />
       <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[16rem_1fr]">
         <aside className="hidden min-h-0 overflow-y-auto border-r border-border md:block">
           <ThreadList threads={threads} />
