@@ -43,8 +43,11 @@ export function WorkLiveStatus({ origin, onRefresh }: Props) {
         socket.onmessage = (message) => {
           if (message.data === "pong") return;
           try {
-            const payload = JSON.parse(String(message.data)) as { type?: string; event?: { type?: string; taskId?: string } };
-            if (payload.type === "event" && payload.event?.taskId && (payload.event.type === "task_created" || payload.event.type === "task_updated")) onRefresh();
+            type Payload = { type?: string; event?: { type?: string; taskId?: string }; messages?: Payload[] };
+            const payload = JSON.parse(String(message.data)) as Payload;
+            // Threads send their events bundled (ADR 0025, Nachtrag 3).
+            const parts = payload.type === "batch" ? (payload.messages ?? []) : [payload];
+            if (parts.some((part) => part.type === "event" && part.event?.taskId && (part.event.type === "task_created" || part.event.type === "task_updated"))) onRefresh();
           } catch { /* Ignore malformed messages; reconnect refresh restores authoritative state. */ }
         };
         socket.onclose = () => {

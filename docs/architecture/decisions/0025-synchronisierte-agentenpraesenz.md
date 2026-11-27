@@ -83,3 +83,17 @@ Die 3D-Kamera ist eine Bedienpräferenz. Jede Browserinstanz soll unabhängig dr
 - **Ein Aufruf je Gespräch:** `GET /api/threads/:id` holt Verlauf und Status über `view()` in einem Durable-Objects-Request. `PATCH` fragt den Status höchstens einmal ab.
 
 **Was bleibt:** Ereignisse werden immer gespeichert. Ein Browser, der später verbindet, holt sie wie bisher nach. Verbrauchsmodell und Abhängigkeiten: [Cloudflare-Verbrauch](../../operations/cloudflare-usage.md).
+
+## Nachtrag 3, 27.11.2026: Gebündelt senden, Büro nur bei offenem Office
+
+**Anlass:** Cloudflare bleibt die erste Laufzeit ([ADR 0045, Nachtrag](0045-agent-runtime-independent-of-durable-objects.md#nachtrag-27112026-cloudflare-wieder-zuerst)). Mit offenem Office kostete noch jedes Ereignis eines Laufs einen Hub-Request, jeder Tätigkeitswechsel einen Office-Request.
+
+**Änderung:**
+- **Bündeln:** Ein Gespräch sendet seine Live-Nachrichten gebündelt (`runtime/live-batch.ts`).
+  - Ereignisse warten bis zu einer Sekunde und gehen als ein `{"type":"batch","messages":[…]}` hinaus.
+  - Gestreamter Text geht sofort hinaus und nimmt Wartendes mit.
+  - Am Ende jeder Stufe wird geleert.
+  - Office und Portal lesen `batch` wie einzelne Nachrichten.
+- **Büro nur bei offenem Office:** `emit()` liest in derselben Anweisung, ob ein Office offen ist (`live_presence.office`), und ruft `OfficePresence.recordEvent` nur dann. Die nächste Office-Seite holt den letzten Stand jedes Agenten aus `events`, und `configure()` übernimmt jedes neuere Ereignis.
+
+**Wirkung:** Eine Stufe mit etwa 15 Ereignissen in kurzen Abständen braucht statt 15 Hub-Requests meist 1 bis 3. Ohne offenes Office fallen die Office-Requests ganz weg.

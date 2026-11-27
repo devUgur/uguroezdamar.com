@@ -11,6 +11,8 @@ export interface LiveDelta {
   text: string;
 }
 
+type LivePayload = { type: string; event?: AgentEvent; snapshot?: OfficeSnapshot; messages?: LivePayload[] } & Partial<LiveDelta>;
+
 interface Handlers {
   onEvent: (event: AgentEvent) => void;
   onOffice?: (snapshot: OfficeSnapshot) => void;
@@ -73,12 +75,16 @@ export function useLiveSocket(origin: string | null, handlers: Handlers): { conn
       };
       socket.onmessage = (message) => {
         if (message.data === "pong") return;
-        const payload = JSON.parse(String(message.data)) as { type: string; event?: AgentEvent; snapshot?: OfficeSnapshot } & Partial<LiveDelta>;
-        if (payload.type === "event" && payload.event) latest.current.onEvent(payload.event);
-        if (payload.type === "office" && payload.snapshot) latest.current.onOffice?.(payload.snapshot);
-        if (payload.type === "delta" && payload.text) {
-          latest.current.onDelta?.({ agentId: payload.agentId, threadId: payload.threadId, step: payload.step, text: payload.text });
-        }
+        const handle = (payload: LivePayload) => {
+          // A thread sends its events bundled (ADR 0025, Nachtrag 3); each part is handled as if it came alone.
+          if (payload.type === "batch") for (const part of payload.messages ?? []) handle(part);
+          if (payload.type === "event" && payload.event) latest.current.onEvent(payload.event);
+          if (payload.type === "office" && payload.snapshot) latest.current.onOffice?.(payload.snapshot);
+          if (payload.type === "delta" && payload.text) {
+            latest.current.onDelta?.({ agentId: payload.agentId, threadId: payload.threadId, step: payload.step, text: payload.text });
+          }
+        };
+        handle(JSON.parse(String(message.data)) as LivePayload);
       };
       socket.onclose = () => {
         setConnected(false);

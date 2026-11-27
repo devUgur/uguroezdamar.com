@@ -128,3 +128,19 @@ Abwägung, wie sie dem Owner vorlag:
 - **Failover:** Mitten in einem Agentenlauf wird Cloudflare für die API abgeschaltet. Der Node-Host übernimmt den Lauf nach Ablauf der Lease. Keine Nachricht geht verloren, kein Werkzeugaufruf mit Außenwirkung läuft doppelt. Der Host-Wechsel steht im Ereignisprotokoll.
 - **Unabhängigkeit vom Office:** Ist das Office nicht erreichbar, bleiben Chat und Aufgaben voll nutzbar.
 - **Ohne WebSocket:** Portal und Office zeigen neue Ereignisse innerhalb von fünf Sekunden über SSE oder Polling.
+
+## Nachtrag 27.11.2026: Cloudflare wieder zuerst
+
+**Anlass:** Northflank verlangt eine Kreditkarte; die Prüfbuchung von 1 € ist gescheitert. Laut Recherche (November 2026) gibt es keinen Anbieter ohne Karte, der einen Container dauerhaft laufen lässt:
+- **Render Free** schläft nach 15 Minuten ohne Anfragen und braucht etwa eine Minute zum Aufwachen.
+- **Koyeb** verlangt laut neueren Quellen eine Karte und skaliert nach einer Stunde auf null.
+- **Railway** gibt nur ein kleines Startguthaben.
+
+**Entscheidung des Owners:**
+- **O-R3 neu:** Cloudflare ist wieder die erste Laufzeit. Der Node-Host bleibt lokaler Host, Selbsthosting-Weg (R4) und Rückfall.
+- **Kosten senken:** Der Verbrauch auf Cloudflare wird weiter gesenkt (ADR 0025, Nachtrag 3).
+- **R5 wartet:** Northflank kommt frühestens, wenn die Zahlungsart funktioniert. Workers Paid bleibt die Brücke, sobald der Owner es buchen kann.
+- **Unverändert:** R1 bis R4 bleiben gültig. Sie machen die Agenten unabhängig von einem Anbieter, auch wenn Cloudflare vorn steht.
+
+**Vorschlag für den Rückfall ohne Karte:** Der Node-Host läuft beim Owner (Docker Compose, R4) und ist über einen benannten Cloudflare Tunnel erreichbar. Tunnels sind auf dem kostenlosen Plan enthalten, ohne Karte. Die Daten liegen in Neon Free. Siehe [R5-Plan, Abschnitt „Ohne Kreditkarte“](../r5-cloud-host.md#ohne-kreditkarte).
+

@@ -2,7 +2,7 @@
 
 **Zweck:** Die Agenten-API von dev läuft als Node-Host in der Cloud, auf Neon-Postgres, und Portal und Office von dev sprechen mit ihr. Damit hängt dev nicht mehr am Kontingent der Durable Objects. Entscheidung und Rahmen: [ADR 0045](decisions/0045-agent-runtime-independent-of-durable-objects.md), Owner-Entscheidungen O-R1 bis O-R3. Vorher: R1 bis R4 ([Plattform-Migration](platform-migration.md#p4-neu-zweite-runtime)).
 
-**Stand:** Plan vom 27.11.2026. Die Schritte 1, 2, 3 und 10 sind umgesetzt; die übrigen warten auf den Owner. Produktion bleibt bis R6 und bis zur Freigabe des Owners auf Cloudflare.
+**Stand:** Plan vom 27.11.2026. Die Schritte 1, 2, 3 und 10 sind umgesetzt. Die übrigen ruhen: Northflank verlangt eine Kreditkarte, deren Prüfbuchung gescheitert ist. Cloudflare ist wieder die erste Laufzeit ([ADR 0045, Nachtrag](decisions/0045-agent-runtime-independent-of-durable-objects.md#nachtrag-27112026-cloudflare-wieder-zuerst)). Produktion bleibt bis R6 und bis zur Freigabe des Owners auf Cloudflare.
 
 ## Was die Recherche ergab
 
@@ -65,7 +65,24 @@ Die Schritte 1, 2, 3 und 10 sind erledigt (27.11.2026). Ein Test belegt, dass ei
 - **Neon im Leerlauf:** Über einen Tag ohne Arbeit bleiben weniger als 2 CU-Stunden auf dem API-Projekt.
 - **Rückweg:** `API_URL` zurück auf `api-dev` stellt den alten Zustand in unter 5 Minuten her.
 
+## Ohne Kreditkarte
+
+Vorschläge für einen zweiten Host, solange keine Karte hinterlegt werden kann. Alle nutzen dasselbe Image und denselben Code (R1 bis R4):
+
+| Weg | Kosten, Karte | Läuft dauerhaft? | Passt, weil | Aufwand |
+| --- | --- | --- | --- | --- |
+| **A: Node-Host beim Owner und Cloudflare Tunnel** (Vorschlag) | 0 €, keine Karte; Tunnel und Zero Trust Free sind enthalten | solange der Rechner läuft | Cloudflare bleibt vorn. Der Host ist unter einer festen Adresse erreichbar (z. B. `agents-local.uguroezdamar.com`), ohne offenen Port. Die Daten liegen in Neon Free oder lokalem Postgres. | Ein Compose-Dienst `tunnel` (cloudflared) mit Token aus Infisical, ein DNS-Eintrag mit Freigabe |
+| **B: Render Free** | 0 €, keine Karte | nein, schläft nach 15 Minuten, etwa 60 Sekunden Aufwachen | Ein Lauf überlebt das Schlafen: Beim Aufwachen übernimmt der Durchgang offene Aufträge (R3). Gut für Tests, nicht für lange Läufe ohne Zuschauer. | Dienst aus dem GHCR-Image, Secrets im Render-Dashboard |
+| **C: Workers Paid** | 5 USD im Monat, Karte nötig | ja | Keine Tagesgrenze für Durable Objects | nur buchen |
+
+Empfehlung: **A** als Rückfall, sobald Cloudflare-Kontingent knapp wird, und **C**, sobald die Karte funktioniert. B nur, wenn ein öffentlich erreichbarer Testhost ohne laufenden Rechner gebraucht wird.
+
 ## Quellen
+
+- [Render, HostAdvice: freie Docker-Hosts ohne Karte](https://hostadvice.com/docker-hosting/free-docker-hosting-no-credit-card/)
+- [SnapDeploy: 14 Plattformen verglichen](https://snapdeploy.dev/blog/free-cloud-deployment-platforms-2026-comparison)
+- [Cloudflare Tunnel: TryCloudflare und Tunnels](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/)
+- [Cloudflare Tunnel 2026 (Erfahrungsbericht)](https://dev.to/recca0120/cloudflare-tunnel-in-2026-expose-localhost-without-opening-ports-or-buying-an-ip-32l5)
 
 - [Northflank Free Tier 2026 (agentdeals.dev)](https://agentdeals.dev/vendor/northflank)
 - [Northflank Sandbox, Katalog-Eintrag (GitHub)](https://github.com/ePlus-DEV/free-tier-hub/issues/996)

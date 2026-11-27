@@ -10,6 +10,7 @@ import type { ThreadHost, ThreadStorePort, SchedulerPort } from "./thread-store.
 import { decide, loadProjectPolicy, recordDecision } from "../policy/engine.ts";
 import { stepFinished } from "../workflow/engine.ts";
 import { liveViewers } from "../live/presence.ts";
+import { batchedLive, type LiveBatch } from "./live-batch.ts";
 import { emit } from "../events.ts";
 import type { ChatMessage, ToolCall } from "../models/port.ts";
 import { ModelRouter, type PinnedModel, type RoutedResult } from "../models/router.ts";
@@ -144,11 +145,14 @@ export class ThreadRuntime implements AgentRuntimePort {
   private readonly state: ThreadStorePort;
   private readonly scheduler: SchedulerPort;
   private readonly env: Env;
+  /** Live messages of this thread go out bundled (runtime/live-batch.ts): one hub request per burst, not per event. */
+  private readonly live: LiveBatch;
 
   constructor(host: ThreadHost, env: Env) {
     this.state = host.store;
     this.scheduler = host.scheduler;
-    this.env = env;
+    this.live = batchedLive(env);
+    this.env = this.live.env;
   }
 
   async chat(input: ChatInput): Promise<Accepted> {
@@ -238,6 +242,15 @@ export class ThreadRuntime implements AgentRuntimePort {
   }
 
   async alarm(): Promise<void> {
+    try {
+      await this.stageAlarm();
+    } finally {
+      // Whatever the stage left waiting goes out before the host may put this thread to sleep.
+      await this.live.flush();
+    }
+  }
+
+  private async stageAlarm(): Promise<void> {
     const run = await this.state.get<RunState>(RUN);
     if (!run) return;
     // A run stored before tenants existed belongs to the owner; one stored before the ledger gets its row now.

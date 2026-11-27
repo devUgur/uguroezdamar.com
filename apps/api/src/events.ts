@@ -76,7 +76,7 @@ export async function emit(env: Env, event: AgentEvent): Promise<StoredEvent> {
   const row = await env.DB.prepare(
     `INSERT INTO events (tenant_id, agent_id, thread_id, task_id, project_id, type, data, tokens_in, tokens_out, cost_usd)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     RETURNING id, ts, (SELECT sockets FROM live_presence WHERE hub = ?) AS listeners`,
+     RETURNING id, ts, (SELECT sockets FROM live_presence WHERE hub = ?) AS listeners, (SELECT office FROM live_presence WHERE hub = ?) AS watchers`,
   )
     .bind(
       event.tenantId,
@@ -90,11 +90,14 @@ export async function emit(env: Env, event: AgentEvent): Promise<StoredEvent> {
       event.tokensOut ?? 0,
       event.costUsd ?? 0,
       hubObjectName(event.tenantId),
+      hubObjectName(event.tenantId),
     )
-    .first<{ id: number; ts: number; listeners: number | null }>();
+    .first<{ id: number; ts: number; listeners: number | null; watchers: number | null }>();
 
   const stored: StoredEvent = { ...event, id: row?.id ?? 0, ts: row?.ts ?? Date.now() };
-  if (stored.agentId && stored.id && ACTIVITY_EVENTS.has(stored.type)) {
+  // No office open: nothing to tell it. The next office page reads every agent's latest event from this table and
+  // hands it to configure(), which takes any newer one (ADR 0025, Nachtrag 3).
+  if (stored.agentId && stored.id && ACTIVITY_EVENTS.has(stored.type) && row?.watchers) {
     try {
       await env.OFFICE.get(officeObjectName(event.tenantId)).recordEvent({
         agentId: stored.agentId,

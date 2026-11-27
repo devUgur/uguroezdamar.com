@@ -22,8 +22,10 @@ export function OrganizationLiveSync() {
         socket.onmessage = (message) => {
           if (message.data === "pong") return;
           try {
-            const payload = JSON.parse(String(message.data)) as { type?: string; event?: { type?: string } };
-            if (payload.type === "event" && payload.event?.type === "organization_updated") router.refresh();
+            type Payload = { type?: string; event?: { type?: string }; messages?: Payload[] };
+            const payload = JSON.parse(String(message.data)) as Payload;
+            const parts = payload.type === "batch" ? (payload.messages ?? []) : [payload];
+            if (parts.some((part) => part.type === "event" && part.event?.type === "organization_updated")) router.refresh();
           } catch { /* Reconnect refreshes the authoritative server read model. */ }
         };
         socket.onclose = () => {

@@ -99,8 +99,10 @@ describe("office presence without Cloudflare", () => {
 describe("event fan-out", () => {
   it("calls the office only for events that can change an agent's activity", async () => {
     const officeCalls: string[] = [];
-    const { env } = apiHarness({ OFFICE: { get: () => ({ recordEvent: async (event: { type: string }) => void officeCalls.push(event.type) }) } });
+    const { env, db } = apiHarness({ OFFICE: { get: () => ({ recordEvent: async (event: { type: string }) => void officeCalls.push(event.type) }) } });
     const { emit } = await import("../apps/api/src/events.ts");
+    // An office is open; without one the office is not called at all (tests/live-batch.test.ts).
+    await db.prepare(SET_LIVE_VIEWERS).bind("main", 1, 1).run();
     for (const type of ["user_message", "thinking", "model_result", "tool_call", "tool_result", "stage_paused", "message"] as const) {
       await emit(env, { tenantId: "owner", agentId: "chef", threadId: "t-1", type });
     }

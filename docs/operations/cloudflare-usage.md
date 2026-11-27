@@ -28,8 +28,8 @@ Jeder Aufruf eines Durable Objects zählt als ein Request: RPC, `fetch`, Alarm u
 | Gespräch ansehen | 1 (`view`) | 2 (`history` und `status`) |
 | Gespräch ändern (PATCH) | höchstens 1 `status` | 2 |
 | Nachricht an einen Agenten, eine Stufe | 1 (`chat`) plus 1 Alarm je Stufe | gleich |
-| Ereignis, niemand verbunden | 0 Hub, Office nur bei Tätigkeitswechsel | 1 Hub und 1 Office je Ereignis |
-| Ereignis, Browser verbunden | 1 Hub, plus Office bei Tätigkeitswechsel | gleich |
+| Ereignis, niemand verbunden | 0 | 1 Hub und 1 Office je Ereignis |
+| Ereignis, Browser verbunden | gebündelt: ein Hub-Request je Sekunde und Gespräch, Office nur bei offenem Office (Nachtrag 3) | 1 Hub und 1 Office je Ereignis |
 | Gestreamter Text, niemand verbunden | 0 | 1 pro Sekunde |
 | Gestreamter Text, Browser verbunden | 1 pro Sekunde | 4 pro Sekunde (vor Nachtrag 1) |
 
