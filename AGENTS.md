@@ -32,8 +32,9 @@ Diese Datei ist die einzige Regelquelle für Menschen und Agenten. Editor-spezif
 ```bash
 pnpm ugur setup     # einmalig: Infisical und Neon im Browser anmelden
 pnpm dev            # Site :3100 mit dev-Secrets
-pnpm dev:portal     # Portal :3101
-pnpm dev:office     # Portal :3101 und Office :3102 (Anmeldung über das Portal)
+pnpm dev:portal     # Portal :3101 und lokale Agenten-API :3103 (Node-Host, ohne Cloudflare)
+pnpm dev:office     # Portal :3101, Office :3102 und Node-Host :3103 (Anmeldung über das Portal)
+                    # UGUR_API=dev: statt des Node-Hosts api-dev auf Cloudflare (teilt das Kontingent mit Produktion)
 pnpm dev:all        # beide
 pnpm dev:clean      # blockierte Ports freigeben und dev starten
 pnpm kill:ports     # blockierte Ports (3100, 3101 etc.) beenden
@@ -56,7 +57,8 @@ Details: [`docs/operations/secrets.md`](docs/operations/secrets.md).
 ## Struktur
 
 - `apps/site` – öffentliche Website. `apps/portal` – Admin-Portal. `apps/office` – das Office: 3D-Büro, Mitarbeiter und Chats der Agenten, ohne Datenbank, nur über `apps/api`, Anmeldung über das Portal (ADR 0039). Alle drei Next.js App Router.
-- `apps/api` – Agenten-Backend von Portal und Office (Chat im Office). Der Kern spricht nur mit Ports (`src/platform/ports.ts`); Cloudflare-Code steht ausschließlich in `src/cloudflare/` (ADR 0040, Wächter in `pnpm guard`). Cloudflare Worker mit eigener D1-Datenbank und eigenen Secrets (ADR 0024). Es importiert keine anderen Workspace-Pakete; Agenten ändern dieses Repository nur nach Freigabe des Owners, per Commit auf `dev` oder `agent/…` und per Pull Request, nie auf `main`.
+- `apps/api` – Agenten-Backend von Portal und Office (Chat im Office). Der Kern spricht nur mit Ports (`src/platform/ports.ts`); Cloudflare-Code steht ausschließlich in `src/cloudflare/` (ADR 0040, Wächter in `pnpm guard`), die Adapter des Node-Hosts in `src/node/` (ADR 0045). Cloudflare Worker mit eigener D1-Datenbank und eigenen Secrets (ADR 0024). Es importiert keine anderen Workspace-Pakete; Agenten ändern dieses Repository nur nach Freigabe des Owners, per Commit auf `dev` oder `agent/…` und per Pull Request, nie auf `main`.
+- `apps/node-host` – dieselbe Agenten-API als Node-24-Prozess ohne Cloudflare (ADR 0045, R1): Server, WebSocket und Start; Daten in `apps/node-host/.data/` (nicht in Git).
 - `packages/server` – Datenzugriff, Validierung, Auth-Logik. `packages/ui` – app-neutrale Bausteine. `packages/core` – reine Hilfsfunktionen.
 - Die Pakete werden als TypeScript-Quellcode eingebunden: kein Build, kein `dist`, Exporte nur aus `src` (ADR 0017). `@/…` ist in jeder App der Alias auf die eigene Wurzel.
 - `tooling/cli` – die `pnpm ugur`-CLI. `tests/` – Vitest, Repository-Tests gegen In-Memory-Postgres.

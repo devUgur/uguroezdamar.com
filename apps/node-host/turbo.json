@@ -1,0 +1,9 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "dev": {
+      "passThroughEnv": ["NODE_HOST_*", "*_API_KEY", "AGENT_*", "PROVIDER_KEYS_SECRET", "MODAL_*", "DEFAULT_REPO", "GITHUB_OWNERS"]
+    }
+  }
+}

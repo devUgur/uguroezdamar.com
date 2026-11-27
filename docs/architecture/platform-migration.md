@@ -185,12 +185,22 @@
 | Phase | Inhalt | Ergebnis |
 | --- | --- | --- |
 | **R0 Audit** (erledigt) | Lokale Läufe starten keine API und nutzen `API_URL` aus Infisical `dev` = api-dev auf Cloudflare (ADR 0045, Befund). | Ursache der lokalen Kontingent-Fehler geklärt |
-| **R1 Lokaler Node-Host** | `apps/node-host`: Node 24, derselbe Fetch-Handler, `ActorDirectory` im Prozess für Threads, Hub und Office, Scheduler-Schleife statt Alarmen. `pnpm dev:office` startet ihn mit und setzt `API_URL` auf `http://localhost:3103`. Ein Integrationstest führt einen Agenten-Chat mit gesperrtem Cloudflare-Zugriff aus. | Agenten lokal ohne Cloudflare |
+| **R1 Lokaler Node-Host** (erledigt) | `apps/node-host`: Node 24, derselbe Fetch-Handler, `ActorDirectory` im Prozess für Threads, Hub und Office, Scheduler-Schleife statt Alarmen. `pnpm dev:office` startet ihn mit und setzt `API_URL` auf `http://localhost:3103`. Ein Integrationstest führt einen Agenten-Chat mit gesperrtem Cloudflare-Zugriff aus. | Agenten lokal ohne Cloudflare |
 | **R2 Postgres lokal** | `SqlPort` auf PostgreSQL (Docker), Migrationen der API für Postgres, Übersetzung der SQLite-Stellen (`unixepoch()`, `INSERT OR IGNORE`, FTS5). SQLite bleibt Testhilfe. | Eine Datenbanktechnologie überall |
 | **R3 ThreadStore und Scheduler** | `ThreadStorePort` (asynchron: Nachrichten, Laufzustand, Eingang, Zusammenfassung, Privat-Markierung) und `SchedulerPort` mit Aufträgen und Lease (`scheduled_jobs`). `ThreadRuntime` nutzt nur noch diese beiden Ports. Bestehende Verläufe aus Durable Objects werden beim ersten Zugriff übernommen. | Agentenläufe hostunabhängig |
 | **R4 Docker Compose** | `deployments/docker/`: Node-Host, Portal, Office, Postgres; ein Befehl startet alles. Die Anbieterwahl (Betriebsart local, cloud-dev, cloud) wird an einer Stelle beim Start geprüft. | Selbsthosting-Grundlage (alte P4) |
 | **R5 Cloud-Host** | Dasselbe Image auf Northflank (Test) und Railway Hobby, gemeinsames Neon Postgres. Portal und Office schalten `API_URL` nach Gesundheitsprüfung um, Rückfall auf SSE oder Polling ab der letzten Ereignis-ID. | Zweite Cloud-Runtime, Node primär |
 | **R6 Cloudflare-Adapter und Failover** | Der Worker nutzt dieselbe Datenbank und denselben Scheduler, Gespräche laufen nicht mehr in Durable Objects. Werkzeuge mit Außenwirkung bekommen Idempotenzschlüssel. Probe: Cloudflare mitten im Lauf abschalten, Node übernimmt, der Host-Wechsel steht im Ereignisprotokoll. | Kein Single Point of Failure |
+
+**Stand R1 (27.11.2026):**
+- **Adapter:** Sie liegen in `apps/api/src/node/` und sind das Gegenstück zu `src/cloudflare/`:
+  - `sql.ts`: `SqlPort` auf node:sqlite, Migrationen mit `_migrations`. Die Tests nutzen denselben Adapter.
+  - `actors.ts`: eine SQLite-Datei je Actor. Timer ersetzen Alarme und werden nach einem Neustart neu gesetzt.
+  - `hub.ts`: Live-Hub mit Einmal-Ticket und `live_presence`.
+  - `storage.ts`: KV in SQLite, Dateien auf der Platte.
+- **Prozess:** `apps/node-host` ist der Prozess, Node 24 mit `--experimental-transform-types`, `ws` für die WebSocket-Verbindung.
+- **Lokaler Lauf:** `pnpm dev:portal` und `pnpm dev:office` starten ihn mit und setzen `API_URL` auf `http://localhost:3103`. Mit `UGUR_API=dev` geht ein lokaler Lauf bewusst an api-dev.
+- **Noch nicht lokal:** Wissenssuche (kein Vektorindex, keine Workers-AI-Embeddings; kommt mit pgvector in R2), Workstation (ADR 0036) und Ausführungs-Nodes (ADR 0042). Modellschlüssel kommen aus der Umgebung oder werden im lokalen Portal eingetragen. Den Schlüssel dafür erzeugt der Host einmal je Datenordner.
 
 **Bis R5 trägt:** die Verbrauchssenkung aus ADR 0025 (Nachträge 1 und 2) und, falls der Owner sie bucht, Workers Paid als Brücke (O-R4).
 

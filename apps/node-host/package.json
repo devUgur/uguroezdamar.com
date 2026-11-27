@@ -1,0 +1,22 @@
+{
+  "name": "@ugur/node-host",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The agent API on Node 24 without Cloudflare (ADR 0045, R1).",
+  "scripts": {
+    "dev": "node --experimental-transform-types --disable-warning=ExperimentalWarning --watch-path=src --watch-path=../api/src src/main.ts",
+    "start": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/main.ts",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251101.0",
+    "@types/node": "catalog:",
+    "@types/ws": "^8.18.1",
+    "typescript": "catalog:"
+  }
+}

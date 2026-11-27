@@ -153,3 +153,6 @@ package-lock.json
 .env*
 !.env.example
 graphify-out/
+
+# Node host data (ADR 0045): local agent threads, never in Git
+apps/node-host/.data/

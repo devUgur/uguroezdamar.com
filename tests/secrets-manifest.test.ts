@@ -58,8 +58,13 @@ describe("secrets manifest", () => {
       ...(siteTurbo.tasks.build?.passThroughEnv ?? []),
       ...(siteTurbo.tasks.dev?.passThroughEnv ?? []),
     ]);
+    // The Node host's own task (ADR 0045) passes its keys by pattern, e.g. NODE_HOST_*.
+    const nodeHostTurbo = JSON.parse(readFileSync(join(root, "apps/node-host/turbo.json"), "utf8")) as {
+      tasks: Record<string, { passThroughEnv?: string[] }>;
+    };
+    const patterns = (nodeHostTurbo.tasks.dev?.passThroughEnv ?? []).map((pattern) => new RegExp(`^${pattern.replaceAll("*", ".*")}$`));
     const needed = SECRETS.filter((spec) => !spec.cliOnly).map((spec) => spec.key);
-    expect(needed.filter((key) => !passed.has(key))).toEqual([]);
+    expect(needed.filter((key) => !passed.has(key) && !patterns.some((pattern) => pattern.test(key)))).toEqual([]);
     expect(turbo.tasks.dev?.env).toEqual(["NEXT_PUBLIC_SITE_URL"]);
     expect(turbo.globalPassThroughEnv).not.toContain("CRON_SECRET");
     expect(siteTurbo.tasks.build?.passThroughEnv).toEqual(["CRON_SECRET"]);

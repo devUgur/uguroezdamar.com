@@ -13,5 +13,7 @@
     "noUncheckedIndexedAccess": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  // The Node host's adapters need Node's types; apps/node-host type-checks them.
+  "exclude": ["src/node/**"]
 }

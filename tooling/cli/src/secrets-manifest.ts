@@ -61,6 +61,9 @@ export const SECRETS: readonly SecretSpec[] = [
     ["VERCEL_BYPASS_SITE", "VERCEL_BYPASS_PORTAL"],
     { stages: ["dev"] },
   ),
+  // Settings of a local run with the Node host (ADR 0045); never stored anywhere, defaults in apps/node-host/src/main.ts.
+  ...optional("Node host: port, bind address, data folder and API_ENV label (defaults 3103, 127.0.0.1, apps/node-host/.data, local)", ["NODE_HOST_PORT", "NODE_HOST_BIND", "NODE_HOST_DATA", "NODE_HOST_ENV"], { stages: ["dev"] }),
+  ...optional("Local runs: `dev` points portal and office at api-dev on Cloudflare instead of the local Node host", ["UGUR_API"], { stages: ["dev"], cliOnly: true }),
   // The portal's agent chat talks to apps/api (ADR 0024). Dev points at api-dev, prod at api; each
   // stage has its own token, which the API reads from its GitHub environment (api-dev, api-production).
   ...required("Origin of the agent API the portal chat talks to", ["API_URL"], {

@@ -2,7 +2,7 @@ import { createConnection, createServer } from "node:net";
 import { REPO_ROOT, run } from "../lib/exec.ts";
 import { accessHint, listSecretNames, withSecrets } from "../lib/infisical.ts";
 import { runManagedProcess } from "../lib/managed-process.ts";
-import { LOCAL_ORIGINS, type Stage } from "../lib/stages.ts";
+import { LOCAL_ORIGINS, remoteApi, type Stage } from "../lib/stages.ts";
 
 const LOCAL_RUN = "tooling/cli/src/local-run.ts";
 
@@ -22,8 +22,10 @@ export interface DevOptions {
 export function selectApps(filters: string[], all = false): AppName[] | { unknown: string[] } {
   const unknown = filters.filter((filter) => !APPS.includes(filter as AppName));
   if (unknown.length > 0) return { unknown };
-  if (filters.length > 0) return APPS.filter((app) => filters.includes(app));
-  return all ? APPS : DEFAULT_APPS;
+  const chosen = filters.length > 0 ? APPS.filter((app) => filters.includes(app)) : all ? APPS : DEFAULT_APPS;
+  // Portal and office talk to the agent API; a local run brings its own (ADR 0045), unless UGUR_API=dev.
+  const needsApi = chosen.some((app) => app === "portal" || app === "office");
+  return needsApi && !remoteApi() && !chosen.includes("node-host") ? [...chosen, "node-host"] : chosen;
 }
 
 function portIsFree(candidate: number): Promise<boolean> {

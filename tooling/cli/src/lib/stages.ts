@@ -27,7 +27,17 @@ export const LOCAL_ORIGINS = {
   site: "http://localhost:3100",
   portal: "http://localhost:3101",
   office: "http://localhost:3102",
+  // The agent API on Node, without Cloudflare (ADR 0045, R1); starts with portal or office.
+  "node-host": "http://localhost:3103",
 } as const;
+
+/**
+ * Where portal and office of a local run find the agent API: the local Node host, unless `UGUR_API=dev` asks for
+ * api-dev on Cloudflare on purpose (cloud-dev). That run shares the account's Durable Objects quota with production.
+ */
+export function remoteApi(): boolean {
+  return process.env.UGUR_API === "dev";
+}
 
 /** The address variables of a local run, replacing the hosted values of the `dev` stage. */
 export function localEnv(): Record<string, string> {
@@ -37,5 +47,6 @@ export function localEnv(): Record<string, string> {
     // Portal and office of a local run find each other here (ADR 0039).
     OFFICE_URL: LOCAL_ORIGINS.office,
     PORTAL_URL: LOCAL_ORIGINS.portal,
+    ...(remoteApi() ? {} : { API_URL: LOCAL_ORIGINS["node-host"] }),
   };
 }
