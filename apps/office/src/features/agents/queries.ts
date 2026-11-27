@@ -2,7 +2,7 @@ import "server-only";
 
 import { AgentsApiError, agentsApi, agentsApiOrigin, isAgentsApiId } from "@/src/adapters/agents-api";
 import { requireSession } from "@/src/adapters/session";
-import type { AgentSummary, Approval, ModelCatalog, OfficeBoard, OfficeRoom, OfficeSnapshot, OfficeTask, Thread, ThreadDetail, ThreadProject } from "./types";
+import type { AgentSummary, Approval, ModelCatalog, OfficeBoard, OfficeRoom, OfficeSnapshot, OfficeTask, PolicyCatalog, Thread, ThreadDetail, ThreadProject } from "./types";
 
 /** Every chat read runs as the signed-in admin; without a session the portal login takes over. */
 export async function requireActor(): Promise<string> {
@@ -80,7 +80,7 @@ interface UsageSummary {
 /** All tasks, open approvals and today's usage; shared by the page and the background refresh (actions.ts). */
 export async function fetchOfficeBoard(actor: string): Promise<OfficeBoard> {
   const today = new Date().toISOString().slice(0, 10);
-  const [tasks, approvals, usage] = await Promise.all([
+  const [tasks, approvals, usage, policies] = await Promise.all([
     orFallback("tasks", agentsApi<OfficeTask[]>("/api/tasks", actor), []),
     orFallback("approvals", agentsApi<Approval[]>("/api/approvals", actor), []),
     orFallback(
@@ -93,8 +93,9 @@ export async function fetchOfficeBoard(actor: string): Promise<OfficeBoard> {
       })),
       null,
     ),
+    orFallback("policies", agentsApi<PolicyCatalog>("/api/policies", actor), null),
   ]);
-  return { tasks, approvals, usage };
+  return { tasks, approvals, usage, policies };
 }
 
 export async function loadOfficeBoard(): Promise<OfficeBoard> {

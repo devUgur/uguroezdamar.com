@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { AgentsApiError, agentsApi, agentsApiOrigin, isAgentsApiId } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/session";
 import { fetchOfficeBoard } from "./queries";
-import type { AgentConfig, AgentEvent, AgentSettings, AgentSettingsForm, AgentSummary, ChatView, ModelCatalog, ModelChoice, NewTask, OfficeBoard, OfficeSnapshot, TaskPatch, Thread, ThreadDetail } from "./types";
+import type { AgentConfig, AgentEvent, AgentSettings, AgentSettingsForm, AgentSummary, ChatView, ModelCatalog, AutonomyLevel, ModelChoice, NewTask, OfficeBoard, OfficeSnapshot, TaskPatch, Thread, ThreadDetail } from "./types";
 
 export interface ActionResult {
   ok: boolean;
@@ -258,6 +258,21 @@ export async function createTask(input: NewTask): Promise<ActionResult> {
   try {
     if (!isProjectId(input.projectId)) return { ok: false, error: "Ungültiges Projekt." };
     await agentsApi("/api/tasks", await actor(), { method: "POST", body: input });
+    return { ok: true };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+const LEVELS: AutonomyLevel[] = ["manual", "balanced", "high", "max"];
+
+/** How independently the agents work in a project (ADR 0040, P2). Only the owner; the API checks the version. */
+export async function setProjectAutonomy(projectId: string, level: AutonomyLevel, version: number): Promise<ActionResult> {
+  try {
+    const access = await organizationAccess();
+    if (!access.canManage) return { ok: false, error: "Nur der Owner legt die Autonomie fest." };
+    if (!isProjectId(projectId) || !LEVELS.includes(level)) return { ok: false, error: "Ungültige Angabe." };
+    await agentsApi(`/api/projects/${projectId}/policy`, access.actor, { method: "PUT", body: { level, version }, scopes: ["organization:write"] });
     return { ok: true };
   } catch (error) {
     return failure(error);

@@ -68,6 +68,21 @@
 
 ## Phase P2: Policy-Engine und Autonomie je Projekt
 
+**Stand 27.11.2026: erledigt.**
+- **Katalog und Entscheidung:** `apps/api/src/policy/catalog.ts` ordnet jedem Aufruf eine Klasse zu; `engine.ts` entscheidet zwischen `allow`, `approve` und `deny`, mit Begründung und Version `POLICY_VERSION`.
+  - Ein Commit wird nach Branch und Pfaden beurteilt; der riskanteste Pfad entscheidet.
+  - Ein schreibendes Werkzeug, das der Katalog nicht kennt, braucht immer eine Freigabe.
+- **Daten:** Migration `0024_policies.sql` mit den Tabellen `project_policies` und `policy_decisions`.
+- **Routen:**
+  - `GET /api/policies`: Katalog, Stufen und Stufe je Projekt.
+  - `PUT /api/projects/:id/policy`: nur der Owner, mit Versionsprüfung.
+  - `GET /api/policy/decisions`: das Entscheidungsprotokoll.
+- **Schleife:** Die Agenten-Schleife fragt vor jedem Werkzeug die Engine.
+  - Automatische Freigaben erscheinen als Ereignis `policy_allowed` im Chat.
+  - Freigabekarten nennen die Regel, die gefragt hat.
+- **Office:** Im Überblick steht das Widget „Autonomie“ je Projekt. Der Owner wählt die Stufe; das Widget zeigt, was allein läuft und was immer bei ihm bleibt.
+- **Standard bis zur Owner-Entscheidung O4:** `manual`, also das Verhalten vor P2. Kein Projekt arbeitet selbstständiger, bevor der Owner es einstellt.
+
 **Ziel:** Der Owner bestimmt je Projekt, wie selbstständig die Agenten arbeiten. Jede automatische Entscheidung ist nachvollziehbar.
 
 **Neu:**

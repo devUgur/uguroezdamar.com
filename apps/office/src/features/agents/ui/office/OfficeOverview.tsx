@@ -11,6 +11,8 @@ interface OfficeOverviewProps {
   approvals: Approval[];
   portalUrl: string;
   onOpenBoard: () => void;
+  /** Further widgets for the scope, after the flow of work (the autonomy of a project). */
+  children?: ReactNode;
 }
 
 function Widget({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
@@ -28,7 +30,7 @@ function Widget({ title, action, children }: { title: string; action?: ReactNode
 const actionClass = "text-xs underline underline-offset-4 hover:text-foreground";
 
 /** The column next to the room: today's spend, the flow of work and what waits for Ugur, all for the current scope. */
-export function OfficeOverview({ scope, counts, usage, approvals, portalUrl, onOpenBoard }: OfficeOverviewProps) {
+export function OfficeOverview({ scope, counts, usage, approvals, portalUrl, onOpenBoard, children }: OfficeOverviewProps) {
   const spend = usage ? (scope ? (usage.byProject[scope] ?? { costUsd: 0, calls: 0 }) : usage) : null;
   const open = COLUMNS.filter((column) => column.status !== "done").reduce((sum, column) => sum + counts[column.status], 0);
 
@@ -73,6 +75,8 @@ export function OfficeOverview({ scope, counts, usage, approvals, portalUrl, onO
           ))}
         </ul>
       </Widget>
+
+      {children}
 
       <Widget title={`Freigaben${approvals.length ? ` · ${approvals.length}` : ""}`}>
         {approvals.length ? (

@@ -35,7 +35,7 @@ export function AgentConfigView({ config }: { config: AgentConfig }) {
             <li key={tool.name} className="flex flex-col gap-0.5">
               <span className="flex items-center gap-2">
                 {mono(tool.name)}
-                {tool.requiresApproval ? <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[11px]">braucht Freigabe</span> : null}
+                {tool.requiresApproval ? <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[11px]" title="Ob es Ugurs Freigabe braucht, entscheidet die Autonomie des Projekts.">schreibt</span> : null}
               </span>
               <span className="text-muted-foreground">{tool.description}</span>
               {tool.inputs.length ? (

@@ -125,6 +125,11 @@ function reduce(current: LiveRun, type: string, data: Record<string, unknown>): 
       };
       return { ...current, status: "wartet auf deine Freigabe", approvals: [...current.approvals.filter((a) => a.id !== approval.id), approval] };
     }
+    case "policy_allowed": {
+      const policy = (data.policy ?? {}) as Record<string, unknown>;
+      const line: ActivityLine = { key: `policy-${current.activity.length}`, label: `Automatisch erlaubt: ${text(data.detail)}`, detail: text(policy.reason), state: "note" };
+      return { ...current, activity: [...current.activity, line] };
+    }
     case "approval_decided":
       return { ...current, running: true, status: "verarbeitet die Freigabe …", approvals: current.approvals.filter((a) => a.id !== text(data.approvalId)) };
     default:

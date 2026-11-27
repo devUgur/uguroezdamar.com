@@ -1,4 +1,4 @@
-import { portalUrl } from "@/src/adapters/session";
+import { portalUrl, requireSession } from "@/src/adapters/session";
 import { liveOrigin, loadOfficeBoard, loadOfficeRoom } from "../../queries";
 import { AgentOffice } from "./AgentOffice";
 
@@ -8,8 +8,8 @@ import { AgentOffice } from "./AgentOffice";
  */
 export async function OfficePage() {
   try {
-    const [room, board] = await Promise.all([loadOfficeRoom(), loadOfficeBoard()]);
-    return <AgentOffice room={room} initialBoard={board} liveOrigin={liveOrigin()} portalUrl={portalUrl()} />;
+    const [room, board, session] = await Promise.all([loadOfficeRoom(), loadOfficeBoard(), requireSession()]);
+    return <AgentOffice room={room} initialBoard={board} liveOrigin={liveOrigin()} portalUrl={portalUrl()} canManage={session.canManage} />;
   } catch (error) {
     const unavailable = error instanceof Error ? error.message : "Agenten-API nicht erreichbar.";
     return <p className="p-8 text-sm text-destructive">{unavailable}</p>;

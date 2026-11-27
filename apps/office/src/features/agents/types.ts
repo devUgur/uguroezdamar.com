@@ -237,6 +237,17 @@ export interface OfficeRoom {
   projects: ThreadProject[];
 }
 
+export type AutonomyLevel = "manual" | "balanced" | "high" | "max";
+
+/** The policy engine as the office shows it (agent API: GET /api/policies, ADR 0040 P2). */
+export interface PolicyCatalog {
+  version: string;
+  levels: AutonomyLevel[];
+  defaultLevel: AutonomyLevel;
+  classes: { id: string; label: string; levels: Record<AutonomyLevel, "allow" | "approve">; hard: boolean }[];
+  projects: { projectId: string; level: AutonomyLevel; version: number; updatedBy: string | null }[];
+}
+
 /**
  * The work of every scope at once: all tasks, open approvals and today's spend per project. The office filters it in
  * the browser, so switching the scope needs no request; live events reload it in the background.
@@ -246,4 +257,6 @@ export interface OfficeBoard {
   approvals: Approval[];
   /** Today (UTC); null when the usage ledger could not be read. */
   usage: { costUsd: number; calls: number; running: number; byProject: Record<string, { costUsd: number; calls: number }> } | null;
+  /** Autonomy per project; null when the policy engine could not be read. */
+  policies: PolicyCatalog | null;
 }

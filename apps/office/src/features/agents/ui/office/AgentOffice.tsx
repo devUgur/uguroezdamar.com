@@ -9,6 +9,7 @@ import { BoardDialog } from "../board/BoardDialog";
 import { countByStatus, tasksInScope } from "../board/board";
 import { AgentChatDialog } from "./AgentChatDialog";
 import { AgentConfigSheet } from "./AgentConfigSheet";
+import { AutonomyWidget } from "./AutonomyWidget";
 import { OfficeOverview } from "./OfficeOverview";
 import { OfficeSidebar } from "./OfficeSidebar";
 import { OfficeStage } from "./OfficeStage";
@@ -21,17 +22,19 @@ interface AgentOfficeProps {
   initialBoard: OfficeBoard;
   liveOrigin: string | null;
   portalUrl: string;
+  /** Owner rights from the office session: autonomy and agent settings are editable. */
+  canManage: boolean;
 }
 
 /** Live events after which the board data is stale. */
-const WORK_EVENT = /^(task_|approval_|message$|stopped$|error$)/;
+const WORK_EVENT = /^(task_|approval_|policy_|project_policy_changed$|message$|stopped$|error$)/;
 
 /**
  * The office: scope menu, 3D room with the wall board, overview and the agent sheets. Room and board data are loaded
  * once; the scope (?project=) filters them in the browser, so a switch never reloads the page or the 3D scene. Live
  * work events refresh the board data in the background.
  */
-export function AgentOffice({ room, initialBoard, liveOrigin, portalUrl }: AgentOfficeProps) {
+export function AgentOffice({ room, initialBoard, liveOrigin, portalUrl, canManage }: AgentOfficeProps) {
   const { agents, projects } = room;
   const [scope, setScope] = useOfficeScope(projects);
   const project = projects.find((entry) => entry.id === scope) ?? null;
@@ -100,7 +103,9 @@ export function AgentOffice({ room, initialBoard, liveOrigin, portalUrl }: Agent
         </section>
 
         <aside aria-label="Überblick" className="shrink-0 lg:w-80 lg:overflow-y-auto">
-          <OfficeOverview scope={scope} counts={counts} usage={board.usage} approvals={board.approvals} portalUrl={portalUrl} onOpenBoard={openBoard} />
+          <OfficeOverview scope={scope} counts={counts} usage={board.usage} approvals={board.approvals} portalUrl={portalUrl} onOpenBoard={openBoard}>
+            <AutonomyWidget scope={scope} projects={projects} policies={board.policies} canManage={canManage} onChanged={reloadBoard} />
+          </OfficeOverview>
         </aside>
       </main>
 
