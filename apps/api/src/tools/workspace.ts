@@ -1,4 +1,5 @@
 import type { Tool } from "./port.ts";
+import type { SqlPort } from "../platform/ports.ts";
 import { createRepository, listRepositories, registerProject } from "../projects/repositories.ts";
 import { str } from "./port.ts";
 
@@ -100,7 +101,7 @@ const remember: Tool = {
   },
 };
 
-export async function projectMemories(db: D1Database, tenantId: string, projectId: string, limit = 30): Promise<string[]> {
+export async function projectMemories(db: SqlPort, tenantId: string, projectId: string, limit = 30): Promise<string[]> {
   const { results } = await db
     .prepare("SELECT content FROM memories WHERE tenant_id = ? AND project_id = ? ORDER BY created_at DESC LIMIT ?")
     .bind(tenantId, projectId, limit)

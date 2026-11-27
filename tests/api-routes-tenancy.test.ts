@@ -32,9 +32,9 @@ function setup() {
     STORAGE: { d1: "test", d1Region: "test", kv: "test", r2: "test" },
     DB: db,
     CONFIG: { get: async (key: string) => kv.get(key) ?? null, put: async (key: string, value: string) => void kv.set(key, value) },
-    AGENTS: { idFromName: (name: string) => (objects.push(name), name), get: () => agentStub },
-    OFFICE: { idFromName: (name: string) => name, get: () => ({ recordEvent: async () => undefined, configure: async (layout: unknown) => layout }) },
-    HUB: { idFromName: (name: string) => name, get: () => ({ broadcast: async () => undefined }) },
+    AGENTS: { get: (name: string) => (objects.push(name), agentStub) },
+    OFFICE: { get: () => ({ recordEvent: async () => undefined, configure: async (layout: unknown) => layout }) },
+    HUB: { get: () => ({ broadcast: async () => undefined }) },
   } as unknown as Env;
 
   async function call(path: string, init: { method?: string; body?: unknown } = {}) {

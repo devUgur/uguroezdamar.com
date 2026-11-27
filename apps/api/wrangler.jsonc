@@ -5,7 +5,7 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "uguroezdamar-api",
-  "main": "src/index.ts",
+  "main": "src/cloudflare/worker.ts",
   "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat"],
   // Only the custom domains serve the API; no *.workers.dev address.

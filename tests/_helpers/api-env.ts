@@ -28,9 +28,9 @@ export function apiHarness(extra: Record<string, unknown> = {}) {
       put: async (key: string, value: string) => void kv.set(key, value),
       delete: async (key: string) => void kv.delete(key),
     },
-    AGENTS: { idFromName: (name: string) => name, get: () => ({}) },
-    OFFICE: { idFromName: (name: string) => name, get: () => ({ recordEvent: async () => undefined }) },
-    HUB: { idFromName: (name: string) => name, get: () => ({ broadcast: async () => undefined }) },
+    AGENTS: { get: () => ({}) },
+    OFFICE: { get: () => ({ recordEvent: async () => undefined }) },
+    HUB: { get: () => ({ broadcast: async () => undefined }) },
     ...extra,
   } as unknown as Env;
 

@@ -23,7 +23,7 @@ export interface SearchHit {
 export async function embed(env: Env, texts: string[]): Promise<number[][]> {
   const vectors: number[][] = [];
   for (let start = 0; start < texts.length; start += EMBED_BATCH) {
-    const output = (await env.AI.run(EMBEDDING_MODEL as keyof AiModels, { text: texts.slice(start, start + EMBED_BATCH) } as never)) as { data?: number[][] };
+    const output = (await env.AI.run(EMBEDDING_MODEL, { text: texts.slice(start, start + EMBED_BATCH) })) as { data?: number[][] };
     if (!output.data?.length) throw new Error("Embedding ohne Ergebnis");
     vectors.push(...output.data);
   }

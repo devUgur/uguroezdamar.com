@@ -56,5 +56,5 @@ export function workstationName(tenantId: string, runId: string): string {
 /** The workstation of one run, or an error when the container binding is not configured yet. */
 export function workstationFor(env: Env, tenantId: string, runId: string): WorkstationPort {
   if (!env.WORKSTATION) throw new WorkstationUnavailable();
-  return env.WORKSTATION.get(env.WORKSTATION.idFromName(workstationName(tenantId, runId))) as unknown as WorkstationPort;
+  return env.WORKSTATION.get(workstationName(tenantId, runId)) as unknown as WorkstationPort;
 }

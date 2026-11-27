@@ -27,13 +27,7 @@ import { handleSprints } from "./work/sprints.ts";
 import { handleTasks } from "./work/tasks.ts";
 import { HandoffError, issueHandoff, redeemHandoff } from "./handoff.ts";
 
-export { AgentRuntime } from "./agent.ts";
-export { LiveHub } from "./hub.ts";
-export { KnowledgeIndexer } from "./knowledge/indexer.ts";
-export { OfficePresence } from "./office/presence.ts";
 // Containers of the agents (ADR 0036). Exported so activation is configuration only; unused until wrangler.jsonc binds them.
-export { Workstation } from "./workstation/workstation.ts";
-export { GitGateway, PreviewGateway, RegistryGateway } from "./workstation/gateways.ts";
 
 const DEFAULT_PROJECT = "uguroezdamar";
 const DEFAULT_AGENT = "chef";
@@ -60,7 +54,7 @@ async function body<T>(request: Request): Promise<Partial<T>> {
 }
 
 function threadStub(env: Env, tenantId: string, threadId: string) {
-  return env.AGENTS.get(env.AGENTS.idFromName(threadObjectName(tenantId, threadId)));
+  return env.AGENTS.get(threadObjectName(tenantId, threadId));
 }
 
 interface ThreadRow {
@@ -108,7 +102,7 @@ async function officeSnapshot(env: Env, tenantId: string) {
   const active = results.filter((row) => AGENTS[row.id]);
   const layout = buildOfficeLayout(active.map((row) => ({ id: row.id, deskX: Number(row.desk_x ?? 0), deskY: Number(row.desk_y ?? 0) })));
   const byId = new Map(active.map((row) => [row.id, row]));
-  const snapshot = await env.OFFICE.get(env.OFFICE.idFromName(officeObjectName(tenantId))).configure({
+  const snapshot = await env.OFFICE.get(officeObjectName(tenantId)).configure({
     bounds: layout.bounds,
     agents: layout.agents.map((placement) => {
       const row = byId.get(placement.agentId);
@@ -342,7 +336,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 
   if (path === "/api/health") return json({ ok: true, env: env.API_ENV || "production" });
   // The hub checks the one-time ticket itself; browsers cannot send headers on a WebSocket.
-  if (path === "/api/live") return env.HUB.get(env.HUB.idFromName("main")).fetch(request);
+  if (path === "/api/live") return env.HUB.get("main").fetch(request);
 
   // GitHub sends the browser here after the app was installed (the app's Setup URL). No service token: the
   // signed, single-use state names the tenant, and GitHub itself is asked about the installation.
@@ -372,7 +366,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   }
 
   if (path === "/api/live-ticket" && method === "POST") {
-    return json({ ticket: await env.HUB.get(env.HUB.idFromName("main")).issueTicket() });
+    return json({ ticket: await env.HUB.get("main").issueTicket() });
   }
 
   if (path === "/api/office/state" && method === "GET") return json(await officeSnapshot(env, caller.tenantId));
@@ -545,8 +539,9 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   return json({ error: "Nicht gefunden" }, 404);
 }
 
+/** The API on any host: Cloudflare (cloudflare/worker.ts) passes the platform it built from its bindings. */
 export default {
-  async fetch(request, env): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === "/webhooks/github") return handleGithubWebhook(request, env);
     if (!url.pathname.startsWith("/api/")) return json({ service: "uguroezdamar-api", env: env.API_ENV || "production" });
@@ -557,4 +552,4 @@ export default {
       return json({ error: error instanceof Error ? error.message : "Interner Fehler" }, 500);
     }
   },
-} satisfies ExportedHandler<Env>;
+};

@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
-import type { Env } from "./env.ts";
+import type { Env } from "../env.ts";
+import { platformFrom, type CloudflareBindings } from "./platform.ts";
 
 const TICKET_TTL_MS = 60_000;
 
@@ -11,7 +12,7 @@ const TICKET_TTL_MS = 60_000;
  * credentials (POST /api/live-ticket) and open /api/live?ticket=… with it. The ticket lives 60 s
  * in this object's storage and is consumed on use; no long-lived token ever appears in a URL.
  */
-export class LiveHub extends DurableObject<Env> {
+export class LiveHub extends DurableObject<CloudflareBindings> {
   async issueTicket(): Promise<string> {
     const ticket = crypto.randomUUID();
     await this.ctx.storage.put(`ticket:${ticket}`, Date.now() + TICKET_TTL_MS);
@@ -89,6 +90,6 @@ export class LiveHub extends DurableObject<Env> {
     const count = this.ctx
       .getWebSockets()
       .filter((socket) => socket !== excluded && (socket.deserializeAttachment() as { office?: boolean } | null)?.office).length;
-    await this.env.OFFICE.get(this.env.OFFICE.idFromName("main")).setViewers(count);
+    await platformFrom(this.env).OFFICE.get("main").setViewers(count);
   }
 }

@@ -3,10 +3,10 @@ import { SubrequestBudget } from "../apps/api/src/runtime/budget.ts";
 import type { ToolContext } from "../apps/api/src/tools/port.ts";
 import { toolByName } from "../apps/api/src/tools/registry.ts";
 import { DAILY_RUNS_PER_TENANT, assertRef, redact, stepsFor, tail } from "../apps/api/src/workstation/commands.ts";
-import { gitGateway, previewGateway, registryGateway } from "../apps/api/src/workstation/gateways.ts";
+import { gitGateway, previewGateway, registryGateway } from "../apps/api/src/cloudflare/gateways.ts";
 import type { WorkstationJob, WorkstationResult } from "../apps/api/src/workstation/port.ts";
 import { previewAlias, previewUrl, previewWorkerName, versionIdFrom } from "../apps/api/src/workstation/previews.ts";
-import { Workstation } from "../apps/api/src/workstation/workstation.ts";
+import { Workstation } from "../apps/api/src/cloudflare/workstation-object.ts";
 import { apiHarness } from "./_helpers/api-env.ts";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -38,7 +38,6 @@ function fakeWorkstations(answer: (job: WorkstationJob) => Partial<WorkstationRe
   return {
     jobs,
     namespace: {
-      idFromName: (name: string) => name,
       get: (name: string) => ({
         run: async (job: WorkstationJob): Promise<WorkstationResult> => {
           jobs.push({ name, job });

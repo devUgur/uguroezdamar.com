@@ -62,8 +62,8 @@ function setup() {
     STORAGE: { d1: "test", d1Region: "test", kv: "test", r2: "test" },
     DB: db,
     CONFIG: { get: async () => null },
-    HUB: { idFromName: (name: string) => name, get: () => ({ broadcast: async () => undefined }) },
-    OFFICE: { idFromName: (name: string) => name, get: () => ({ recordEvent: async () => undefined }) },
+    HUB: { get: () => ({ broadcast: async () => undefined }) },
+    OFFICE: { get: () => ({ recordEvent: async () => undefined }) },
   } as unknown as Env;
   async function call(path: string, init: { method?: string; body?: unknown; scopes?: string } = {}) {
     const response = await api.fetch(

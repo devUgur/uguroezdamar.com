@@ -86,7 +86,7 @@ export async function emit(env: Env, event: AgentEvent): Promise<StoredEvent> {
   const stored: StoredEvent = { ...event, id: row?.id ?? 0, ts: row?.ts ?? Date.now() };
   if (stored.agentId && stored.id) {
     try {
-      await env.OFFICE.get(env.OFFICE.idFromName(officeObjectName(event.tenantId))).recordEvent({
+      await env.OFFICE.get(officeObjectName(event.tenantId)).recordEvent({
         agentId: stored.agentId,
         type: stored.type,
         id: stored.id,
@@ -96,7 +96,7 @@ export async function emit(env: Env, event: AgentEvent): Promise<StoredEvent> {
     }
   }
   try {
-    await env.HUB.get(env.HUB.idFromName(hubObjectName(event.tenantId))).broadcast(JSON.stringify({ type: "event", event: stored }));
+    await env.HUB.get(hubObjectName(event.tenantId)).broadcast(JSON.stringify({ type: "event", event: stored }));
   } catch (error) {
     console.error("live hub broadcast failed", error);
   }

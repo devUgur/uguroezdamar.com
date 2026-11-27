@@ -1,5 +1,6 @@
 import type { ChatRequest, ChatResult, ModelPort, ToolCall } from "./port.ts";
 import { ModelError } from "./port.ts";
+import type { InferencePort } from "../platform/ports.ts";
 
 /**
  * Workers AI parses an answer that is valid JSON and returns it as an object (the QA reviewer is asked
@@ -21,7 +22,7 @@ export class WorkersAiModel implements ModelPort {
   readonly provider = "workers-ai";
   readonly external = false;
 
-  constructor(private readonly ai: Ai) {}
+  constructor(private readonly ai: InferencePort) {}
 
   available(): boolean {
     return true;
@@ -48,12 +49,12 @@ export class WorkersAiModel implements ModelPort {
 
     let output: WorkersAiOutput;
     try {
-      output = (await this.ai.run(request.model as keyof AiModels, {
+      output = (await this.ai.run(request.model, {
         messages,
         tools: request.tools?.map((tool) => ({ type: "function", function: tool })),
         max_tokens: request.maxTokens,
         temperature: request.temperature,
-      } as never)) as WorkersAiOutput;
+      })) as WorkersAiOutput;
     } catch (error) {
       throw new ModelError(`workers-ai: ${String(error)}`, this.provider);
     }

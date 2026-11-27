@@ -7,7 +7,7 @@ function json(data: unknown, status = 200): Response {
 }
 
 export function indexerStub(env: Env, tenantId: string, projectId: string) {
-  return env.INDEXER.get(env.INDEXER.idFromName(`${tenantId}:${projectId}`));
+  return env.INDEXER.get(`${tenantId}:${projectId}`);
 }
 
 interface ProjectRow {

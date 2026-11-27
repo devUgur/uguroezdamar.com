@@ -1,8 +1,9 @@
 import { DurableObject } from "cloudflare:workers";
 import type { Env } from "../env.ts";
-import { MAX_RUN_SECONDS, previewSteps, stepsFor, tail } from "./commands.ts";
+import { platformFrom, type CloudflareBindings } from "./platform.ts";
+import { MAX_RUN_SECONDS, previewSteps, stepsFor, tail } from "../workstation/commands.ts";
 import type { GatewayProps } from "./gateways.ts";
-import { type StepResult, WorkstationUnavailable, type WorkstationJob, type WorkstationPort, type WorkstationResult } from "./port.ts";
+import { type StepResult, WorkstationUnavailable, type WorkstationJob, type WorkstationPort, type WorkstationResult } from "../workstation/port.ts";
 
 const WORKDIR = "/workspace/repo";
 /** The gateways terminate TLS with this CA; git, Node and pnpm are told to trust it. No credential is in here. */
@@ -24,7 +25,7 @@ const decoder = new TextDecoder();
  * files or processes. The container has no Internet: only the hosts intercepted below, each through a gateway.
  * Whatever happens, the container is destroyed at the end; an alarm and the inactivity timeout are backups.
  */
-export class Workstation extends DurableObject<Env> implements WorkstationPort {
+export class Workstation extends DurableObject<CloudflareBindings> implements WorkstationPort {
   async run(job: WorkstationJob): Promise<WorkstationResult> {
     const container = this.ctx.container;
     if (!container) throw new WorkstationUnavailable();

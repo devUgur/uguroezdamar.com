@@ -1,5 +1,5 @@
-import { DurableObject } from "cloudflare:workers";
 import type { Env } from "../env.ts";
+import type { ActorStatePort } from "../platform/ports.ts";
 import type { AgentEvent } from "../events.ts";
 import { distance, randomSpot, type DeskAssignment, type OfficeBounds, type Vec2 } from "./layout.ts";
 
@@ -58,12 +58,17 @@ function randomDelay(): number {
   return MIN_REST_MS + ((bytes[0] ?? 0) / 0xffffffff) * (MAX_REST_MS - MIN_REST_MS);
 }
 
-/** One office is one coordination atom. It persists motion plans, never browser camera state. */
-export class OfficePresence extends DurableObject<Env> {
-  constructor(ctx: DurableObjectState, env: Env) {
-    super(ctx, env);
-    ctx.blockConcurrencyWhile(async () => {
-      ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS office_state (
+/**
+ * One office is one coordination atom. It persists motion plans, never browser camera state. Hosted by a Durable
+ * Object on Cloudflare (cloudflare/presence-object.ts); it only needs ActorStatePort and Env (ADR 0040).
+ */
+export class OfficePresenceCore {
+  constructor(
+    private readonly state: ActorStatePort,
+    private readonly env: Env,
+  ) {
+    void state.blockConcurrencyWhile(async () => {
+      state.sql.exec(`CREATE TABLE IF NOT EXISTS office_state (
         id TEXT PRIMARY KEY,
         value TEXT NOT NULL
       )`);
@@ -71,7 +76,7 @@ export class OfficePresence extends DurableObject<Env> {
   }
 
   private async load(): Promise<RoomState> {
-    const row = this.ctx.storage.sql.exec<{ value: string }>("SELECT value FROM office_state WHERE id = ?", ROOM_KEY).toArray()[0];
+    const row = this.state.sql.exec<{ value: string }>("SELECT value FROM office_state WHERE id = ?", ROOM_KEY).toArray()[0];
     if (row) {
       const state = JSON.parse(row.value) as Partial<RoomState>;
       return {
@@ -99,7 +104,7 @@ export class OfficePresence extends DurableObject<Env> {
 
   private async save(state: RoomState, publish = true): Promise<OfficeSnapshot> {
     state.serverTime = Date.now();
-    this.ctx.storage.sql.exec(
+    this.state.sql.exec(
       "INSERT INTO office_state (id, value) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET value = excluded.value",
       ROOM_KEY,
       JSON.stringify(state),
@@ -108,7 +113,7 @@ export class OfficePresence extends DurableObject<Env> {
     const snapshot = this.publicSnapshot(state);
     if (publish && state.viewers > 0) {
       try {
-        await this.env.HUB.get(this.env.HUB.idFromName("main")).broadcast(JSON.stringify({ type: "office", snapshot }));
+        await this.env.HUB.get("main").broadcast(JSON.stringify({ type: "office", snapshot }));
       } catch (error) {
         console.error("office state broadcast failed", error);
       }
@@ -128,7 +133,7 @@ export class OfficePresence extends DurableObject<Env> {
 
   private async scheduleNext(state: RoomState): Promise<void> {
     if (state.viewers <= 0) {
-      await this.ctx.storage.deleteAlarm();
+      await this.state.deleteAlarm();
       return;
     }
     const now = Date.now();
@@ -138,8 +143,8 @@ export class OfficePresence extends DurableObject<Env> {
       const arrival = motion.startedAt + (distance(motion.from, motion.target) / motion.speed) * 1000;
       return arrival > now ? [arrival] : [];
     });
-    if (deadlines.length) await this.ctx.storage.setAlarm(Math.max(now + 100, Math.min(...deadlines)));
-    else await this.ctx.storage.deleteAlarm();
+    if (deadlines.length) await this.state.setAlarm(Math.max(now + 100, Math.min(...deadlines)));
+    else await this.state.deleteAlarm();
   }
 
   async configure(input: {
@@ -263,10 +268,10 @@ export class OfficePresence extends DurableObject<Env> {
     motion.restUntil = null;
   }
 
-  override async alarm(): Promise<void> {
+  async alarm(): Promise<void> {
     const state = await this.load();
     if (state.viewers <= 0) {
-      await this.ctx.storage.deleteAlarm();
+      await this.state.deleteAlarm();
       return;
     }
     const now = Date.now();

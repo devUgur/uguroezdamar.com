@@ -1,25 +1,25 @@
-import { readWorkingMemory } from "./knowledge/store.ts";
-import { loadAgentSettings, stepsOf } from "./agents/settings.ts";
-import { buildContext, PRIOR_MESSAGES, SUMMARIZE_AFTER, summaryPrompt, type ThreadSummary, unsummarized } from "./runtime/context.ts";
-import { finishRun, recordModelCall, recordToolCall, spentTodayFromLedger, startRun } from "./usage/ledger.ts";
-import { anyStrict, effectivePolicy } from "./projects/policy.ts";
-import { DurableObject } from "cloudflare:workers";
-import { AGENTS } from "./agents/registry.ts";
-import { APPROVAL_TTL_SECONDS, describeApproval } from "./approvals.ts";
-import type { Env } from "./env.ts";
-import { emit } from "./events.ts";
-import type { ChatMessage, ToolCall } from "./models/port.ts";
-import { ModelRouter, type PinnedModel, type RoutedResult } from "./models/router.ts";
-import { OWNER_TENANT } from "./tenancy.ts";
-import { BudgetExhausted, SubrequestBudget } from "./runtime/budget.ts";
-import { DELTA_FLUSH_MS, HISTORY_LIMIT, STALE_RUN_MS } from "./runtime/limits.ts";
-import { runAgentLoop, type LoopEvent } from "./runtime/loop.ts";
-import type { Accepted, AgentRuntimePort, AgentStatus, ChatInput, ResumeInput } from "./runtime/port.ts";
-import { projectMemories } from "./tools/workspace.ts";
-import type { ToolContext } from "./tools/port.ts";
-import { toolsByName } from "./tools/registry.ts";
+import { readWorkingMemory } from "../knowledge/store.ts";
+import { loadAgentSettings, stepsOf } from "../agents/settings.ts";
+import { buildContext, PRIOR_MESSAGES, SUMMARIZE_AFTER, summaryPrompt, type ThreadSummary, unsummarized } from "./context.ts";
+import { finishRun, recordModelCall, recordToolCall, spentTodayFromLedger, startRun } from "../usage/ledger.ts";
+import { anyStrict, effectivePolicy } from "../projects/policy.ts";
+import { AGENTS } from "../agents/registry.ts";
+import { APPROVAL_TTL_SECONDS, describeApproval } from "../approvals.ts";
+import type { Env } from "../env.ts";
+import type { ActorStatePort } from "../platform/ports.ts";
+import { emit } from "../events.ts";
+import type { ChatMessage, ToolCall } from "../models/port.ts";
+import { ModelRouter, type PinnedModel, type RoutedResult } from "../models/router.ts";
+import { OWNER_TENANT } from "../tenancy.ts";
+import { BudgetExhausted, SubrequestBudget } from "./budget.ts";
+import { DELTA_FLUSH_MS, HISTORY_LIMIT, STALE_RUN_MS } from "./limits.ts";
+import { runAgentLoop, type LoopEvent } from "./loop.ts";
+import type { Accepted, AgentRuntimePort, AgentStatus, ChatInput, ResumeInput } from "./port.ts";
+import { projectMemories } from "../tools/workspace.ts";
+import type { ToolContext } from "../tools/port.ts";
+import { toolsByName } from "../tools/registry.ts";
 
-export type { ChatInput, ResumeInput } from "./runtime/port.ts";
+export type { ChatInput, ResumeInput } from "./port.ts";
 
 
 interface MessageRow {
@@ -139,15 +139,17 @@ function reviewHasPassingEvidence(
 }
 
 /**
- * One Durable Object per chat thread (idFromName("thread:<id>")), implementing AgentRuntimePort.
- * It keeps the thread's conversation in its own SQLite and runs the loop in stages: every stage is an alarm with
+ * The runtime of one chat thread, implementing AgentRuntimePort. On Cloudflare a Durable Object per thread hosts it
+ * (cloudflare/agent-object.ts); it only needs ActorStatePort and Env (ADR 0040). It keeps the thread's conversation in its own SQLite and runs the loop in stages: every stage is an alarm with
  * a fresh subrequest budget (Workers Free: 50 external calls per invocation). chat() and
  * resume() only queue work; results reach the portal as events through the live hub.
  */
-export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort {
-  constructor(ctx: DurableObjectState, env: Env) {
-    super(ctx, env);
-    ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS messages (
+export class ThreadRuntime implements AgentRuntimePort {
+  constructor(
+    private readonly state: ActorStatePort,
+    private readonly env: Env,
+  ) {
+    state.sql.exec(`CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       role TEXT NOT NULL,
       content TEXT,
@@ -156,8 +158,8 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       ts INTEGER NOT NULL
     )`);
     // Added with native provider adapters (ADR 0033); older threads get the column on first start.
-    const columns = ctx.storage.sql.exec<{ name: string }>("SELECT name FROM pragma_table_info('messages')").toArray();
-    if (!columns.some((column) => column.name === "raw")) ctx.storage.sql.exec("ALTER TABLE messages ADD COLUMN raw TEXT");
+    const columns = state.sql.exec<{ name: string }>("SELECT name FROM pragma_table_info('messages')").toArray();
+    if (!columns.some((column) => column.name === "raw")) state.sql.exec("ALTER TABLE messages ADD COLUMN raw TEXT");
   }
 
   async chat(input: ChatInput): Promise<Accepted> {
@@ -182,9 +184,9 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
   }
 
   async stop(): Promise<void> {
-    const run = await this.ctx.storage.get<RunState>(RUN);
-    await this.ctx.storage.delete([RUN, INBOX]);
-    await this.ctx.storage.deleteAlarm();
+    const run = await this.state.get<RunState>(RUN);
+    await this.state.delete([RUN, INBOX]);
+    await this.state.deleteAlarm();
     if (run) {
       if (run.runId) await finishRun(this.env, run.tenantId ?? OWNER_TENANT, run.runId, "stopped", { steps: run.steps, stages: run.stages, outcome: "gestoppt" });
       await emit(this.env, { tenantId: run.tenantId, threadId: run.threadId, agentId: run.agentId, projectId: run.projectId, taskId: run.taskId, type: "stopped", data: { steps: run.steps } });
@@ -194,7 +196,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
 
   /** True when content this thread has seen must stay with providers that do not evaluate it. */
   private async privateRestricted(tenantId: string): Promise<boolean> {
-    const seen = await this.ctx.storage.get<PrivateMark>(PRIVATE_THREAD);
+    const seen = await this.state.get<PrivateMark>(PRIVATE_THREAD);
     if (seen === true) return true;
     return Array.isArray(seen) ? anyStrict(this.env, tenantId, seen) : false;
   }
@@ -211,28 +213,28 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
 
   async reset(): Promise<void> {
     await this.stop();
-    this.ctx.storage.sql.exec("DELETE FROM messages");
-    await this.ctx.storage.delete([PRIVATE_THREAD, SUMMARY]);
+    this.state.sql.exec("DELETE FROM messages");
+    await this.state.delete([PRIVATE_THREAD, SUMMARY]);
   }
 
   /** Messages wait in the inbox until a stage boundary, so tool-call sequences stay intact. */
   private async enqueue(tenantId: string, threadId: string, agentId: string, projectId: string, text: string, taskId?: string): Promise<Accepted> {
-    const inbox = (await this.ctx.storage.get<string[]>(INBOX)) ?? [];
+    const inbox = (await this.state.get<string[]>(INBOX)) ?? [];
     inbox.push(text);
-    await this.ctx.storage.put(INBOX, inbox);
+    await this.state.put(INBOX, inbox);
     if (await this.activeRun()) {
       return { accepted: true, busy: true, message: "Ich arbeite gerade; dein Hinweis fließt in den nächsten Schritt ein." };
     }
     const now = Date.now();
-    await this.ctx.storage.put<RunState>(RUN, await this.openRun({ tenantId, threadId, agentId, projectId, taskId, steps: 0, stages: 0, startedAt: now, touchedAt: now }));
-    await this.ctx.storage.setAlarm(now);
+    await this.state.put<RunState>(RUN, await this.openRun({ tenantId, threadId, agentId, projectId, taskId, steps: 0, stages: 0, startedAt: now, touchedAt: now }));
+    await this.state.setAlarm(now);
     return { accepted: true };
   }
 
   private async activeRun(): Promise<RunState | undefined> {
-    const run = await this.ctx.storage.get<RunState>(RUN);
+    const run = await this.state.get<RunState>(RUN);
     if (run && Date.now() - run.touchedAt > STALE_RUN_MS) {
-      await this.ctx.storage.delete(RUN);
+      await this.state.delete(RUN);
       if (run.runId) await finishRun(this.env, run.tenantId ?? OWNER_TENANT, run.runId, "failed", { steps: run.steps, stages: run.stages, outcome: "abgelaufen" });
       if (run.taskId) await this.finishTaskRun(run, "failed", "Agentenlauf ist abgelaufen. Bitte Aufgabe prüfen und erneut starten.");
       return undefined;
@@ -240,8 +242,8 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     return run;
   }
 
-  override async alarm(): Promise<void> {
-    const run = await this.ctx.storage.get<RunState>(RUN);
+  async alarm(): Promise<void> {
+    const run = await this.state.get<RunState>(RUN);
     if (!run) return;
     // A run stored before tenants existed belongs to the owner; one stored before the ledger gets its row now.
     run.tenantId ??= OWNER_TENANT;
@@ -249,32 +251,32 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
     const base = { tenantId: run.tenantId, threadId: run.threadId, agentId: run.agentId, projectId: run.projectId, taskId: run.taskId };
     try {
       run.historyFrom ??= this.nextMessageId();
-      const inbox = (await this.ctx.storage.get<string[]>(INBOX)) ?? [];
+      const inbox = (await this.state.get<string[]>(INBOX)) ?? [];
       if (inbox.length) {
         for (const text of inbox) this.append({ role: "user", content: text });
-        await this.ctx.storage.delete(INBOX);
+        await this.state.delete(INBOX);
       }
 
       const outcome = await this.stage(run);
       if (outcome.kind === "paused") {
-        await this.ctx.storage.put<RunState>(RUN, { ...run, stages: run.stages + 1, touchedAt: Date.now() });
+        await this.state.put<RunState>(RUN, { ...run, stages: run.stages + 1, touchedAt: Date.now() });
         await emit(this.env, { ...base, type: "stage_paused", data: { steps: run.steps, stage: run.stages + 1 } });
-        await this.ctx.storage.setAlarm(Date.now() + 200);
+        await this.state.setAlarm(Date.now() + 200);
         return;
       }
       if (run.runId) await finishRun(this.env, run.tenantId, run.runId, outcome.kind === "done" ? "done" : "failed", { steps: run.steps, stages: run.stages + 1, outcome: outcome.reply });
-      const hasQueuedMessage = ((await this.ctx.storage.get<string[]>(INBOX)) ?? []).length > 0;
+      const hasQueuedMessage = ((await this.state.get<string[]>(INBOX)) ?? []).length > 0;
       if (run.taskId && !hasQueuedMessage) await this.finishTaskRun(run, outcome.kind === "done" ? "done" : "failed", outcome.reply);
-      await this.ctx.storage.delete(RUN);
+      await this.state.delete(RUN);
       // Something arrived while the run was finishing: start the next one right away.
-      if (((await this.ctx.storage.get<string[]>(INBOX)) ?? []).length) {
+      if (((await this.state.get<string[]>(INBOX)) ?? []).length) {
         const now = Date.now();
-        await this.ctx.storage.put<RunState>(RUN, await this.openRun({ ...base, steps: 0, stages: 0, startedAt: now, touchedAt: now }));
-        await this.ctx.storage.setAlarm(now);
+        await this.state.put<RunState>(RUN, await this.openRun({ ...base, steps: 0, stages: 0, startedAt: now, touchedAt: now }));
+        await this.state.setAlarm(now);
       }
     } catch (error) {
       // No rethrow: a retried alarm would repeat side effects. Report and end the run.
-      await this.ctx.storage.delete(RUN);
+      await this.state.delete(RUN);
       const message = error instanceof Error ? error.message : String(error);
       if (run.runId) await finishRun(this.env, run.tenantId, run.runId, "failed", { steps: run.steps, stages: run.stages + 1, outcome: message });
       if (run.taskId) await this.finishTaskRun(run, "failed", message).catch(() => undefined);
@@ -331,16 +333,16 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       repo,
       budget,
       markPrivate: async (repos) => {
-        const seen = await this.ctx.storage.get<PrivateMark>(PRIVATE_THREAD);
+        const seen = await this.state.get<PrivateMark>(PRIVATE_THREAD);
         const known = Array.isArray(seen) ? seen : [];
         const next = [...new Set([...known, ...repos.map((repo) => repo.toLowerCase())])];
         // A legacy mark (true) came without names and stays strict.
-        await this.ctx.storage.put(PRIVATE_THREAD, seen === true ? true : next);
+        await this.state.put(PRIVATE_THREAD, seen === true ? true : next);
         if (!tainted) tainted = seen === true || (await anyStrict(this.env, tenantId, next));
       },
     };
     // Every stage may run in a fresh object instance: the summary comes from storage, not from memory.
-    this.summaryCache = (await this.ctx.storage.get<ThreadSummary>(SUMMARY)) ?? null;
+    this.summaryCache = (await this.state.get<ThreadSummary>(SUMMARY)) ?? null;
     this.workingMemory = (await readWorkingMemory(this.env, tenantId, agentId, projectId))?.content ?? null;
     if (run.stages === 0 && run.historyFrom !== undefined) {
       await this.summarize({ tenantId, agentId, projectId, threadId, taskId: run.taskId, runId: run.runId, runFrom: run.historyFrom, router, budget, strict: privateContent() });
@@ -565,7 +567,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
   }
 
   private append(message: ChatMessage): void {
-    this.ctx.storage.sql.exec(
+    this.state.sql.exec(
       "INSERT INTO messages (role, content, tool_calls, tool_call_id, raw, ts) VALUES (?, ?, ?, ?, ?, ?)",
       message.role,
       message.content,
@@ -577,14 +579,14 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
   }
 
   private nextMessageId(): number {
-    const row = this.ctx.storage.sql.exec<{ next: number }>("SELECT COALESCE(MAX(id), 0) + 1 AS next FROM messages").one();
+    const row = this.state.sql.exec<{ next: number }>("SELECT COALESCE(MAX(id), 0) + 1 AS next FROM messages").one();
     return Number(row.next);
   }
 
   /** The thread as the model sees it in this run (runtime/context.ts); runs from before the builder keep the old window. */
   private context(runFrom: number | undefined): ChatMessage[] {
     if (runFrom === undefined) return this.recent(HISTORY_LIMIT);
-    const rows = this.ctx.storage.sql
+    const rows = this.state.sql
       .exec<MessageRow & { id: number }>(
         "SELECT id, role, content, tool_calls, tool_call_id, raw FROM messages WHERE id >= ? OR id IN (SELECT id FROM messages WHERE id < ? ORDER BY id DESC LIMIT ?) ORDER BY id",
         runFrom,
@@ -603,8 +605,8 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
    * enough has piled up. A failure keeps the old summary; the run goes on either way.
    */
   private async summarize(input: { tenantId: string; agentId: string; projectId: string; threadId: string; taskId?: string; runId?: string; runFrom: number; router: ModelRouter; budget: SubrequestBudget; strict: boolean }): Promise<void> {
-    this.summaryCache = (await this.ctx.storage.get<ThreadSummary>(SUMMARY)) ?? null;
-    const rows = this.ctx.storage.sql
+    this.summaryCache = (await this.state.get<ThreadSummary>(SUMMARY)) ?? null;
+    const rows = this.state.sql
       .exec<MessageRow & { id: number }>("SELECT id, role, content, tool_calls, tool_call_id, raw FROM messages WHERE id > ? AND id < ? ORDER BY id", this.summaryCache?.upTo ?? 0, input.runFrom)
       .toArray()
       .map((row) => ({ id: Number(row.id), ...toMessage(row) }));
@@ -616,7 +618,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
       const text = result.message.content?.trim();
       if (text) {
         this.summaryCache = { text: text.slice(0, 4_000), upTo: pending.at(-1)?.id ?? this.summaryCache?.upTo ?? 0 };
-        await this.ctx.storage.put(SUMMARY, this.summaryCache);
+        await this.state.put(SUMMARY, this.summaryCache);
       }
       await recordModelCall(this.env, {
         tenantId: input.tenantId, runId: input.runId, agentId: input.agentId, projectId: input.projectId, threadId: input.threadId, taskId: input.taskId,
@@ -636,7 +638,7 @@ export class AgentRuntime extends DurableObject<Env> implements AgentRuntimePort
   }
 
   private recent(limit: number): ChatMessage[] {
-    const rows = this.ctx.storage.sql
+    const rows = this.state.sql
       .exec<MessageRow>("SELECT role, content, tool_calls, tool_call_id, raw FROM messages ORDER BY id DESC LIMIT ?", limit)
       .toArray()
       .reverse();
@@ -694,7 +696,7 @@ class DeltaBuffer {
       const message = JSON.stringify({ type: "delta", agentId: this.agentId, threadId: this.threadId, step: this.step, text: this.text });
       this.text = "";
       this.sending = this.sending
-        .then(() => this.env.HUB.get(this.env.HUB.idFromName("main")).broadcast(message))
+        .then(() => this.env.HUB.get("main").broadcast(message))
         .catch((error) => console.error("delta broadcast failed", error));
     }
     await this.sending;

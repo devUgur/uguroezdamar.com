@@ -4,19 +4,21 @@ Agenten-Backend des Admin-Portals: Threads, Agentenschleife, Modelle, Werkzeuge,
 
 | Pfad | Zweck |
 | --- | --- |
-| `src/index.ts` | HTTP-API (`/api/*`), Threads, Freigabe-Entscheidungen |
+| `src/platform/ports.ts` | Die Ports des Kerns (ADR 0040): `SqlPort`, `KeyValuePort`, `BlobPort`, `ActorStatePort`, `ActorDirectory`, `VectorIndexPort`, `InferencePort`. `src/env.ts` bündelt sie mit Konfiguration und Secrets. |
+| `src/cloudflare/` | Der einzige Ort mit Cloudflare-Code: Worker-Einstieg (`worker.ts`), Ports aus den Bindings (`platform.ts`), Durable-Object-Hüllen für Gespräche, Büro und Wissen, `LiveHub`, Workstation-Container und Gateways. Ein Wächter (`pnpm guard`) verbietet Cloudflare-Typen außerhalb. |
+| `src/index.ts` | HTTP-API (`/api/*`), Threads, Freigabe-Entscheidungen; auf jedem Host derselbe Fetch-Handler |
 | `src/auth.ts` | Service-Token des Portals, fail closed |
-| `src/agent.ts` | `AgentRuntime`: ein Durable Object pro Thread, führt Aufträge in Alarm-Etappen aus |
+| `src/runtime/thread-runtime.ts` | `ThreadRuntime`: ein Gespräch, führt Aufträge in Etappen aus; Zustand und Wecker über `ActorStatePort` (auf Cloudflare ein Durable Object je Thread) |
 | `src/runtime/` | `AgentRuntimePort`, die Schleife ohne Cloudflare-APIs (`loop.ts`), Subrequest-Budget pro Etappe, Context Builder (`context.ts`): laufender Lauf vollständig, davor Zusammenfassung plus zehn Nachrichten |
 | `src/approvals.ts` | Text, Risiko und Ablauf der Freigaben; geschützte Pfade |
-| `src/hub.ts` | `LiveHub`: verteilt Events und gestreamten Text per WebSocket, Einmal-Tickets |
+| `src/cloudflare/hub-object.ts` | `LiveHub`: verteilt Events und gestreamten Text per WebSocket, Einmal-Tickets |
 | `src/events.ts` | Event-Log in D1, Tagesbudget |
 | `src/models/` | `ModelPort`, Router mit Fallback, Modellwahl je Thread und je Rolle, Katalog aller Anbieter, Adapter (Anthropic über das SDK, OpenAI-kompatibel, Workers AI), verschlüsselte Schlüssel je Mandant ([ADR 0033](../../docs/architecture/decisions/0033-model-providers-and-tenant-keys.md)) |
 | `src/work/sprints.ts` | Sprints je Projekt; Aufgaben tragen `sprint_id` |
-| `src/knowledge/` | Wissensindex je Projekt (Doku und erledigte Aufgaben, hybride Suche über FTS5 und Vectorize), Indexer als Durable Object, Arbeitsgedächtnis je Mitarbeiter ([ADR 0037](../../docs/architecture/decisions/0037-agent-memory-and-knowledge.md)) |
+| `src/knowledge/` | Wissensindex je Projekt (Doku und erledigte Aufgaben, hybride Suche über FTS5 und Vectorize), Indexer über `ActorStatePort`, Arbeitsgedächtnis je Mitarbeiter ([ADR 0037](../../docs/architecture/decisions/0037-agent-memory-and-knowledge.md)) |
 | `src/usage/` | Verbrauchsprotokoll: `runs`, `model_calls`, `tool_calls` (Migration `0017`), Auswertung, Lauf-Trace, CSV; das Tagesbudget zählt daraus |
 | `src/tools/` | `ToolPort`, GitHub-Werkzeuge, Projekt- und Notiz-Werkzeuge, `sandbox_run` und `preview_deploy` (`sandbox.ts`), `code_verify` (`verify.ts`: Workstation oder CI des Repositories, ADR 0038), `tasks_list` und `task_create` (`work.ts`: Tafel lesen, Backlog-Aufgaben anlegen); PR-Diff lesen ist nur dem read-only QA-Reviewer freigegeben |
-| `src/workstation/` | Workstations ([ADR 0036](../../docs/architecture/decisions/0036-isolated-workstations-and-previews.md)): Durable Object mit Container je Lauf, Gateways für `github.com`, `registry.npmjs.org` und `api.cloudflare.com` (Zugangsdaten nur im Worker), Befehls-Allowlist, Preview-Regeln |
+| `src/workstation/` | Workstations ([ADR 0036](../../docs/architecture/decisions/0036-isolated-workstations-and-previews.md)): `WorkstationPort`, Befehle, Previews; der Container je Lauf und die Gateways für `github.com`, `registry.npmjs.org` und `api.cloudflare.com` (Zugangsdaten nur im Worker), Befehls-Allowlist, Preview-Regeln; Container und Gateways in `src/cloudflare/` |
 | `workstation/Dockerfile` | Image der Workstations (Node, pnpm, git); wird erst gebaut, wenn `wrangler.jsonc` es nennt |
 | `src/agents/registry.ts` | die Agenten: Chef, Product Owner, Tech Lead, Entwickler, QA-Reviewer, DevOps; Prompt, Modell-Alias, Werkzeuge (Schreibtisch und Budget: Migrationen 0002, 0008, 0023) |
 | `src/agents/describe.ts` | Konfigurationsansicht eines Agenten für das Portal |

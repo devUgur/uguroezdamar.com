@@ -1,5 +1,5 @@
-import { DurableObject } from "cloudflare:workers";
 import type { Env } from "../env.ts";
+import type { ActorStatePort } from "../platform/ports.ts";
 import { emit } from "../events.ts";
 import { githubToken } from "../github/credentials.ts";
 import { chunkMarkdown, isKnowledgeFile } from "./chunk.ts";
@@ -32,22 +32,28 @@ export interface IndexJob {
 
 const JOB = "job";
 
-export class KnowledgeIndexer extends DurableObject<Env> {
+/** Indexes one project in alarm stages. Hosted by a Durable Object on Cloudflare (cloudflare/indexer-object.ts). */
+export class KnowledgeIndexerCore {
+  constructor(
+    private readonly state: ActorStatePort,
+    private readonly env: Env,
+  ) {}
+
   async start(input: { tenantId: string; projectId: string; repo: string; ref: string }): Promise<IndexJob> {
-    const current = await this.ctx.storage.get<IndexJob>(JOB);
+    const current = await this.state.get<IndexJob>(JOB);
     if (current && (current.status === "queued" || current.status === "running") && Date.now() - current.startedAt < 15 * 60_000) return current;
     const job: IndexJob = { ...input, status: "queued", queue: [], remove: [], indexed: 0, skipped: 0, vectorsMissing: false, startedAt: Date.now() };
-    await this.ctx.storage.put(JOB, job);
-    await this.ctx.storage.setAlarm(Date.now());
+    await this.state.put(JOB, job);
+    await this.state.setAlarm(Date.now());
     return job;
   }
 
   async status(): Promise<IndexJob | null> {
-    return (await this.ctx.storage.get<IndexJob>(JOB)) ?? null;
+    return (await this.state.get<IndexJob>(JOB)) ?? null;
   }
 
-  override async alarm(): Promise<void> {
-    const job = await this.ctx.storage.get<IndexJob>(JOB);
+  async alarm(): Promise<void> {
+    const job = await this.state.get<IndexJob>(JOB);
     if (!job || job.status === "done" || job.status === "failed") return;
     try {
       if (job.status === "queued") await this.plan(job);
@@ -60,8 +66,8 @@ export class KnowledgeIndexer extends DurableObject<Env> {
         if (!result.embedded && chunks.length) job.vectorsMissing = true;
       }
       if (job.queue.length) {
-        await this.ctx.storage.put(JOB, job);
-        await this.ctx.storage.setAlarm(Date.now() + 100);
+        await this.state.put(JOB, job);
+        await this.state.setAlarm(Date.now() + 100);
         return;
       }
       for (const source of job.remove) await removeSource(this.env, job.tenantId, job.projectId, source);
@@ -75,13 +81,13 @@ export class KnowledgeIndexer extends DurableObject<Env> {
       }
       job.status = "done";
       job.finishedAt = Date.now();
-      await this.ctx.storage.put(JOB, job);
+      await this.state.put(JOB, job);
       await emit(this.env, { tenantId: job.tenantId, projectId: job.projectId, type: "knowledge_indexed", data: { indexed: job.indexed, skipped: job.skipped, removed: job.remove.length, vectorsMissing: job.vectorsMissing } });
     } catch (error) {
       job.status = "failed";
       job.error = error instanceof Error ? error.message.slice(0, 500) : String(error);
       job.finishedAt = Date.now();
-      await this.ctx.storage.put(JOB, job);
+      await this.state.put(JOB, job);
       await emit(this.env, { tenantId: job.tenantId, projectId: job.projectId, type: "knowledge_indexed", data: { error: job.error } }).catch(() => undefined);
     }
   }

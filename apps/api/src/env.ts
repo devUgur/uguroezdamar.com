@@ -1,23 +1,39 @@
-import type { AgentRuntime } from "./agent.ts";
-import type { LiveHub } from "./hub.ts";
-import type { KnowledgeIndexer } from "./knowledge/indexer.ts";
-import type { OfficePresence } from "./office/presence.ts";
-import type { Workstation } from "./workstation/workstation.ts";
+import type { KnowledgeIndexerCore } from "./knowledge/indexer.ts";
+import type { OfficePresenceCore } from "./office/presence.ts";
+import type { ActorDirectory, BlobPort, InferencePort, KeyValuePort, SqlPort, VectorIndexPort } from "./platform/ports.ts";
+import type { AgentRuntimePort } from "./runtime/port.ts";
+import type { WorkstationPort } from "./workstation/port.ts";
 
-/** Bindings from wrangler.jsonc plus secrets set by the deploy workflow. */
+/** Async view of an actor: on Cloudflare every call to a Durable Object is a remote call. */
+type Remote<T> = { [K in keyof T]: T[K] extends (...args: infer A) => infer R ? (...args: A) => Promise<Awaited<R>> : never };
+
+/** The live hub: browsers connect over WebSocket with a one-time ticket; the core broadcasts events. */
+export interface LiveHubPort {
+  fetch(request: Request): Promise<Response>;
+  issueTicket(): Promise<string>;
+  broadcast(message: string): Promise<number>;
+}
+
+export type OfficePresencePort = Remote<Pick<OfficePresenceCore, "configure" | "setViewers" | "recordEvent">>;
+export type KnowledgeIndexerPort = Remote<Pick<KnowledgeIndexerCore, "start" | "status">>;
+
+/**
+ * Everything the agent core gets from its host (ADR 0040): ports for data, actors and models, plus configuration
+ * and secrets. Cloudflare builds it from its bindings in cloudflare/platform.ts; the core never sees a binding type.
+ */
 export interface Env {
-  DB: D1Database;
-  CONFIG: KVNamespace;
-  FILES: R2Bucket;
-  AI: Ai;
-  AGENTS: DurableObjectNamespace<AgentRuntime>;
-  HUB: DurableObjectNamespace<LiveHub>;
-  OFFICE: DurableObjectNamespace<OfficePresence>;
+  DB: SqlPort;
+  CONFIG: KeyValuePort;
+  FILES: BlobPort;
+  AI: InferencePort;
+  AGENTS: ActorDirectory<AgentRuntimePort>;
+  HUB: ActorDirectory<LiveHubPort>;
+  OFFICE: ActorDirectory<OfficePresencePort>;
   /** Knowledge index of the projects (plan stage 3): vectors from @cf/baai/bge-m3, 1024 dimensions, cosine. */
-  KNOWLEDGE: VectorizeIndex;
-  INDEXER: DurableObjectNamespace<KnowledgeIndexer>;
-  /** Containers of the agents (ADR 0036). Absent until the owner activates them in wrangler.jsonc. */
-  WORKSTATION?: DurableObjectNamespace<Workstation>;
+  KNOWLEDGE: VectorIndexPort;
+  INDEXER: ActorDirectory<KnowledgeIndexerPort>;
+  /** Isolated execution of the agents (ADR 0036). Absent until a host provides it (Cloudflare: Workers Paid). */
+  WORKSTATION?: ActorDirectory<WorkstationPort>;
 
   DEFAULT_REPO: string;
   /** GitHub accounts whose repositories may become projects, comma-separated. Organizations stay out until decided. */

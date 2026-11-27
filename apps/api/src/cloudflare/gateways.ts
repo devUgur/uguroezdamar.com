@@ -1,5 +1,6 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 import type { Env } from "../env.ts";
+import { platformFrom, type CloudflareBindings } from "./platform.ts";
 import { githubToken } from "../github/credentials.ts";
 
 /**
@@ -63,20 +64,20 @@ export async function previewGateway(request: Request, env: Env, props: GatewayP
   return fetch(new Request(request, { headers }));
 }
 
-export class GitGateway extends WorkerEntrypoint<Env, GatewayProps> {
+export class GitGateway extends WorkerEntrypoint<CloudflareBindings, GatewayProps> {
   fetch(request: Request): Promise<Response> {
-    return gitGateway(request, this.env, this.ctx.props);
+    return gitGateway(request, platformFrom(this.env), this.ctx.props);
   }
 }
 
-export class RegistryGateway extends WorkerEntrypoint<Env, GatewayProps> {
+export class RegistryGateway extends WorkerEntrypoint<CloudflareBindings, GatewayProps> {
   fetch(request: Request): Promise<Response> {
     return registryGateway(request);
   }
 }
 
-export class PreviewGateway extends WorkerEntrypoint<Env, GatewayProps> {
+export class PreviewGateway extends WorkerEntrypoint<CloudflareBindings, GatewayProps> {
   fetch(request: Request): Promise<Response> {
-    return previewGateway(request, this.env, this.ctx.props);
+    return previewGateway(request, platformFrom(this.env), this.ctx.props);
   }
 }

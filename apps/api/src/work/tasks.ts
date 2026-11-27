@@ -349,7 +349,7 @@ async function startTaskReview(env: Env, caller: Caller, task: TaskRow): Promise
   try {
     if (claimedTask) await publish(env, caller, claimedTask, "task_updated");
     await emit(env, { tenantId: caller.tenantId, agentId: reviewerId, threadId, taskId: task.id, projectId: task.project_id ?? undefined, type: "task_review_started", data: { reviewId, by: caller.actor } });
-    const accepted = await env.AGENTS.get(env.AGENTS.idFromName(threadObjectName(caller.tenantId, threadId))).chat({
+    const accepted = await env.AGENTS.get(threadObjectName(caller.tenantId, threadId)).chat({
       tenantId: caller.tenantId,
       threadId,
       agentId: reviewerId,
@@ -410,7 +410,7 @@ async function startTaskRun(env: Env, caller: Caller, task: TaskRow): Promise<Re
   if (assigned) await publish(env, caller, assigned, "task_updated");
 
   try {
-    const accepted = await env.AGENTS.get(env.AGENTS.idFromName(threadObjectName(caller.tenantId, threadId))).chat({
+    const accepted = await env.AGENTS.get(threadObjectName(caller.tenantId, threadId)).chat({
       tenantId: caller.tenantId,
       threadId,
       agentId,
