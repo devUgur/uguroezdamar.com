@@ -1,0 +1,13 @@
+# Build context of deployments/docker (ADR 0045, R4): sources only, never local data or secrets.
+**/node_modules
+**/.next
+**/.open-next
+**/.wrangler
+**/.turbo
+**/dist
+**/dist-dev
+.git
+.claude
+apps/node-host/.data
+coverage
+*.log

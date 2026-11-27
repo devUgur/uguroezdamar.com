@@ -29,7 +29,8 @@ export function isAgentsApiId(value: string): boolean {
 
 /** Public origin of the API; the browser opens the live WebSocket there with a one-time ticket. */
 export function agentsApiOrigin(): string | null {
-  return process.env.API_URL?.replace(/\/+$/, "") || null;
+  // In Docker the server reaches the API by service name, the browser by localhost (deployments/docker).
+  return (process.env.API_PUBLIC_URL || process.env.API_URL)?.replace(/\/+$/, "") || null;
 }
 
 export async function agentsApi<T>(

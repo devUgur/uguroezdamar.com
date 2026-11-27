@@ -1,0 +1,91 @@
+# The platform without Cloudflare or Vercel (ADR 0045, R4): Postgres, agent API, portal and office.
+#
+# Secrets never live in a file of this repository. They come from the environment of the shell that runs compose:
+#   infisical run --env=dev -- docker compose -f deployments/docker/compose.yaml up --build
+# (or set API_SERVICE_TOKEN and ADMIN_API_KEY yourself, plus the model keys you use, e.g. DEEPSEEK_API_KEY).
+# Addresses: portal http://localhost:3101, office http://localhost:3102, API http://localhost:3103; all bound to this
+# machine only. First admin account: see docs/operations/self-hosting.md.
+name: uguroezdamar
+
+x-model-keys: &model-keys
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: portal
+      # Reachable only inside this compose network and from 127.0.0.1; no password to keep anywhere.
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+      - ./init-databases.sql:/docker-entrypoint-initdb.d/10-databases.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 2s
+      retries: 30
+
+  migrate:
+    build: { context: ../.., dockerfile: deployments/docker/Dockerfile, target: tools }
+    environment:
+      DATABASE_URL_DIRECT: postgres://postgres@postgres:5432/portal
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    build: { context: ../.., dockerfile: deployments/docker/Dockerfile, target: api }
+    environment:
+      <<: *model-keys
+      NODE_HOST_MODE: cloud
+      NODE_HOST_ENV: docker
+      NODE_HOST_DATABASE_URL: postgres://postgres@postgres:5432/agents
+      API_SERVICE_TOKEN: ${API_SERVICE_TOKEN:?API_SERVICE_TOKEN fehlt (mindestens 32 Zeichen)}
+      PROVIDER_KEYS_SECRET: ${PROVIDER_KEYS_SECRET:-}
+    ports:
+      - "127.0.0.1:3103:3103"
+    volumes:
+      - api-data:/data
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  portal:
+    build: { context: ../.., dockerfile: deployments/docker/Dockerfile, target: portal }
+    environment:
+      DATABASE_URL: postgres://postgres@postgres:5432/portal
+      APP_URL: http://localhost:3101
+      PORTAL_URL: http://localhost:3101
+      OFFICE_URL: http://localhost:3102
+      API_URL: http://api:3103
+      API_PUBLIC_URL: http://localhost:3103
+      API_SERVICE_TOKEN: ${API_SERVICE_TOKEN:?API_SERVICE_TOKEN fehlt}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:?ADMIN_API_KEY fehlt}
+    ports:
+      - "127.0.0.1:3101:3101"
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      api: { condition: service_started }
+
+  office:
+    build: { context: ../.., dockerfile: deployments/docker/Dockerfile, target: office }
+    environment:
+      PORTAL_URL: http://localhost:3101
+      OFFICE_URL: http://localhost:3102
+      API_URL: http://api:3103
+      API_PUBLIC_URL: http://localhost:3103
+      API_SERVICE_TOKEN: ${API_SERVICE_TOKEN:?API_SERVICE_TOKEN fehlt}
+    ports:
+      - "127.0.0.1:3102:3102"
+    depends_on:
+      api: { condition: service_started }
+
+volumes:
+  postgres:
+  api-data:

@@ -16,6 +16,7 @@
     "VERCEL_BYPASS_PORTAL",
     "API_URL",
     "API_SERVICE_TOKEN",
+    "API_PUBLIC_URL",
     "OFFICE_URL",
     "PORTAL_URL"
   ],

@@ -188,7 +188,7 @@
 | **R1 Lokaler Node-Host** (erledigt) | `apps/node-host`: Node 24, derselbe Fetch-Handler, `ActorDirectory` im Prozess für Threads, Hub und Office, Scheduler-Schleife statt Alarmen. `pnpm dev:office` startet ihn mit und setzt `API_URL` auf `http://localhost:3103`. Ein Integrationstest führt einen Agenten-Chat mit gesperrtem Cloudflare-Zugriff aus. | Agenten lokal ohne Cloudflare |
 | **R2 Postgres lokal** (erledigt) | `SqlPort` auf PostgreSQL (Docker), Migrationen der API für Postgres, Übersetzung der SQLite-Stellen (`unixepoch()`, `INSERT OR IGNORE`, FTS5). SQLite bleibt Testhilfe. | Eine Datenbanktechnologie überall |
 | **R3 ThreadStore und Scheduler** (erledigt) | `ThreadStorePort` (asynchron: Nachrichten, Laufzustand, Eingang, Zusammenfassung, Privat-Markierung) und `SchedulerPort` mit Aufträgen und Lease (`scheduled_jobs`). `ThreadRuntime` nutzt nur noch diese beiden Ports. Bestehende Verläufe aus Durable Objects werden beim ersten Zugriff übernommen. | Agentenläufe hostunabhängig |
-| **R4 Docker Compose** | `deployments/docker/`: Node-Host, Portal, Office, Postgres; ein Befehl startet alles. Die Anbieterwahl (Betriebsart local, cloud-dev, cloud) wird an einer Stelle beim Start geprüft. | Selbsthosting-Grundlage (alte P4) |
+| **R4 Docker Compose** (erledigt) | `deployments/docker/`: Node-Host, Portal, Office, Postgres; ein Befehl startet alles. Die Anbieterwahl (Betriebsart local, cloud-dev, cloud) wird an einer Stelle beim Start geprüft. | Selbsthosting-Grundlage (alte P4) |
 | **R5 Cloud-Host** | Dasselbe Image auf Northflank (Test) und Railway Hobby, gemeinsames Neon Postgres. Portal und Office schalten `API_URL` nach Gesundheitsprüfung um, Rückfall auf SSE oder Polling ab der letzten Ereignis-ID. | Zweite Cloud-Runtime, Node primär |
 | **R6 Cloudflare-Adapter und Failover** | Der Worker nutzt dieselbe Datenbank und denselben Scheduler, Gespräche laufen nicht mehr in Durable Objects. Werkzeuge mit Außenwirkung bekommen Idempotenzschlüssel. Probe: Cloudflare mitten im Lauf abschalten, Node übernimmt, der Host-Wechsel steht im Ereignisprotokoll. | Kein Single Point of Failure |
 
@@ -236,6 +236,14 @@
   - Der Host fragt jede Sekunde nach und sofort, wenn ein Gespräch jetzt fällig wird.
 - **Tests:** `tests/thread-scheduler.test.ts` prüft Trennung je Gespräch und Mandant, Übernahme nach abgelaufener Lease und Neuplanung, auf SQLite und Postgres.
 - **Offen bis R6:** Eine Stufe, die beim Absturz halb fertig war, läuft nach der Übernahme ganz neu. Werkzeuge mit Außenwirkung brauchen dafür noch Idempotenzschlüssel.
+
+**Stand R4 (27.11.2026):**
+- **Images:** `deployments/docker/Dockerfile` baut aus einem Stand vier Images: `api` (Node-Host), `portal`, `office` (beide `next start`) und `tools` (Portal-Migrationen).
+- **Compose:** `deployments/docker/compose.yaml` startet Postgres 17 mit den Datenbanken `portal` und `agents`, wendet die Portal-Migrationen an und startet API, Portal und Office. Alles ist nur auf 127.0.0.1 erreichbar.
+- **Secrets:** Sie kommen aus der Shell, etwa über `infisical run --env=dev`, nie aus einer Datei.
+- **Betriebsart:** Sie wird an einer Stelle beim Start geprüft (`apps/node-host/src/mode.ts`): `local` (PGlite, 127.0.0.1), `cloud-dev` und `cloud` (Postgres Pflicht, langer Service-Token).
+- **Live-Verbindung:** Der Browser erreicht die API über `API_PUBLIC_URL`, wenn sie sich von der Serveradresse unterscheidet.
+- **Probelauf am 27.11.2026:** Alle vier Images bauten; die API legte ihr Schema in Postgres an und nahm Gespräche an. Portal und Office antworteten, das Office leitete zur Anmeldung über das Portal weiter. Anleitung: [Selbst hosten mit Docker](../operations/self-hosting.md).
 
 **Bis R5 trägt:** die Verbrauchssenkung aus ADR 0025 (Nachträge 1 und 2) und, falls der Owner sie bucht, Workers Paid als Brücke (O-R4).
 
