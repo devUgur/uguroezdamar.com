@@ -8,6 +8,7 @@ import { APPROVAL_TTL_SECONDS, describeApproval } from "../approvals.ts";
 import type { Env } from "../env.ts";
 import type { ActorStatePort } from "../platform/ports.ts";
 import { decide, loadProjectPolicy, recordDecision } from "../policy/engine.ts";
+import { stepFinished } from "../workflow/engine.ts";
 import { emit } from "../events.ts";
 import type { ChatMessage, ToolCall } from "../models/port.ts";
 import { ModelRouter, type PinnedModel, type RoutedResult } from "../models/router.ts";
@@ -333,6 +334,7 @@ export class ThreadRuntime implements AgentRuntimePort {
       env: this.env,
       tenantId,
       agentId,
+      taskId: run.taskId,
       threadId,
       projectId,
       repo,
@@ -509,8 +511,12 @@ export class ThreadRuntime implements AgentRuntimePort {
       .bind(run.threadId).first<{ id: string }>();
     if (review) {
       await this.finishTaskReview(run, review.id, outcome, output);
+      // A QA step of the delivery workflow: the engine reads the verdict and moves on.
+      await stepFinished(this.env, { tenantId: run.tenantId ?? OWNER_TENANT, threadId: run.threadId, outcome, output });
       return;
     }
+    // A step of the delivery workflow: the engine decides the task's status and the next role (ADR 0040, P3).
+    if (await stepFinished(this.env, { tenantId: run.tenantId ?? OWNER_TENANT, threadId: run.threadId, outcome, output })) return;
     const status = outcome === "done" ? "review" : "blocked";
     const result = await this.env.DB.prepare(
       "/* tenant:parent */ UPDATE tasks SET status = ?, output = ?, updated_at = unixepoch() WHERE id = ? AND status = 'in_progress'",

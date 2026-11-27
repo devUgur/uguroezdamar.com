@@ -100,7 +100,7 @@ ${memories.length ? `\nNotizen zu diesem Projekt:\n${memories.map((memory) => `-
     name: "Product Owner",
     summary: "Macht aus Anliegen Aufgaben im Backlog: Ziel, Kontext und überprüfbare Abnahmekriterien.",
     modelAlias: "chef-smart",
-    tools: [...READ_TOOLS, "projects_list", "tasks_list", "task_create", "memory_update"],
+    tools: [...READ_TOOLS, "projects_list", "tasks_list", "task_create", "task_refine", "memory_update"],
     systemPrompt: ({ repo, projectName, memories }) =>
       role(
         [

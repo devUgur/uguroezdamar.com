@@ -61,4 +61,31 @@ const taskCreate: Tool = {
   },
 };
 
-export const workTools: Tool[] = [tasksList, taskCreate];
+const taskRefine: Tool = {
+  requiresProject: true,
+  spec: {
+    name: "task_refine",
+    description: "Schärft die Aufgabe dieses Laufs: Ziel und Kontext, überprüfbare Abnahmekriterien (eine je Zeile).",
+    parameters: {
+      type: "object",
+      properties: { description: { type: "string" }, acceptanceCriteria: { type: "string" } },
+      required: ["acceptanceCriteria"],
+    },
+  },
+  async run(args, context) {
+    if (!context.taskId) throw new ToolInputError("Dieser Lauf gehört zu keiner Aufgabe.");
+    const criteria = str(args, "acceptanceCriteria").trim();
+    const description = typeof args.description === "string" ? args.description.trim() : "";
+    if (criteria.length < 10 || criteria.length > 5_000) throw new ToolInputError("Abnahmekriterien: 10 bis 5.000 Zeichen.");
+    const updated = await context.env.DB.prepare(
+      `UPDATE tasks SET acceptance_criteria = ?, description = COALESCE(NULLIF(?, ''), description), updated_at = unixepoch()
+        WHERE tenant_id = ? AND id = ? AND project_id = ? AND status <> 'done'`,
+    )
+      .bind(criteria, description.slice(0, 10_000), context.tenantId, context.taskId, context.projectId)
+      .run();
+    if (!updated.meta.changes) throw new ToolInputError("Aufgabe nicht gefunden oder schon erledigt.");
+    return { taskId: context.taskId, acceptanceCriteria: criteria.split("\n").filter(Boolean).length };
+  },
+};
+
+export const workTools: Tool[] = [tasksList, taskCreate, taskRefine];

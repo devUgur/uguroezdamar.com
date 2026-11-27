@@ -10,6 +10,8 @@ export interface ToolContext {
   /** Chat thread of the run, when there is one; workstation runs record their events under it. */
   threadId?: string;
   projectId: string;
+  /** The task this run works on, when it is a task run (board start or workflow step). */
+  taskId?: string;
   /** owner/name of the repository the project lives in. */
   repo: string;
   /** External calls left in this invocation; take() before every fetch. */

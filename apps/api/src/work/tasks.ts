@@ -6,6 +6,7 @@ import { AGENTS } from "../agents/registry.ts";
 import { sprintBelongsTo } from "./sprints.ts";
 import { syncTaskIssue } from "../github/issues.ts";
 import { GithubAccessError } from "../github/app.ts";
+import { cancelDelivery, deliveryAccepted, listDeliveries, retryDelivery, startDelivery, WorkflowError } from "../workflow/engine.ts";
 
 export const TASK_STATUSES = ["backlog", "ready", "in_progress", "review", "qa", "blocked", "done"] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
@@ -22,7 +23,7 @@ export const TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
   done: ["backlog"],
 };
 
-interface TaskRow {
+export interface TaskRow {
   id: string;
   project_id: string | null;
   sprint_id?: string | null;
@@ -122,7 +123,7 @@ async function parseBody(request: Request): Promise<Record<string, unknown> | nu
   }
 }
 
-async function loadTask(env: Env, tenantId: string, id: string): Promise<TaskRow | null> {
+export async function loadTask(env: Env, tenantId: string, id: string): Promise<TaskRow | null> {
   return env.DB.prepare(
     `SELECT t.*, a.name AS agent_name, a.role AS agent_role,
        (SELECT id FROM threads WHERE task_id = t.id AND archived = 0 ORDER BY updated_at DESC LIMIT 1) AS thread_id,
@@ -225,6 +226,21 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
     }
   }
 
+  if (path === "/api/deliveries" && request.method === "GET") return json(await listDeliveries(env, caller.tenantId));
+  const delivery = path.match(/^\/api\/tasks\/([0-9a-f-]{36})\/delivery(?:\/(retry|cancel))?$/);
+  if (delivery && request.method === "POST") {
+    try {
+      const taskId = delivery[1] ?? "";
+      if (delivery[2] === "retry") await retryDelivery(env, caller, taskId);
+      else if (delivery[2] === "cancel") await cancelDelivery(env, caller, taskId);
+      else return json(await startDelivery(env, caller, taskId), 202);
+      return json({ ok: true });
+    } catch (error) {
+      if (error instanceof WorkflowError) return json({ error: error.message }, error.status);
+      throw error;
+    }
+  }
+
   const match = path.match(/^\/api\/tasks\/([0-9a-f-]{36})(?:\/(run|review))?$/);
   if (!match || (match[2] ? request.method !== "POST" : request.method !== "PATCH")) return null;
   const id = match[1] ?? "";
@@ -305,13 +321,15 @@ export async function handleTasks(request: Request, env: Env, caller: Caller, pa
     existing.status,
   ).run();
   if (!updated.meta.changes) return json({ error: "Aufgabe wurde gleichzeitig geändert. Bitte neu laden." }, 409);
+  if (input.status === "done" && existing.status !== "done") await deliveryAccepted(env, caller.tenantId, id);
   const task = await loadTask(env, caller.tenantId, id);
   if (!task) return json({ error: "Aufgabe konnte nicht geladen werden." }, 500);
   await publish(env, caller, task, "task_updated");
   return json(asTask(task));
 }
 
-async function startTaskReview(env: Env, caller: Caller, task: TaskRow): Promise<Response> {
+/** Hands a task in review to the QA reviewer; `threadId` lets the delivery workflow record the step first. */
+export async function startTaskReview(env: Env, caller: Caller, task: TaskRow, reservedThreadId?: string): Promise<Response> {
   if (task.status !== "review") return json({ error: "Nur Aufgaben im Code Review können an QA übergeben werden." }, 409);
   const reviewerId = "reviewer";
   const definition = AGENTS[reviewerId];
@@ -320,7 +338,7 @@ async function startTaskReview(env: Env, caller: Caller, task: TaskRow): Promise
   if (!active) return json({ error: "QA-Reviewer ist nicht aktiv." }, 409);
 
   const reviewId = crypto.randomUUID();
-  const threadId = crypto.randomUUID();
+  const threadId = reservedThreadId ?? crypto.randomUUID();
   const claimed = await env.DB.prepare(
     "/* tenant:parent */ UPDATE tasks SET status = 'qa', updated_at = unixepoch() WHERE id = ? AND status = 'review' AND EXISTS (SELECT 1 FROM agents WHERE id = ? AND active = 1)",
   ).bind(task.id, reviewerId).run();

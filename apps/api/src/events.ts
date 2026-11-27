@@ -26,6 +26,7 @@ export type EventType =
   | "agent_handoff"
   | "project_policy_changed"
   | "policy_allowed"
+  | "workflow_updated"
   | "knowledge_indexed"
 
   | "sandbox_run"

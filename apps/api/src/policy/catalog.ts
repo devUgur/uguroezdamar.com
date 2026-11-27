@@ -69,6 +69,8 @@ export function classify(tool: string, args: Record<string, unknown>, writeMode:
   switch (tool) {
     case "task_create":
       return { class: "work", detail: `Aufgabe „${String(args.title ?? "")}“` };
+    case "task_refine":
+      return { class: "work", detail: "Ziel und Abnahmekriterien der Aufgabe" };
     case "repo_commit_files": {
       const paths = commitPaths(args);
       const branch = typeof args.branch === "string" && args.branch ? args.branch : writeMode === "dev-first" ? "dev" : "?";

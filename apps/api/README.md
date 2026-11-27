@@ -11,6 +11,7 @@ Agenten-Backend des Admin-Portals: Threads, Agentenschleife, Modelle, Werkzeuge,
 | `src/runtime/thread-runtime.ts` | `ThreadRuntime`: ein Gespräch, führt Aufträge in Etappen aus; Zustand und Wecker über `ActorStatePort` (auf Cloudflare ein Durable Object je Thread) |
 | `src/runtime/` | `AgentRuntimePort`, die Schleife ohne Cloudflare-APIs (`loop.ts`), Subrequest-Budget pro Etappe, Context Builder (`context.ts`): laufender Lauf vollständig, davor Zusammenfassung plus zehn Nachrichten |
 | `src/approvals.ts` | Text, Risiko und Ablauf der Freigaben; geschützte Pfade |
+| `src/workflow/` | Team-Ablauf je Aufgabe (ADR 0040, P3): Schritte und Rollen (`delivery.ts`), Start eines Schritts mit den Übergaben (`steps.ts`), Steuerung in SQL (`engine.ts`, Migration `0025`), Port für weitere Adapter |
 | `src/policy/` | Policy-Engine (ADR 0040, P2): Aktionskatalog mit Risikoklassen, Autonomiestufen `manual`, `balanced`, `high` und `max`, globale Grenzen, Entscheidung und Protokoll (Migration `0024`) |
 | `src/cloudflare/hub-object.ts` | `LiveHub`: verteilt Events und gestreamten Text per WebSocket, Einmal-Tickets |
 | `src/events.ts` | Event-Log in D1, Tagesbudget |
@@ -58,6 +59,7 @@ Alle Routen außer `/api/health` und `/api/live` verlangen `Authorization: Beare
 | `GET /api/events?thread=…&since=…` | Events nachladen |
 | `GET /api/usage/summary`, `…/calls`, `…/runs`, `…/runs/:id`, `…/export.csv` | Verbrauch je Mitarbeiter, Modell, Projekt, Anbieter und Tag; Läufe; Trace eines Laufs; CSV. Filter: `from`, `to` (YYYY-MM-DD, UTC), `project`, `agent`, `provider`, `model`, `status` |
 | `POST /api/live-ticket`, `GET /api/live?ticket=…` | Einmal-Ticket, dann WebSocket für Events und `delta` |
+| `POST /api/tasks/:id/delivery`, `…/delivery/retry`, `…/delivery/cancel`, `GET /api/deliveries` | Team-Ablauf einer bereiten Aufgabe starten, nach einem Halt erneut versuchen, abbrechen; offene und kürzliche Abläufe mit ihren Schritten |
 | `GET /api/policies`, `PUT /api/projects/:id/policy`, `GET /api/policy/decisions` | Policy-Engine (ADR 0040, P2): Katalog und Autonomie je Projekt, Stufe setzen (Owner, Versionsprüfung), Entscheidungsprotokoll |
 | `POST /api/auth/handoff`, `POST /api/auth/handoff/redeem` | Anmeldung Portal → Office: Einmal-Ticket (60 s) für die angemeldete Person, vom Office-Server genau einmal eingelöst (ADR 0039) |
 | `GET/POST /api/tasks`, `PATCH /api/tasks/:id` | persistente Tasks, validierte Statusübergänge und Owner-Abnahme |
