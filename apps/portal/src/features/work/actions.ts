@@ -7,6 +7,7 @@ import { getCurrentSession } from "@/src/adapters/auth";
 import { agentsApiOrigin } from "@/src/adapters/agents-api";
 import { currentOrganizationAccess } from "@/src/server/organization-access";
 import type { WorkStatus } from "./types";
+import { officeUrl } from "@/src/adapters/office";
 
 async function actor(): Promise<string> {
   const session = await getCurrentSession();
@@ -50,7 +51,7 @@ export async function startWorkTask(formData: FormData): Promise<void> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("Ungültige Aufgaben-ID.");
   const result = await agentsApi<{ threadId: string }>(`/api/tasks/${id}/run`, await actor(), { method: "POST" });
   revalidatePath("/work");
-  redirect(`/chat/${result.threadId}`);
+  redirect(officeUrl(`/chat/${result.threadId}`));
 }
 
 export async function startWorkReview(formData: FormData): Promise<void> {
@@ -58,7 +59,7 @@ export async function startWorkReview(formData: FormData): Promise<void> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("Ungültige Aufgaben-ID.");
   const result = await agentsApi<{ threadId: string }>(`/api/tasks/${id}/review`, await actor(), { method: "POST" });
   revalidatePath("/work");
-  redirect(`/chat/${result.threadId}`);
+  redirect(officeUrl(`/chat/${result.threadId}`));
 }
 
 export async function syncWorkTaskToGitHub(formData: FormData): Promise<void> {

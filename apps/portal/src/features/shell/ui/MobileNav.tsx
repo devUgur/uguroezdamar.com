@@ -1,16 +1,15 @@
 import Link from "next/link";
 import { ThemeToggle } from "@ugur/ui";
+import { officeUrl } from "@/src/adapters/office";
 
 const LINKS = [
   { href: "/", label: "Dashboard" },
-  { href: "/office", label: "Office" },
   { href: "/work", label: "Aufgaben" },
   { href: "/usage", label: "Verbrauch & Kosten" },
   { href: "/organization", label: "Organisation" },
   { href: "/projects", label: "Repositories" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/models", label: "Modelle" },
-  { href: "/chat", label: "Chat" },
   { href: "/admin/team", label: "Team" },
 ];
 
@@ -19,6 +18,9 @@ export function MobileNav() {
   return (
     <header className="flex items-center gap-2 border-b border-border bg-card px-3 py-2 md:hidden">
       <nav aria-label="Hauptnavigation" className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+        <a href={officeUrl()} className="shrink-0 rounded-md px-3 py-2 text-sm hover:bg-accent">
+          Office
+        </a>
         {LINKS.map((link) => (
           <Link key={link.href} href={link.href} className="shrink-0 rounded-md px-3 py-2 text-sm hover:bg-accent">
             {link.label}

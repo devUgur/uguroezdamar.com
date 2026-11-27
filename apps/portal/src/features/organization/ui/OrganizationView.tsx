@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { OrganizationCatalog } from "../types";
 import { OrganizationLiveSync } from "./OrganizationLiveSync";
+import { officeUrl } from "@/src/adapters/office";
 
 export function OrganizationView({ catalog, error, canManage = false }: { catalog: OrganizationCatalog | null; error: string | null; canManage?: boolean }) {
   if (!catalog) {
@@ -25,7 +26,7 @@ export function OrganizationView({ catalog, error, canManage = false }: { catalo
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {catalog.instances.filter((instance) => instance.active).map((instance) => {
             const role = catalog.roles.find((item) => item.id === instance.roleId);
-            return <article key={instance.id} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4"><div className="flex items-center justify-between gap-2"><h3 className="font-medium">{instance.name}</h3><span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">{instance.executable ? "Runtime registriert" : "nicht ausführbar"}</span></div><p className="text-sm text-muted-foreground">{role?.name ?? "Ohne Rollenprofil"} · {instance.id}</p>{instance.executable ? <Link href={`/office?agent=${encodeURIComponent(instance.id)}`} className="text-sm underline underline-offset-4">Im Office zeigen</Link> : null}</article>;
+            return <article key={instance.id} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4"><div className="flex items-center justify-between gap-2"><h3 className="font-medium">{instance.name}</h3><span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">{instance.executable ? "Runtime registriert" : "nicht ausführbar"}</span></div><p className="text-sm text-muted-foreground">{role?.name ?? "Ohne Rollenprofil"} · {instance.id}</p>{instance.executable ? <a href={officeUrl(`/?agent=${encodeURIComponent(instance.id)}`)} className="text-sm underline underline-offset-4">Im Office zeigen</a> : null}</article>;
           })}
         </div>
       </section>

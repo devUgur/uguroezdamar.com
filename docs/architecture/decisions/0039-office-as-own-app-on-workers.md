@@ -15,7 +15,12 @@ ADR 0038 hat das Office als Vollbild-Route `/office` im Portal angelegt. Der Own
 1. **`apps/office` ist eine eigene Next.js-App:**
    - **Versionen:** Next.js 16 und React 19 aus dem Workspace-Katalog, Tailwind 4 und `@ugur/ui`. Gestaltung und Tokens wie im Portal.
    - **Inhalt:** Das Agenten-Feature (3D-Büro, Mitarbeiter-Einstellungen, alle Chats) ist aus dem Portal hierher umgezogen.
-   - **Weiterleitungen im Portal:** `/office`, `/agents`, `/chat` und `/chat/:id` leiten in die Office-App weiter, damit alte Links aus Board, Projekten und Verbrauch weiter funktionieren.
+   - **Keine Weiterleitungsrouten:** Das Portal verlinkt direkt auf das Office seiner Stufe (`officeUrl()` in `apps/portal/src/adapters/office.ts`): Navigation, Board, Projekte, Verbrauch und Organisation. `/agents`, `/office` und `/chat` gibt es im Portal nicht mehr.
+   - **Bereich als Query:** `/?project=<id>` setzt den Bereich, ohne Angabe gilt die Firma. Gewählt wird er im Dropdown links.
+     - **Wechsel:** über die History-API, die Next.js mit `useSearchParams` abgleicht. Die Adresse bleibt teilbar, Zurück und Vor funktionieren, und es geht keine Anfrage an den Server.
+     - **Daten:** Raum und Arbeit (alle Aufgaben, offene Freigaben, Verbrauch heute je Projekt) lädt die Seite einmal. Der Browser filtert sie nach Bereich; Live-Ereignisse laden die Arbeit im Hintergrund nach.
+     - **Unbekannte Projekte** gelten als Firma, ohne Umleitung.
+   - **Tafel:** Eine Tafel an der Rückwand des 3D-Büros zeigt die Arbeit des Bereichs je Status. Ein Klick darauf (oder auf „Tafel“) öffnet das Kanban mit Backlog, Ready, In Arbeit, Code Review, QA, Blockiert und Erledigt (die letzten 14 Tage). Auf Firmenebene ist es nach Projekten gegliedert.
 2. **Keine Datenbank im Office:**
    - Alle Daten kommen über die API (`apps/api`) mit dem Service-Token der Stufe, wie zuvor im Portal.
    - `@ugur/server` ist im Office per Lint verboten. Das hält das Bundle klein und die App unabhängig von Neon.
@@ -43,6 +48,8 @@ ADR 0038 hat das Office als Vollbild-Route `/office` im Portal angelegt. Der Own
    - **Worker-Build:** `opennextjs-cloudflare build` läuft unter Windows nicht (Symlinks) und daher nur im Deploy-Workflow.
 
 ## Folgen
+
+- **Geschwindigkeit:** Ein Bereichswechsel kostet keine Anfrage. Besuchte Seiten bleiben 30 Sekunden im Client-Cache (`experimental.staleTimes.dynamic`), und Ladezustände (`loading.tsx`) erscheinen sofort. Die erste Anfrage nach einer Pause wartet auf den Kaltstart des Workers.
 
 - **Workers Free:** Er erlaubt 3 MiB komprimierten Code und 10 ms CPU je Anfrage. Der Workflow gibt die Bundle-Größe aus. Werden die Grenzen knapp, ist Workers Paid nötig; das ist ohnehin eine offene Entscheidung des Owners.
 - **Dev ansehen:** `office-dev.uguroezdamar.com` meldet über die Portal-Preview von `dev` an. Diese ist durch Vercel geschützt; der Owner kommt mit seinem Vercel-Konto durch.

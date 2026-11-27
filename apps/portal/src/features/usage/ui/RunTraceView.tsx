@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ms, PRICE_SOURCE, RUN_STATUS, time, tokens, usd } from "../format";
 import type { ModelCallRow, RunTrace, ToolCallRow } from "../types";
+import { officeUrl } from "@/src/adapters/office";
 
 type Entry = { kind: "model"; ts: number; call: ModelCallRow } | { kind: "tool"; ts: number; call: ToolCallRow };
 
@@ -25,9 +26,9 @@ export function RunTraceView({ trace }: { trace: RunTrace }) {
           {run.projectId ? ` · Projekt ${run.projectId}` : ""}
         </p>
         {run.threadId ? (
-          <Link href={`/chat/${run.threadId}`} className="text-sm underline underline-offset-2">
+          <a href={officeUrl(`/chat/${run.threadId}`)} className="text-sm underline underline-offset-2">
             Zum Gespräch
-          </Link>
+          </a>
         ) : null}
         {run.outcome ? <p className="whitespace-pre-wrap rounded-md border border-border bg-muted p-3 text-sm">{run.outcome}</p> : null}
       </header>

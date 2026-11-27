@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createWorkTask, startWorkReview, startWorkTask, syncWorkTaskToGitHub, updateWorkTask } from "../actions";
 import type { WorkStatus, WorkTask } from "../types";
@@ -32,12 +31,12 @@ function reviewLabel(review: NonNullable<WorkTask["latestReview"]>): string {
   return review.verdict ? REVIEW_LABEL[review.verdict] : "Prüfergebnis unvollständig";
 }
 
-function TaskCard({ task, next }: { task: WorkTask; next: WorkStatus[] }) {
+function TaskCard({ task, next, officeOrigin }: { task: WorkTask; next: WorkStatus[]; officeOrigin: string }) {
   return (
     <article className="space-y-3 rounded-lg border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>{PRIORITIES[task.priority]}{task.storyPoints ? ` · ${task.storyPoints} SP` : ""}</span>
-        {task.agent ? <Link href={`/office?agent=${encodeURIComponent(task.agent.id)}`} className="underline underline-offset-4" title="Im Office zeigen">{task.agent.name}</Link> : <span>Nicht zugewiesen</span>}
+        {task.agent ? <a href={`${officeOrigin}/?agent=${encodeURIComponent(task.agent.id)}`} className="underline underline-offset-4" title="Im Office zeigen">{task.agent.name}</a> : <span>Nicht zugewiesen</span>}
       </div>
       <h3 className="font-medium leading-snug">{task.title}</h3>
       {task.githubIssue ? <a className="text-sm underline underline-offset-4" href={task.githubIssue.url ?? "/work"} target="_blank" rel="noreferrer">GitHub Issue #{task.githubIssue.number} · {task.githubIssue.state ?? "verknüpft"}</a> : null}
@@ -50,8 +49,8 @@ function TaskCard({ task, next }: { task: WorkTask; next: WorkStatus[] }) {
       ) : null}
       {task.output ? <details className="text-sm"><summary className="cursor-pointer text-muted-foreground">Letztes Agentenergebnis</summary><p className="mt-2 whitespace-pre-wrap">{task.output}</p></details> : null}
       {task.completionNote ? <details className="text-sm"><summary className="cursor-pointer text-muted-foreground">Owner-Abnahme</summary><p className="mt-2 whitespace-pre-wrap">{task.completionNote}</p>{task.completedBy ? <p className="mt-1 text-xs text-muted-foreground">Abgenommen von {task.completedBy}</p> : null}</details> : null}
-      {task.latestReview ? <details className="text-sm" open={task.latestReview.status === "running"}><summary className="cursor-pointer text-muted-foreground">QA: {reviewLabel(task.latestReview)}</summary><div className="mt-2 space-y-2"><p>{task.latestReview.summary ?? task.latestReview.error ?? "Prüfung läuft."}</p>{task.latestReview.findings.length ? <ul className="list-inside list-disc">{task.latestReview.findings.map((finding, index) => <li key={`${index}-${finding}`}>{finding}</li>)}</ul> : null}{task.latestReview.evidence.length ? <ul className="list-inside list-disc text-muted-foreground">{task.latestReview.evidence.map((evidence, index) => <li key={`${index}-${evidence}`}>{evidence}</li>)}</ul> : null}{task.latestReview.threadId ? <Link href={`/chat/${task.latestReview.threadId}`} className="inline-block underline underline-offset-4">QA-Thread öffnen</Link> : null}</div></details> : null}
-      {task.threadId ? <Link href={`/chat/${task.threadId}`} className="inline-block text-sm underline underline-offset-4">Agenten-Thread öffnen</Link> : null}
+      {task.latestReview ? <details className="text-sm" open={task.latestReview.status === "running"}><summary className="cursor-pointer text-muted-foreground">QA: {reviewLabel(task.latestReview)}</summary><div className="mt-2 space-y-2"><p>{task.latestReview.summary ?? task.latestReview.error ?? "Prüfung läuft."}</p>{task.latestReview.findings.length ? <ul className="list-inside list-disc">{task.latestReview.findings.map((finding, index) => <li key={`${index}-${finding}`}>{finding}</li>)}</ul> : null}{task.latestReview.evidence.length ? <ul className="list-inside list-disc text-muted-foreground">{task.latestReview.evidence.map((evidence, index) => <li key={`${index}-${evidence}`}>{evidence}</li>)}</ul> : null}{task.latestReview.threadId ? <a href={`${officeOrigin}/chat/${task.latestReview.threadId}`} className="inline-block underline underline-offset-4">QA-Thread öffnen</a> : null}</div></details> : null}
+      {task.threadId ? <a href={`${officeOrigin}/chat/${task.threadId}`} className="inline-block text-sm underline underline-offset-4">Agenten-Thread öffnen</a> : null}
       {task.status === "ready" ? <form action={startWorkTask}><input type="hidden" name="id" value={task.id} /><button className="w-full rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground">An Chef-Agent übergeben</button></form> : null}
       <form action={syncWorkTaskToGitHub}><input type="hidden" name="id" value={task.id} /><button className="w-full rounded-md border border-border px-3 py-2 text-sm hover:bg-accent">{task.githubIssue ? "GitHub Issue aktualisieren" : "GitHub Issue erstellen"}</button></form>
       {task.status === "review" ? <form action={startWorkReview}><input type="hidden" name="id" value={task.id} /><button className="w-full rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground">Unabhängige QA starten</button></form> : null}
@@ -69,7 +68,8 @@ function TaskCard({ task, next }: { task: WorkTask; next: WorkStatus[] }) {
   );
 }
 
-export function WorkBoard({ tasks, error, liveOrigin }: { tasks: WorkTask[]; error: string | null; liveOrigin: string | null }) {
+/** officeOrigin: the office app of this stage (ADR 0039), where agents and their conversations live. */
+export function WorkBoard({ tasks, error, liveOrigin, officeOrigin }: { tasks: WorkTask[]; error: string | null; liveOrigin: string | null; officeOrigin: string }) {
   const router = useRouter();
   const refresh = useCallback(() => router.refresh(), [router]);
   return (
@@ -116,7 +116,7 @@ export function WorkBoard({ tasks, error, liveOrigin }: { tasks: WorkTask[]; err
                 <h2 id={`column-${column.id}`} className="text-sm font-semibold">{column.label}</h2>
                 <span className="font-mono text-xs text-muted-foreground">{entries.length}</span>
               </header>
-              {entries.length ? entries.map((task) => <TaskCard key={task.id} task={task} next={column.next} />) : <p className="rounded-lg border border-dashed border-border p-4 text-xs text-muted-foreground">Keine Aufgaben</p>}
+              {entries.length ? entries.map((task) => <TaskCard key={task.id} task={task} next={column.next} officeOrigin={officeOrigin} />) : <p className="rounded-lg border border-dashed border-border p-4 text-xs text-muted-foreground">Keine Aufgaben</p>}
             </section>
           );
         })}

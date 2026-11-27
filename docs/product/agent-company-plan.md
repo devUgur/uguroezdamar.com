@@ -160,6 +160,12 @@ Jede Stufe ist einzeln auslieferbar, hat Tests gegen echtes SQLite und wird auf 
 
 Jeder Schritt ist ein `step.do` mit eigenem Lauf in `runs` (`parent_run_id` = Workflow-Lauf) und Nachrichten in `agent_messages`. Die Freigaben aus dem Chat und dem Portal senden das passende Ereignis an die Workflow-Instanz.
 
+**Stand 27.11.2026:** Die erste Welle arbeitet schon, noch ohne Workflow.
+- Product Owner, Tech Lead, Entwickler und DevOps sind angelegt (Migration `0023_delivery_team.sql`, Registry).
+- Mit `tasks_list` lesen die Agenten die Tafel; mit `task_create` legen Product Owner und Tech Lead Aufgaben mit Abnahmekriterien an, nur in einem Projekt.
+- Zuweisen, Starten und Abnehmen bleibt im Portal beim Owner.
+- Release Manager und Tech Writer folgen mit dem `DeliveryWorkflow`.
+
 **Rollen der ersten Welle:**
 
 | Rolle | Aufgabe | Werkzeuge |
@@ -175,6 +181,17 @@ Jeder Schritt ist ein `step.do` mit eigenem Lauf in `runs` (`parent_run_id` = Wo
 **Abnahme:** Ein kleiner Auftrag in einem Testrepository läuft auf Dev von Intake bis PR mit grünen Tests. Jeder Schritt steht in `runs`, `agent_messages` und unter `/usage`; der Owner gibt nur Plan (optional), Commit, PR und Abnahme frei.
 
 ### Stufe 5: Büro 2.0
+
+**Stand 27.11.2026:** Das Office ist eine eigene App (ADR 0039).
+- **Fertig:**
+  - Bereichswahl (Firma oder Projekt) per Dropdown.
+  - Projektwand als Tafel an der Rückwand.
+  - Kanban je Projekt und für die Firma nach Projekten gegliedert.
+  - Überblick mit Kosten heute, Arbeitsfluss und Freigaben.
+- **Offen:**
+  - Besprechungsraum und Besprechungen aus `meetings`.
+  - Hervorheben der Mitarbeiter eines Projekts.
+  - Sprint-Anzeige auf der Tafel.
 
 - **Räume:**
   - Arbeitsplätze nach Abteilung
@@ -244,7 +261,8 @@ Danach folgen Kundenanmeldung mit GitHub, Rollen je Mandant, Grenzen und Budgets
 - Gedächtnis und Wissensindex (Stufe 3, ADR 0037).
 - Sprints je Projekt.
 - Gespräche standardmäßig auf Firmenebene, Projekt als innere Schicht; `code_verify` prüft kostenlos über die CI oder in der Workstation (ADR 0038).
-- Office als eigene Next.js-App `apps/office` auf Cloudflare Workers, Dev unter `office-dev.uguroezdamar.com`, Anmeldung über das Portal (ADR 0039).
+- Office als eigene Next.js-App `apps/office` auf Cloudflare Workers, Dev unter `office-dev.uguroezdamar.com`, Anmeldung über das Portal (ADR 0039). Bereich per Dropdown ohne Neuladen, Tafel mit Kanban.
+- Team der ersten Welle: Product Owner, Tech Lead, Entwickler und DevOps neben Chef und QA-Reviewer; Werkzeuge `tasks_list` und `task_create`.
 
 **Offen, nach Dringlichkeit:**
 
@@ -264,6 +282,7 @@ Danach folgen Kundenanmeldung mit GitHub, Rollen je Mandant, Grenzen und Budgets
 | 12 | Leere Prüf-Worktree-Ordner `C:\v1`–`C:\v6` | Owner | Löschen (für Agenten gesperrt) |
 | 13 | Office in Produktion (`office.uguroezdamar.com`) entsteht erst mit dem Release-PR `dev → main` | Owner | Release nach Abnahme auf `office-dev` (ADR 0039) |
 | 14 | GitHub App ohne „Actions: Read“: `code_verify` sieht nur Annotationen statt Job-Logs | Owner | Recht in der GitHub App ergänzen und Installation bestätigen |
+| 15 | Aufgaben auf der Tafel zuweisen, starten und abnehmen geht nur im Portal; im Office nur ansehen | Agent | Aktionen auf den Karten der Tafel, dann `DeliveryWorkflow` (Stufe 4) |
 
 ## 7. Entscheidungen des Owners
 

@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { Button } from "@ugur/ui";
 import { moveTaskToSprint } from "../actions";
 import type { ProjectTask, Sprint } from "../types";
+import { officeUrl } from "@/src/adapters/office";
 
 export const STATUS_LABEL: Record<ProjectTask["status"], string> = {
   backlog: "Backlog",
@@ -34,9 +34,9 @@ export function TaskLine({ task, projectId, sprints }: TaskLineProps) {
         {task.agent ? ` · ${task.agent.name}` : ""}
       </span>
       {task.threadId ? (
-        <Link href={`/chat/${task.threadId}`} className="text-xs underline underline-offset-2">
+        <a href={officeUrl(`/chat/${task.threadId}`)} className="text-xs underline underline-offset-2">
           Lauf
-        </Link>
+        </a>
       ) : null}
       {task.status !== "done" ? (
         <form action={moveTaskToSprint} className="flex items-center gap-1">

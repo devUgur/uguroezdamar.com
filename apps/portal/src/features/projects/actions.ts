@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { agentsApi, isAgentsApiId } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/auth";
 import { currentOrganizationAccess } from "@/src/server/organization-access";
+import { officeUrl } from "@/src/adapters/office";
 
 /** Server Actions are public endpoints: each one checks the session itself. */
 async function actor(): Promise<string> {
@@ -64,7 +65,7 @@ export async function startProjectChat(formData: FormData): Promise<void> {
   } catch (error) {
     back("error", failure(error));
   }
-  redirect(`/chat/${threadId}`);
+  redirect(officeUrl(`/chat/${threadId}`));
 }
 
 /**

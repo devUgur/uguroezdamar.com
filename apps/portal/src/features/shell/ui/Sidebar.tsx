@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ThemeToggle } from "@ugur/ui";
+import { officeUrl } from "@/src/adapters/office";
 
 export function Sidebar() {
   return (
@@ -13,9 +14,9 @@ export function Sidebar() {
         <Link href="/" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Dashboard
         </Link>
-        <Link href="/office" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
+        <a href={officeUrl()} className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Office
-        </Link>
+        </a>
         <Link href="/work" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Aufgaben
         </Link>
@@ -30,9 +31,6 @@ export function Sidebar() {
         </Link>
         <Link href="/portfolio" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
           Portfolio
-        </Link>
-        <Link href="/chat" className="block px-4 py-2 rounded-md hover:bg-accent transition-colors">
-          Chat
         </Link>
         <div className="pt-4 mt-4 border-t opacity-50 px-4 text-xs font-semibold uppercase tracking-wider">
           Settings
