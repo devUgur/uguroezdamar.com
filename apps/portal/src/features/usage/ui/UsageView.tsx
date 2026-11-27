@@ -4,6 +4,7 @@ import type { UsageQuery } from "../types";
 import { BudgetList } from "./BudgetList";
 import { CallsTable } from "./CallsTable";
 import { DailyBars } from "./DailyBars";
+import { InfraUsageList } from "./InfraUsageList";
 import { RunsTable } from "./RunsTable";
 import { UsageBreakdown } from "./UsageBreakdown";
 import { UsageFilters } from "./UsageFilters";
@@ -62,6 +63,13 @@ export function UsageView({ page, query, exportHref }: UsageViewProps) {
               Tagesbudgets heute
             </h2>
             <BudgetList budgets={summary.budgets} />
+          </section>
+
+          <section className="flex flex-col gap-3" aria-labelledby="infra-title">
+            <h2 id="infra-title" className="font-serif text-xl">
+              Infrastruktur heute
+            </h2>
+            <InfraUsageList usage={page.infra} />
           </section>
 
           <section className="flex flex-col gap-3" aria-labelledby="days-title">

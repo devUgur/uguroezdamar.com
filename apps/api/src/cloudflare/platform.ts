@@ -5,8 +5,9 @@ import type { LiveHub } from "./hub-object.ts";
 import type { KnowledgeIndexer } from "./indexer-object.ts";
 import type { OfficePresence } from "./presence-object.ts";
 import type { Workstation } from "./workstation-object.ts";
+import { cloudflareUsage } from "./usage.ts";
 
-type PortKeys = "DB" | "CONFIG" | "FILES" | "AI" | "KNOWLEDGE" | "AGENTS" | "HUB" | "OFFICE" | "INDEXER" | "WORKSTATION";
+type PortKeys = "DB" | "CONFIG" | "FILES" | "AI" | "KNOWLEDGE" | "AGENTS" | "HUB" | "OFFICE" | "INDEXER" | "WORKSTATION" | "INFRA_USAGE";
 
 /** The bindings wrangler.jsonc declares, with Cloudflare's own types. Only this folder sees them (ADR 0040). */
 export interface CloudflareBindings extends Omit<Env, PortKeys> {
@@ -48,6 +49,7 @@ export function platformFrom(bindings: CloudflareBindings): Env {
     OFFICE: directory(bindings.OFFICE),
     INDEXER: directory(bindings.INDEXER),
     WORKSTATION: bindings.WORKSTATION ? directory(bindings.WORKSTATION) : undefined,
+    INFRA_USAGE: bindings.CF_ANALYTICS_TOKEN && bindings.CF_ACCOUNT_ID ? cloudflareUsage(bindings.CF_ANALYTICS_TOKEN, bindings.CF_ACCOUNT_ID) : undefined,
   };
   built.set(bindings, env);
   return env;

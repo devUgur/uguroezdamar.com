@@ -3,7 +3,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { agentsApi, agentsApiResponse, isAgentsApiId } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/auth";
-import type { FilterOption, ModelCallRow, RunRow, RunTrace, UsageQuery, UsageSummary } from "./types";
+import type { FilterOption, InfraUsage, ModelCallRow, RunRow, RunTrace, UsageQuery, UsageSummary } from "./types";
 
 async function actor(): Promise<string> {
   const session = await getCurrentSession();
@@ -29,6 +29,8 @@ export interface UsagePage {
   runs: RunRow[];
   projects: FilterOption[];
   agents: FilterOption[];
+  /** Cloudflare usage today; null when the API could not answer. */
+  infra: InfraUsage | null;
   error: string | null;
 }
 
@@ -36,12 +38,13 @@ export async function getUsagePage(query: UsageQuery): Promise<UsagePage> {
   const who = await actor();
   const search = usageSearch(query);
   try {
-    const [summary, calls, runs, projects, agents] = await Promise.all([
+    const [summary, calls, runs, projects, agents, infra] = await Promise.all([
       agentsApi<UsageSummary>(`/api/usage/summary?${search}`, who),
       agentsApi<ModelCallRow[]>(`/api/usage/calls?${search}&limit=100`, who),
       agentsApi<RunRow[]>(`/api/usage/runs?${search}&limit=50`, who),
       agentsApi<{ id: string; name: string }[]>("/api/projects", who).catch(() => []),
       agentsApi<{ id: string; name: string }[]>("/api/agents", who).catch(() => []),
+      agentsApi<InfraUsage>("/api/usage/infra", who).catch(() => null),
     ]);
     return {
       summary,
@@ -49,10 +52,11 @@ export async function getUsagePage(query: UsageQuery): Promise<UsagePage> {
       runs,
       projects: projects.map((project) => ({ id: project.id, label: project.name })),
       agents: agents.map((agent) => ({ id: agent.id, label: agent.name })),
+      infra,
       error: null,
     };
   } catch (error) {
-    return { summary: null, calls: [], runs: [], projects: [], agents: [], error: error instanceof Error ? error.message : "Unbekannter Fehler" };
+    return { summary: null, calls: [], runs: [], projects: [], agents: [], infra: null, error: error instanceof Error ? error.message : "Unbekannter Fehler" };
   }
 }
 

@@ -73,3 +73,18 @@ export interface VectorIndexPort {
 export interface InferencePort {
   run(model: string, input: Record<string, unknown>): Promise<unknown>;
 }
+
+/** One measured quantity of the host's own infrastructure today, against the limit of its plan. */
+export interface InfraMeasure {
+  key: string;
+  used: number;
+}
+
+/**
+ * The host's infrastructure usage of the current UTC day (ADR 0025, Nachtrag 2). Cloudflare answers from its
+ * GraphQL Analytics API; a host without such data simply has no port. Read-only, account-wide.
+ */
+export interface InfraUsagePort {
+  /** Measures by key: `do.requests`, `workers.requests`, `d1.rowsRead`, `d1.rowsWritten`, `kv.reads`, `kv.writes`. */
+  today(): Promise<{ day: string; measures: InfraMeasure[] }>;
+}

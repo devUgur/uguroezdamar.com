@@ -22,6 +22,7 @@ import { officeObjectName, threadObjectName } from "./tenancy.ts";
 import { toolByName } from "./tools/registry.ts";
 import { handleKnowledge } from "./knowledge/routes.ts";
 import { handleUsage } from "./usage/routes.ts";
+import { infraUsage } from "./usage/infra.ts";
 import { listPreviews } from "./workstation/previews.ts";
 import { handleSprints } from "./work/sprints.ts";
 import { handleTasks } from "./work/tasks.ts";
@@ -393,6 +394,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   const knowledge = await handleKnowledge(request, env, caller, path);
   if (knowledge) return knowledge;
 
+  if (path === "/api/usage/infra" && method === "GET") return json(await infraUsage(env, caller.tenantId));
   const usage = await handleUsage(request, env, caller, path);
   if (usage) return usage;
 

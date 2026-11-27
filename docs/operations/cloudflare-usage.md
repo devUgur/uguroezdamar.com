@@ -51,8 +51,11 @@ Der `LiveHub` schreibt beim Verbinden und beim Schließen jedes Sockets, wie vie
 ## Beobachten
 
 - **Heute:** Im Cloudflare-Dashboard unter *Workers & Pages → Durable Objects → Metrics*, aufgeteilt nach Klasse. Dort zeigt sich, welcher Actor verbraucht. Die Modellkosten stehen in `events` (`tokens_in`, `tokens_out`, `cost_usd`) und erscheinen im Portal.
-- **Geplant:** ein lesender Endpunkt `/api/usage/infra`. Er fragt die GraphQL-Analytics-API von Cloudflare nach Durable-Objects-, D1- und KV-Nutzung des laufenden Tages ab und vergleicht sie mit den Grenzen oben. Das Office zeigt ab 70 % eine Warnung.
-  - Voraussetzung ist ein eigener, nur lesender API-Token (`Account Analytics: Read`). Der Owner legt ihn an. Der Token wird im Secrets-Manifest deklariert und von `api-deploy.yml` als Worker-Secret gesetzt.
+- **Im Portal:** Unter *Verbrauch → Infrastruktur heute* stehen Worker-, Durable-Objects-, D1- und KV-Nutzung des laufenden UTC-Tags. Jeder Wert erscheint gegen die Tagesgrenze oben, ab 70 % rot.
+  - Quelle: `GET /api/usage/infra`, nur für den Owner. Der Kern (`usage/infra.ts`) kennt nur den Port `InfraUsagePort` und ergänzt Grenzen und Warnschwelle.
+  - Auf Cloudflare beantwortet `cloudflare/usage.ts` den Port mit einer GraphQL-Abfrage. Datensätze: `workersInvocationsAdaptive`, `durableObjectsInvocationsAdaptiveGroups`, `d1AnalyticsAdaptiveGroups`, `kvOperationsAdaptiveGroups`.
+  - Die Antwort bleibt fünf Minuten je Isolate gespeichert. Das kostet keinen Durable-Objects-Request und keinen KV-Schreibvorgang.
+  - Voraussetzung ist `CF_ANALYTICS_TOKEN`, ein eigener, nur lesender API-Token. Den Token legt der Owner an: im Cloudflare-Dashboard *Custom token*, *Account · Account Analytics · Read*, nur dieses Konto. Er kommt in Infisical (prod), dann `pnpm ugur api secrets --apply`; der nächste API-Deploy setzt ihn als Worker-Secret. Ohne Token zeigt das Portal einen Hinweis statt Zahlen.
 
 ## Was bewusst nicht passiert
 

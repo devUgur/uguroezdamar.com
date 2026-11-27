@@ -119,3 +119,11 @@ export interface UsageQuery {
   provider?: string;
   model?: string;
 }
+
+/** Today's infrastructure usage against the plan's daily limits (API: /api/usage/infra). */
+export interface InfraUsage {
+  available: boolean;
+  reason?: string;
+  day?: string;
+  measures: { key: string; label: string; used: number; limit: number; share: number; warn: boolean }[];
+}

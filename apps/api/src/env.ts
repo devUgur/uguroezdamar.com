@@ -1,6 +1,6 @@
 import type { KnowledgeIndexerCore } from "./knowledge/indexer.ts";
 import type { OfficePresenceCore } from "./office/presence.ts";
-import type { ActorDirectory, BlobPort, InferencePort, KeyValuePort, SqlPort, VectorIndexPort } from "./platform/ports.ts";
+import type { ActorDirectory, BlobPort, InferencePort, InfraUsagePort, KeyValuePort, SqlPort, VectorIndexPort } from "./platform/ports.ts";
 import type { AgentRuntimePort } from "./runtime/port.ts";
 import type { WorkstationPort } from "./workstation/port.ts";
 
@@ -34,6 +34,9 @@ export interface Env {
   INDEXER: ActorDirectory<KnowledgeIndexerPort>;
   /** Isolated execution of the agents (ADR 0036). Absent until a host provides it (Cloudflare: Workers Paid). */
   WORKSTATION?: ActorDirectory<WorkstationPort>;
+
+  /** The host's own infrastructure usage today (docs/operations/cloudflare-usage.md). Absent without an analytics token. */
+  INFRA_USAGE?: InfraUsagePort;
 
   DEFAULT_REPO: string;
   /** GitHub accounts whose repositories may become projects, comma-separated. Organizations stay out until decided. */
@@ -70,6 +73,8 @@ export interface Env {
   MODAL_LLM_API_KEY?: string;
   /** Cloudflare token for preview uploads (Workers Scripts: Edit). Stays in the Worker; the container never sees it. */
   AGENT_CF_PREVIEW_TOKEN?: string;
+  /** Cloudflare token with Account Analytics: Read only; feeds INFRA_USAGE. */
+  CF_ANALYTICS_TOKEN?: string;
 }
 
 /** Reads a secret by the name a model provider is configured with. */

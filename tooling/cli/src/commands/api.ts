@@ -84,6 +84,17 @@ const REPO_SECRETS: RepoSecret[] = [
     ],
   },
   {
+    name: "CF_ANALYTICS_TOKEN",
+    required: false,
+    fromInfisical: true,
+    purpose: "Verbrauchsanzeige /api/usage/infra (nur lesend)",
+    howTo: [
+      "https://dash.cloudflare.com/profile/api-tokens → „Create Token“ → Custom token",
+      "Permissions: Account · Account Analytics · Read; Account Resources: nur dieses Konto",
+      "„Create Token“ → kopieren",
+    ],
+  },
+  {
     name: "AGENT_GITHUB_TOKEN",
     required: false,
     purpose: "Repo lesen, Commits und Pull Requests des Agenten",
