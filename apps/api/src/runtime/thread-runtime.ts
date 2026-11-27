@@ -9,6 +9,7 @@ import type { Env } from "../env.ts";
 import type { ActorStatePort } from "../platform/ports.ts";
 import { decide, loadProjectPolicy, recordDecision } from "../policy/engine.ts";
 import { stepFinished } from "../workflow/engine.ts";
+import { liveViewers } from "../live/presence.ts";
 import { emit } from "../events.ts";
 import type { ChatMessage, ToolCall } from "../models/port.ts";
 import { ModelRouter, type PinnedModel, type RoutedResult } from "../models/router.ts";
@@ -208,6 +209,12 @@ export class ThreadRuntime implements AgentRuntimePort {
     const run = await this.activeRun();
     const base = run ? { running: true, step: run.steps, startedAt: run.startedAt } : { running: false, step: 0 };
     return { ...base, private: await this.privateRestricted(tenantId) };
+  }
+
+  /** History and status in one call: viewing a conversation costs one Durable Object request, not two. */
+  async view(tenantId: string = OWNER_TENANT): Promise<{ messages: ChatMessage[]; status: AgentStatus }> {
+    const [messages, status] = await Promise.all([this.history(), this.status(tenantId)]);
+    return { messages, status };
   }
 
   async history(): Promise<ChatMessage[]> {
@@ -708,7 +715,11 @@ class DeltaBuffer {
     private readonly threadId: string,
   ) {}
 
+  /** Whether anyone listens; read once per stage from D1. Nobody connected: the text arrives with the final message. */
+  private listening: Promise<boolean> | undefined;
+
   push(step: number, text: string): void {
+    this.listening ??= liveViewers(this.env.DB, "main").then((viewers) => viewers.sockets > 0, () => true);
     if (step !== this.step && this.text) void this.flush();
     this.step = step;
     this.text += text;
@@ -722,7 +733,7 @@ class DeltaBuffer {
       const message = JSON.stringify({ type: "delta", agentId: this.agentId, threadId: this.threadId, step: this.step, text: this.text });
       this.text = "";
       this.sending = this.sending
-        .then(() => this.env.HUB.get("main").broadcast(message))
+        .then(async () => ((await this.listening) === false ? 0 : this.env.HUB.get("main").broadcast(message)))
         .catch((error) => console.error("delta broadcast failed", error));
     }
     await this.sending;

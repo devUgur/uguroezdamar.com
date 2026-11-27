@@ -249,9 +249,13 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
   const thread = await loadThread(env, caller.tenantId, threadId);
   if (!thread) return json({ error: "Thread nicht gefunden" }, 404);
   const stub = threadStub(env, caller.tenantId, threadId);
+  // The runtime's status is asked at most once per request.
+  let statusOnce: ReturnType<typeof stub.status> | undefined;
+  const threadStatus = () => (statusOnce ??= stub.status(caller.tenantId));
 
   if (!action && method === "GET") {
-    const [messages, status, approvals] = await Promise.all([stub.history(), stub.status(caller.tenantId), pendingApprovals(env, caller.tenantId, threadId)]);
+    // One call for history and status (ADR 0025, Nachtrag 2): every view of a conversation is one Durable Object request.
+    const [{ messages, status }, approvals] = await Promise.all([stub.view(caller.tenantId), pendingApprovals(env, caller.tenantId, threadId)]);
     const events = await recentEvents(env, { tenantId: caller.tenantId, threadId, limit: 200 });
     const { results: projects } = await env.DB.prepare("SELECT id, name, repo, visibility, model_policy FROM projects WHERE tenant_id = ? AND status = 'active' ORDER BY name")
       .bind(caller.tenantId)
@@ -273,7 +277,7 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
         const project = await env.DB.prepare("SELECT 1 FROM projects WHERE tenant_id = ? AND id = ? AND status = 'active'").bind(caller.tenantId, input.projectId).first();
         if (!project) return json({ error: "Unbekanntes oder entferntes Projekt" }, 400);
       }
-      if ((await stub.status(caller.tenantId)).running) return json({ error: "Der Bereich lässt sich nicht wechseln, solange der Agent arbeitet." }, 409);
+      if ((await threadStatus()).running) return json({ error: "Der Bereich lässt sich nicht wechseln, solange der Agent arbeitet." }, 409);
     }
     const router = await ModelRouter.load(env, caller.tenantId);
     if (input.model && !router.offers(input.model)) return json({ error: "Unbekanntes Modell" }, 400);
@@ -284,7 +288,7 @@ async function handleThreads(request: Request, env: Env, caller: Caller, path: s
           .bind(caller.tenantId, projectId)
           .first<{ name: string; visibility: string; model_policy: string | null }>()
       : null;
-    const isPrivate = (target ? effectivePolicy(target) === "strict" : false) || (await stub.status(caller.tenantId)).private === true;
+    const isPrivate = (target ? effectivePolicy(target) === "strict" : false) || (await threadStatus()).private === true;
     const currentModel = thread.model ? (JSON.parse(thread.model) as { provider: string; model: string }) : null;
     let model = input.model !== undefined ? input.model : currentModel;
     let notice: string | undefined;

@@ -49,5 +49,7 @@ export interface AgentRuntimePort {
   stop(): Promise<void>;
   status(tenantId?: string): Promise<AgentStatus>;
   history(): Promise<ChatMessage[]>;
+  /** History and status together (one request on hosts where every call is one). */
+  view(tenantId?: string): Promise<{ messages: ChatMessage[]; status: AgentStatus }>;
   reset(): Promise<void>;
 }

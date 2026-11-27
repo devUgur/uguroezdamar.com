@@ -68,3 +68,18 @@ Die 3D-Kamera ist eine Bedienpräferenz. Jede Browserinstanz soll unabhängig dr
 - **Streaming:** Gestreamter Text geht einmal pro Sekunde an den Hub.
 
 **Was bleibt:** Die Kamera ist weiterhin lokal; die gemeinsame Wahrheit ist, wer arbeitet und wo sein Platz ist. Wer gerade frei herumläuft, wird nicht mehr serverseitig geführt.
+
+## Nachtrag 2, 27.11.2026: Nur senden, wenn jemand zuhört
+
+**Anlass:** Nach Nachtrag 1 rief jedes Ereignis den `LiveHub` und jeder Tätigkeitswechsel das Office auf, auch wenn kein Browser verbunden war. Jede Office-Seite schrieb den Raum neu. Der Hub meldete jede Verbindung per RPC an `OfficePresence`.
+
+**Änderung:**
+
+- **Zuhörer in D1:** Der Hub schreibt seine offenen Verbindungen in die Tabelle `live_presence` (Migration 0029), statt `OfficePresence.setViewers` aufzurufen.
+  - `emit()` liest den Wert in der Anweisung, die das Ereignis speichert, und ruft den Hub nur, wenn jemand verbunden ist.
+  - Gestreamter Text prüft das einmal je Stufe.
+  - `OfficePresence` veröffentlicht nur bei offenem Office.
+- **Raum ohne Schreiben:** `configure()` speichert nur, wenn sich Raum, Plätze oder die Version der Bewegung geändert haben.
+- **Ein Aufruf je Gespräch:** `GET /api/threads/:id` holt Verlauf und Status über `view()` in einem Durable-Objects-Request. `PATCH` fragt den Status höchstens einmal ab.
+
+**Was bleibt:** Ereignisse werden immer gespeichert. Ein Browser, der später verbindet, holt sie wie bisher nach. Verbrauchsmodell und Abhängigkeiten: [Cloudflare-Verbrauch](../../operations/cloudflare-usage.md).

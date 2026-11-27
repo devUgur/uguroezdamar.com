@@ -75,7 +75,8 @@ const ACTIVITY_EVENTS = new Set<string>(["user_message", "approval_requested", "
 export async function emit(env: Env, event: AgentEvent): Promise<StoredEvent> {
   const row = await env.DB.prepare(
     `INSERT INTO events (tenant_id, agent_id, thread_id, task_id, project_id, type, data, tokens_in, tokens_out, cost_usd)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, ts`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     RETURNING id, ts, (SELECT sockets FROM live_presence WHERE hub = ?) AS listeners`,
   )
     .bind(
       event.tenantId,
@@ -88,8 +89,9 @@ export async function emit(env: Env, event: AgentEvent): Promise<StoredEvent> {
       event.tokensIn ?? 0,
       event.tokensOut ?? 0,
       event.costUsd ?? 0,
+      hubObjectName(event.tenantId),
     )
-    .first<{ id: number; ts: number }>();
+    .first<{ id: number; ts: number; listeners: number | null }>();
 
   const stored: StoredEvent = { ...event, id: row?.id ?? 0, ts: row?.ts ?? Date.now() };
   if (stored.agentId && stored.id && ACTIVITY_EVENTS.has(stored.type)) {
@@ -103,7 +105,8 @@ export async function emit(env: Env, event: AgentEvent): Promise<StoredEvent> {
       console.error("office state update failed", error);
     }
   }
-  try {
+  // Nobody connected: the event is stored, a browser that connects later catches up from it.
+  if (row?.listeners) try {
     await env.HUB.get(hubObjectName(event.tenantId)).broadcast(JSON.stringify({ type: "event", event: stored }));
   } catch (error) {
     console.error("live hub broadcast failed", error);

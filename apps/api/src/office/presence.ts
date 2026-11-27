@@ -1,4 +1,5 @@
 import type { Env } from "../env.ts";
+import { liveViewers } from "../live/presence.ts";
 import type { ActorStatePort } from "../platform/ports.ts";
 import type { AgentEvent } from "../events.ts";
 import { distance, randomSpot, type DeskAssignment, type OfficeBounds, type Vec2 } from "./layout.ts";
@@ -103,7 +104,7 @@ export class OfficePresenceCore {
     );
     await this.scheduleNext();
     const snapshot = this.publicSnapshot(state);
-    if (publish && state.viewers > 0) {
+    if (publish && (await liveViewers(this.env.DB, "main")).office > 0) {
       try {
         await this.env.HUB.get("main").broadcast(JSON.stringify({ type: "office", snapshot }));
       } catch (error) {
@@ -197,8 +198,11 @@ export class OfficePresenceCore {
       }
     }
 
+    const current = state.initialized && state.motionVersion === MOTION_VERSION;
     state.initialized = true;
     state.motionVersion = MOTION_VERSION;
+    // Every office page asks for the room; an unchanged room is answered without a write.
+    if (!changed && current) return this.publicSnapshot(state);
     if (changed) state.revision += 1;
     return this.save(state, changed);
   }

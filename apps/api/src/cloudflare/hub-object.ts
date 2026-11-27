@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
-import { platformFrom, type CloudflareBindings } from "./platform.ts";
+import { SET_LIVE_VIEWERS } from "../live/presence.ts";
+import type { CloudflareBindings } from "./platform.ts";
 
 const TICKET_TTL_MS = 60_000;
 
@@ -91,10 +92,10 @@ export class LiveHub extends DurableObject<CloudflareBindings> {
     }
   }
 
+  /** Writes the open connections to D1 (migration 0029): senders read it there instead of calling this object. */
   private async syncOfficeViewers(excluded?: WebSocket): Promise<void> {
-    const count = this.ctx
-      .getWebSockets()
-      .filter((socket) => socket !== excluded && (socket.deserializeAttachment() as { office?: boolean } | null)?.office).length;
-    await platformFrom(this.env).OFFICE.get("main").setViewers(count);
+    const sockets = this.ctx.getWebSockets().filter((socket) => socket !== excluded);
+    const office = sockets.filter((socket) => (socket.deserializeAttachment() as { office?: boolean } | null)?.office).length;
+    await this.env.DB.prepare(SET_LIVE_VIEWERS).bind(this.ctx.id.name ?? "main", sockets.length, office).run();
   }
 }

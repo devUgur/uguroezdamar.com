@@ -33,6 +33,10 @@ export class AgentRuntime extends DurableObject<CloudflareBindings> implements A
     return this.runtime.history();
   }
 
+  view(tenantId?: string): Promise<{ messages: ChatMessage[]; status: AgentStatus }> {
+    return this.runtime.view(tenantId);
+  }
+
   reset(): Promise<void> {
     return this.runtime.reset();
   }

@@ -18,6 +18,7 @@ function setup() {
   const chat = vi.fn(async () => ({ accepted: true }));
   const agentStub = {
     history: async () => [],
+    view: async () => ({ messages: [], status: { running: false, step: 0 } }),
     status: async () => ({ running: false, step: 0 }),
     chat,
     stop: async () => undefined,

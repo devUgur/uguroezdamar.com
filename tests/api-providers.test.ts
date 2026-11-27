@@ -229,7 +229,7 @@ describe("private repositories and evaluating providers", () => {
   function withThreads() {
     const status = { running: false, step: 0, private: false };
     const context = setup({
-      AGENTS: { get: () => ({ status: async () => status, history: async () => [] }) },
+      AGENTS: { get: () => ({ status: async () => status, history: async () => [], view: async () => ({ messages: [], status }) }) },
     } as unknown as Partial<Env>);
     context.db.raw.prepare("INSERT INTO projects (id, name, repo, visibility, status) VALUES ('video-studio', 'video-studio', 'devUgur/video-studio', 'private', 'active')").run();
     return { ...context, status };
@@ -265,7 +265,7 @@ describe("private repositories and evaluating providers", () => {
 describe("data policy per project", () => {
   it("follows the repository by default and lets only the owner open a private project for evaluating providers", async () => {
     const status = { running: false, step: 0, private: false };
-    const { call, db } = setup({ AGENTS: { get: () => ({ status: async () => status, history: async () => [] }) } } as unknown as Partial<Env>);
+    const { call, db } = setup({ AGENTS: { get: () => ({ status: async () => status, history: async () => [], view: async () => ({ messages: [], status }) }) } } as unknown as Partial<Env>);
     db.raw.prepare("INSERT INTO projects (id, name, repo, visibility, status) VALUES ('video-studio', 'video-studio', 'devUgur/video-studio', 'private', 'active')").run();
     stubModels(["deepseek-chat"]);
     await call("/api/providers/deepseek/key", { method: "PUT", body: { apiKey: KEY }, scopes: "providers:write" });
