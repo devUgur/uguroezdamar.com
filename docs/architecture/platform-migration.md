@@ -182,19 +182,21 @@
 
 **Anlass:** Das erschöpfte Durable-Objects-Kontingent hat am 27.11.2026 den Agenten-Chat stillgelegt. Entscheidung: [ADR 0045](decisions/0045-agent-runtime-independent-of-durable-objects.md). Der zweite Host kommt deshalb vor dem Docker-Paket. Die Phasen bauen aufeinander auf. Jede ist für sich auslieferbar und ändert das Verhalten für Nutzer nicht, bis R4 umschaltet.
 
-| Phase | Inhalt | Braucht Owner-Entscheidung |
+| Phase | Inhalt | Ergebnis |
 | --- | --- | --- |
-| **R1 Ports** | `ThreadStorePort` (asynchron: Nachrichten, Laufzustand, Eingang, Zusammenfassung, Privat-Markierung) und `SchedulerPort` (`schedule(at)`, `cancel()`). `ThreadRuntime` nutzt nur noch diese beiden Ports. Der Cloudflare-Adapter legt sie auf den bisherigen Durable-Object-Speicher, ohne Datenwanderung. Tests mit In-Memory-Adaptern. | nein |
-| **R2 Zustand in SQL** | SQL-Adapter auf `SqlPort`: `thread_messages`, `thread_state`, `scheduled_jobs` (ID, Thread, fällig ab, Lease bis, Versuche, Host). Der Cloudflare-Host schreibt in D1. Bestehende Verläufe werden beim ersten Zugriff aus dem Objekt kopiert. Verlauf und Status kommen dann ohne Durable-Objects-Request aus D1 (`view`). | nein |
-| **R3 Node-Host lokal** | `apps/node-host`: Node 24, derselbe Fetch-Handler, eine Scheduler-Schleife mit Lease-Übernahme, WebSocket und SSE im Prozess, `node:sqlite`. `pnpm dev:node-host`. Portal und Office bekommen den Rückfall auf SSE oder Polling ab der letzten Ereignis-ID. | nein |
-| **R4 Gemeinsame Datenbank und Betrieb** | `SqlPort` auf PostgreSQL mit Übersetzung oder Umbau der SQLite-Stellen. Der Node-Host läuft beim Anbieter aus O-R1, Cloudflare verbindet sich mit derselben Datenbank. Gespräche laufen nicht mehr in Durable Objects: Der Worker übernimmt fällige Aufträge über denselben Scheduler. Das Portal schaltet `API_URL` nach Gesundheitsprüfung um. | O-R1, O-R2, O-R3 |
-| **R5 Failover-Probe** | Idempotenzschlüssel für Werkzeuge mit Außenwirkung. Probe: Cloudflare mitten im Lauf abschalten, Node übernimmt. Der Host-Wechsel steht im Ereignisprotokoll und im Portal unter Verbrauch und Betrieb. | nein |
+| **R0 Audit** (erledigt) | Lokale Läufe starten keine API und nutzen `API_URL` aus Infisical `dev` = api-dev auf Cloudflare (ADR 0045, Befund). | Ursache der lokalen Kontingent-Fehler geklärt |
+| **R1 Lokaler Node-Host** | `apps/node-host`: Node 24, derselbe Fetch-Handler, `ActorDirectory` im Prozess für Threads, Hub und Office, Scheduler-Schleife statt Alarmen. `pnpm dev:office` startet ihn mit und setzt `API_URL` auf `http://localhost:3103`. Ein Integrationstest führt einen Agenten-Chat mit gesperrtem Cloudflare-Zugriff aus. | Agenten lokal ohne Cloudflare |
+| **R2 Postgres lokal** | `SqlPort` auf PostgreSQL (Docker), Migrationen der API für Postgres, Übersetzung der SQLite-Stellen (`unixepoch()`, `INSERT OR IGNORE`, FTS5). SQLite bleibt Testhilfe. | Eine Datenbanktechnologie überall |
+| **R3 ThreadStore und Scheduler** | `ThreadStorePort` (asynchron: Nachrichten, Laufzustand, Eingang, Zusammenfassung, Privat-Markierung) und `SchedulerPort` mit Aufträgen und Lease (`scheduled_jobs`). `ThreadRuntime` nutzt nur noch diese beiden Ports. Bestehende Verläufe aus Durable Objects werden beim ersten Zugriff übernommen. | Agentenläufe hostunabhängig |
+| **R4 Docker Compose** | `deployments/docker/`: Node-Host, Portal, Office, Postgres; ein Befehl startet alles. Die Anbieterwahl (Betriebsart local, cloud-dev, cloud) wird an einer Stelle beim Start geprüft. | Selbsthosting-Grundlage (alte P4) |
+| **R5 Cloud-Host** | Dasselbe Image auf Northflank (Test) und Railway Hobby, gemeinsames Neon Postgres. Portal und Office schalten `API_URL` nach Gesundheitsprüfung um, Rückfall auf SSE oder Polling ab der letzten Ereignis-ID. | Zweite Cloud-Runtime, Node primär |
+| **R6 Cloudflare-Adapter und Failover** | Der Worker nutzt dieselbe Datenbank und denselben Scheduler, Gespräche laufen nicht mehr in Durable Objects. Werkzeuge mit Außenwirkung bekommen Idempotenzschlüssel. Probe: Cloudflare mitten im Lauf abschalten, Node übernimmt, der Host-Wechsel steht im Ereignisprotokoll. | Kein Single Point of Failure |
 
-**Bis R4 trägt:** die Verbrauchssenkung aus ADR 0025 (Nachträge 1 und 2) und, falls der Owner sie bucht, Workers Paid als Brücke (O-R4).
+**Bis R5 trägt:** die Verbrauchssenkung aus ADR 0025 (Nachträge 1 und 2) und, falls der Owner sie bucht, Workers Paid als Brücke (O-R4).
 
-**Docker (alte P4)** baut danach auf R3 auf: Dieselben Adapter kommen in `deployments/docker/` dazu, dazu die Docker-Workstation.
+**Docker (alte P4)** ist jetzt R4; die Docker-Workstation folgt danach.
 
-## Phase P4: Selbst gehostet mit Docker (nach R3)
+## Phase P4: Selbst gehostet mit Docker (aufgegangen in R4)
 
 **Ziel:** `docker compose up` startet API, Office und Portal ohne Cloudflare-Konto.
 
@@ -245,8 +247,7 @@
 | P1 Nähte | zuerst | Klein und mechanisch. Danach schreibt jede neue Funktion gegen Ports statt gegen Cloudflare. |
 | P2 Policy | danach | Größter Nutzen für die eigene Firma: echte Autonomie je Projekt; Voraussetzung für Abläufe ohne ständige Rückfrage. |
 | P3 Ablauf und Team | danach | Macht aus Einzelagenten ein Team (Stufe 4); braucht P2, damit Übergaben nicht an jeder Freigabe hängen. |
-| P4 neu R1–R5 | jetzt | Ein erschöpftes Kontingent darf die Agenten nicht stilllegen (ADR 0045). R1 bis R3 brauchen keine Owner-Entscheidung, R4 schon. |
-| P4 Docker | nach R3 | Nutzt die Adapter des Node-Hosts; dann entsteht auch `packages/platform`. |
+| P4 neu R0–R6 | jetzt | Ein erschöpftes Kontingent darf die Agenten nicht stilllegen (ADR 0045). Lokal zuerst, dann Postgres, dann Cloud-Host. |
 | P5 Anbieter und Skills | laufend ab P3 | Einzelne Punkte (eigene Endpunkte, Skills) können früher kommen, wenn sie gebraucht werden. |
 | P6 Open Source | zuletzt | Erst veröffentlichen, wenn Selbsthosting wirklich funktioniert. |
 

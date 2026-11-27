@@ -1,6 +1,6 @@
 # ADR 0045: Agenten-Runtime unabhängig von Durable Objects
 
-- Status: proposed (wird accepted, sobald der Owner O-R1 bis O-R4 entschieden hat)
+- Status: accepted (Owner-Entscheidungen vom 27.11.2026 unter „Entscheidungen des Owners“)
 - Datum: 2026-11-27
 - Beteiligte: Projektverantwortlicher
 - Ergänzt: [ADR 0040](0040-platform-core-and-providers.md) (zieht Phase P4 vor und schneidet sie neu), [ADR 0024](0024-agent-platform-on-cloudflare.md), [ADR 0025](0025-synchronisierte-agentenpraesenz.md)
@@ -21,6 +21,12 @@ Am 27.11.2026 war das Durable-Objects-Kontingent von Workers Free (100.000 Reque
 | Gesprächsverlauf | `state.sql.exec(…)` auf der Tabelle `messages` | SQLite **im** Objekt, synchron |
 | Laufzustand, Eingang, Zusammenfassung | `state.get/put` (`RUN`, `INBOX`, `SUMMARY`, `PRIVATE_THREAD`) | Speicher **im** Objekt |
 | Ereignisse | `emit()` → D1, danach Hub und Office | D1; Hub und Office nur bei Zuhörern, Fehler abgefangen |
+
+**Lokale Entwicklung (Audit vom 27.11.2026, nur lesend):**
+- **API läuft lokal nicht:** `pnpm dev:office` startet nur Portal (:3101) und Office (:3102), siehe `LOCAL_ORIGINS` in `tooling/cli/src/lib/stages.ts`. Die Agenten-API ist kein Teil eines lokalen Laufs.
+- **Fremdes Ziel:** Beide Apps lesen `API_URL` aus Infisical `dev`; dort steht `https://api-dev.uguroezdamar.com` (`STAGE_TARGETS` in `tooling/cli/src/commands/api.ts`). Ein Chat auf `localhost` läuft deshalb auf dem Cloudflare-Worker von dev und dessen Durable Objects.
+- **Keine Remote-Bindings:** `wrangler.jsonc` hat keine `remote: true`. Ein lokales `wrangler dev` würde die Objekte simulieren. Es wird nur nicht gestartet, und die Secrets der API liegen in GitHub Actions, nicht lokal (ADR 0024).
+- **Gemeinsames Kontingent:** Das Kontingent gilt für das ganze Konto. Lokales Testen gegen api-dev verbraucht dieselben 100.000 Requests wie die Produktion und kann sie stilllegen.
 
 **Was schon trägt:**
 - `ThreadRuntime` ist plattformfrei und spricht nur mit `ActorStatePort` (ADR 0040, P1).
@@ -67,7 +73,7 @@ Eine Stufe, die schon gespeichert ist, läuft nicht zweimal. Externe Aktionen be
 
 **6. Cloudflare bleibt ein Anbieter.**
 - Durable Objects bleiben für den Live-Hub, das Office und die Workstation (ADR 0036), solange sie dort nützen.
-- Gespräche führt ein Durable Object nur noch als Host für `ThreadRuntime`, mit denselben Ports wie Node, und ab Phase R4 gar nicht mehr.
+- Gespräche führt ein Durable Object nur noch als Host für `ThreadRuntime`, mit denselben Ports wie Node, und ab Phase R6 gar nicht mehr.
 
 **Ausdrücklich nicht:**
 - **Durable Objects bleiben:** Keine wird sofort gelöscht.
@@ -77,7 +83,26 @@ Eine Stufe, die schon gespeichert ist, läuft nicht zweimal. Externe Aktionen be
 - **Kein Hatchet jetzt:** Der SQL-Ablauf aus P3 bleibt. Hatchet wird erst geprüft, wenn er an Grenzen stößt.
 - **Keine Brücke ohne Umbau:** Workers Paid ersetzt diesen Umbau nicht (O-R4).
 
-## Offene Entscheidungen des Owners
+**7. Drei Betriebsarten, eine Codebasis.** Die Anbieter werden an einer Stelle beim Start gewählt und geprüft, nicht im Code verteilt:
+
+| Betriebsart | Wofür | Cloudflare |
+| --- | --- | --- |
+| **local** (Standard für `pnpm dev:*`) | Entwicklung: Node-Host, Postgres in Docker, lokaler Scheduler, Live im Prozess, Dateien lokal, Modelle nach Wahl (auch Ollama) | **keine** Cloudflare-Ressource |
+| **cloud-dev** | Integration: lokaler Host, ausdrücklich gewählte Cloud-Dienste (Dev-Datenbank, R2, Workers AI) | nur, was konfiguriert ist |
+| **cloud** | Betrieb: Node-Host primär, Cloudflare zweiter Host, gemeinsames Postgres | als Anbieter |
+
+Modellanbieter sind kein Runtime-Host: Ollama kann lokal rechnen, während der Agent auf einem Cloud-Host läuft.
+
+## Entscheidungen des Owners (27.11.2026)
+
+| Nr. | Frage | Entscheidung |
+| --- | --- | --- |
+| O-R1 | Wo läuft der Node-Host? | Anbieterneutral: ein Docker-Image, kein anbieterspezifischer Code. Zuerst Northflank (kostenlose Sandbox, laut Anbieter ohne Schlafen; Grenzen vor dem Deploy prüfen) als Test, Railway Hobby (ab 5 USD im Monat) als erster bezahlter Host. Render und Koyeb (schlafen ein) scheiden für Agentenläufe aus. |
+| O-R2 | Gemeinsame Datenbank | **PostgreSQL**, in der Cloud Neon, lokal Postgres in Docker. Eine Datenbanktechnologie in allen Umgebungen; SQLite bleibt Testhilfe und wird nicht ungeprüft Produktionsadapter. |
+| O-R3 | Primärer Host | **Node-Host primär**, Cloudflare zweiter Host und für Live-Hub und Office. |
+| O-R4 | Brücke | Vorerst **kein** Workers Paid; der Owner bucht es voraussichtlich in einigen Tagen. Bis R1 steht: lokal möglichst nicht gegen api-dev testen. |
+
+Abwägung, wie sie dem Owner vorlag:
 
 | Nr. | Frage | Vorschlag | Kosten und Folgen |
 | --- | --- | --- | --- |
@@ -95,7 +120,7 @@ Eine Stufe, die schon gespeichert ist, läuft nicht zweimal. Externe Aktionen be
 
 **Negativ und Risiken:**
 - Mehr Schreibzugriffe auf die gemeinsame Datenbank: jede Nachricht und jede Stufe. Bei D1 zählt das gegen die 100.000 geschriebenen Zeilen am Tag; das Verbrauchsmodell wird nachgezogen.
-- **Datenwanderung:** Bestehende Verläufe liegen in den Durable Objects. R2 kopiert sie beim ersten Zugriff in die Datenbank und markiert das Objekt als übernommen. Bis dahin liest der Cloudflare-Adapter aus beiden.
+- **Datenwanderung:** Bestehende Verläufe liegen in den Durable Objects. R3 kopiert sie beim ersten Zugriff in die Datenbank und markiert das Objekt als übernommen. Bis dahin liest der Cloudflare-Adapter aus beiden.
 - Der Postgres-Umbau (O-R2) ist der größte Einzelposten. Er betrifft rund 190 Stellen mit SQL.
 
 ## Abnahme
