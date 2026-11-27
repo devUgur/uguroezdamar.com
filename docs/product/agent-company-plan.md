@@ -284,7 +284,7 @@ Danach folgen Kundenanmeldung mit GitHub, Rollen je Mandant, Grenzen und Budgets
 | 12 | Leere Prüf-Worktree-Ordner `C:\v1`–`C:\v6` | Owner | Löschen (für Agenten gesperrt) |
 | 13 | Office in Produktion (`office.uguroezdamar.com`) entsteht erst mit dem Release-PR `dev → main` | Owner | Release nach Abnahme auf `office-dev` (ADR 0039) |
 | 14 | GitHub App ohne „Actions: Read“: `code_verify` sieht nur Annotationen statt Job-Logs | Owner | Recht in der GitHub App ergänzen und Installation bestätigen |
-| 15 | Plattform an Cloudflare gebunden (187 D1-Aufrufe, 6 Durable-Object-Hüllen), keine Policy-Engine, kein Selbsthosting, keine Lizenz | Agent, Owner | Phase P1 (Nähte) aus der [Plattform-Migration](../architecture/platform-migration.md); Owner entscheidet O1–O5 |
+| 15 | Plattform: P1 erledigt (Cloudflare nur noch in `apps/api/src/cloudflare/`, Wächter, Kern läuft im Test ohne Cloudflare). Offen: Policy-Engine, Selbsthosting, Lizenz | Agent, Owner | Phase P2 (Policy-Engine) aus der [Plattform-Migration](../architecture/platform-migration.md); Owner entscheidet O1–O5 |
 
 ## 7. Entscheidungen des Owners
 

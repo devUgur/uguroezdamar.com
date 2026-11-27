@@ -56,7 +56,7 @@ Details: [`docs/operations/secrets.md`](docs/operations/secrets.md).
 ## Struktur
 
 - `apps/site` – öffentliche Website. `apps/portal` – Admin-Portal. `apps/office` – das Office: 3D-Büro, Mitarbeiter und Chats der Agenten, ohne Datenbank, nur über `apps/api`, Anmeldung über das Portal (ADR 0039). Alle drei Next.js App Router.
-- `apps/api` – Agenten-Backend von Portal und Office (Chat im Office), Cloudflare Worker mit eigener D1-Datenbank und eigenen Secrets (ADR 0024). Es importiert keine anderen Workspace-Pakete; Agenten ändern dieses Repository nur nach Freigabe des Owners, per Commit auf `dev` oder `agent/…` und per Pull Request, nie auf `main`.
+- `apps/api` – Agenten-Backend von Portal und Office (Chat im Office). Der Kern spricht nur mit Ports (`src/platform/ports.ts`); Cloudflare-Code steht ausschließlich in `src/cloudflare/` (ADR 0040, Wächter in `pnpm guard`). Cloudflare Worker mit eigener D1-Datenbank und eigenen Secrets (ADR 0024). Es importiert keine anderen Workspace-Pakete; Agenten ändern dieses Repository nur nach Freigabe des Owners, per Commit auf `dev` oder `agent/…` und per Pull Request, nie auf `main`.
 - `packages/server` – Datenzugriff, Validierung, Auth-Logik. `packages/ui` – app-neutrale Bausteine. `packages/core` – reine Hilfsfunktionen.
 - Die Pakete werden als TypeScript-Quellcode eingebunden: kein Build, kein `dist`, Exporte nur aus `src` (ADR 0017). `@/…` ist in jeder App der Alias auf die eigene Wurzel.
 - `tooling/cli` – die `pnpm ugur`-CLI. `tests/` – Vitest, Repository-Tests gegen In-Memory-Postgres.

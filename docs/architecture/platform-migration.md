@@ -30,6 +30,14 @@
 
 ## Phase P1: Nähte ziehen (ohne Verhaltensänderung)
 
+**Stand 27.11.2026: erledigt.**
+- **`Env` ist jetzt das Bündel der Ports**, umbenannt wurde nicht. D1, KV, R2, Workers AI und Vectorize erfüllen die Ports ohne einen einzigen Cast; darum blieben alle 187 Abfragen unverändert (`env.DB` hat jetzt den Typ `SqlPort`).
+- **Durable Objects** sind über `ActorDirectory` erreichbar (`env.AGENTS.get(name)`).
+- **Gesprächs-Kern:** `ThreadRuntime` (`runtime/thread-runtime.ts`) ist der plattformfreie Kern des Gesprächs. Ebenso sind `OfficePresenceCore` und `KnowledgeIndexerCore` frei; sie erhalten `ActorStatePort`.
+- **Hüllen:** Die Durable Objects, `LiveHub`, die Workstation, die Gateways und der Worker-Einstieg liegen in `src/cloudflare/`. Die Klassennamen sind unverändert, keine Durable-Object-Migration nötig.
+- **Wächter:** `pnpm guard:no-cloudflare-outside-adapter`.
+- **Beleg:** `tests/platform-seams.test.ts` betreibt Gespräch und Büro auf einer Map mit `node:sqlite` statt auf Durable Objects.
+
 **Ziel:** Cloudflare steckt nur noch in einem Ordner. Alles andere spricht mit Ports.
 
 **Neu:**
