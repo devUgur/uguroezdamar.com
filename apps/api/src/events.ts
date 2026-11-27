@@ -25,6 +25,7 @@ export type EventType =
   | "github_issue_synced"
   | "agent_handoff"
   | "project_policy_changed"
+  | "policy_allowed"
   | "knowledge_indexed"
 
   | "sandbox_run"

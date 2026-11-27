@@ -23,13 +23,14 @@ export interface ToolContext {
 }
 
 /**
- * ToolPort: what an agent can do in the world. Tools that change something outside the
- * system set `requiresApproval`; the agent then only proposes the call and Ugur decides.
+ * ToolPort: what an agent can do in the world. Tools that change something outside the system set
+ * `requiresApproval` ("this tool writes"). Whether a call then waits for Ugur is decided by the policy engine from
+ * the action's class and the project's autonomy (src/policy/, ADR 0040 P2); an uncatalogued writing tool always waits.
  */
 export interface Tool {
   spec: ToolSpec;
   requiresApproval?: boolean;
-  /** Only within a project (its repository): writing tools. On the company level the loop refuses them before any approval. */
+  /** Only within a project (its repository): on the company level the policy engine refuses the call. */
   requiresProject?: boolean;
   run(args: Record<string, unknown>, context: ToolContext): Promise<unknown>;
 }

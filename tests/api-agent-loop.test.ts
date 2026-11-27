@@ -4,6 +4,8 @@ import type { ChatMessage } from "../apps/api/src/models/port.ts";
 import { SubrequestBudget } from "../apps/api/src/runtime/budget.ts";
 import { announcesUndoneWork, type LoopDeps, type LoopEvent, type ModelTurn, runAgentLoop } from "../apps/api/src/runtime/loop.ts";
 import type { Tool, ToolContext } from "../apps/api/src/tools/port.ts";
+import { decide } from "../apps/api/src/policy/engine.ts";
+import type { AutonomyLevel } from "../apps/api/src/policy/catalog.ts";
 
 /** Smoke test of the agent core: user → tool call → result → answer, with every step as an event. */
 function harness(turns: ModelTurn[], overrides: Partial<LoopDeps> = {}) {
@@ -20,6 +22,7 @@ function harness(turns: ModelTurn[], overrides: Partial<LoopDeps> = {}) {
   };
   const commit: Tool = { ...readFile, requiresApproval: true, requiresProject: true, spec: { ...readFile.spec, name: "repo_commit_files" } };
   let call = 0;
+  const level: { current: AutonomyLevel } = { current: "manual" };
   const deps: LoopDeps = {
     system: { role: "system", content: "Du bist der Chef-Agent." },
     history: { recent: () => [...messages], append: (message) => messages.push(message) },
@@ -33,6 +36,9 @@ function harness(turns: ModelTurn[], overrides: Partial<LoopDeps> = {}) {
     tools: [readFile, commit],
     context: { agentId: "chef", projectId: "p", repo: "o/r", budget } as unknown as ToolContext,
     budget,
+    // The real policy engine at the level the test chooses (default manual: every write waits for Ugur).
+    policy: async (tool, args) =>
+      decide({ tool: tool.spec.name, args, writes: Boolean(tool.requiresApproval), needsProject: Boolean(tool.requiresProject), repo: deps.context.repo, level: level.current }),
     requestApproval: async (tool, args) => ({ approvalId: "a-1", description: describeApproval(tool, args) }),
     emit: async (event) => void events.push(event),
     delta: (_step, text) => void deltas.push(text),
@@ -40,7 +46,7 @@ function harness(turns: ModelTurn[], overrides: Partial<LoopDeps> = {}) {
     maxSteps: 24,
     ...overrides,
   };
-  return { deps, messages, events, deltas, budget };
+  return { deps, messages, events, deltas, budget, level };
 }
 
 const usage = { inputTokens: 10, outputTokens: 5 };
@@ -75,6 +81,25 @@ describe("platform agent loop", () => {
     const requested = events.find((event) => event.type === "approval_requested");
     expect(requested?.data).toMatchObject({ approvalId: "a-1", risk: "security" });
     expect(events.some((event) => event.type === "tool_result")).toBe(false);
+  });
+
+  it("commits on an agent branch without asking when the project allows it, and says so", async () => {
+    const files = [{ path: "src/a.ts", content: "x" }];
+    const { deps, events, level } = harness([toolTurn("repo_commit_files", { branch: "agent/x", message: "m", files }), answer("Committet.")]);
+    level.current = "balanced";
+    await runAgentLoop(deps);
+
+    expect(events.some((event) => event.type === "approval_requested")).toBe(false);
+    expect(events.find((event) => event.type === "policy_allowed")?.data).toMatchObject({ tool: "repo_commit_files", policy: { class: "branch", level: "balanced" } });
+    expect(events.find((event) => event.type === "tool_result")?.data).toMatchObject({ ok: true });
+  });
+
+  it("still asks for a workflow file at the highest autonomy", async () => {
+    const files = [{ path: ".github/workflows/ci.yml", content: "x" }];
+    const { deps, events, level } = harness([toolTurn("repo_commit_files", { branch: "agent/x", message: "m", files }), answer("Wartet.")]);
+    level.current = "max";
+    await runAgentLoop(deps);
+    expect(events.find((event) => event.type === "approval_requested")?.data).toMatchObject({ policy: { class: "pipeline", level: "max" } });
   });
 
   it("refuses writing on the company level before asking for an approval", async () => {

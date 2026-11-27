@@ -2,6 +2,7 @@ import type { ApprovalDescription } from "../approvals.ts";
 import type { EventType } from "../events.ts";
 import type { ChatMessage, ToolCall, ToolSpec, Usage } from "../models/port.ts";
 import type { Tool, ToolContext } from "../tools/port.ts";
+import type { PolicyDecision } from "../policy/engine.ts";
 import { BudgetExhausted, type SubrequestBudget } from "./budget.ts";
 
 /**
@@ -41,7 +42,9 @@ export interface LoopDeps {
   tools: Tool[];
   context: ToolContext;
   budget: SubrequestBudget;
-  requestApproval(tool: string, args: Record<string, unknown>): Promise<{ approvalId: string; description: ApprovalDescription }>;
+  /** The policy engine (ADR 0040, P2): run the call, ask Ugur, or refuse it. Logs its decision. */
+  policy(tool: Tool, args: Record<string, unknown>): Promise<PolicyDecision>;
+  requestApproval(tool: string, args: Record<string, unknown>, decision: PolicyDecision): Promise<{ approvalId: string; description: ApprovalDescription }>;
   emit(event: LoopEvent): Promise<void>;
   /** Live-only text of the answer being written; not stored. */
   delta(step: number, text: string): void;
@@ -157,21 +160,23 @@ async function runTool(call: ToolCall, deps: LoopDeps, step: number): Promise<st
   await deps.emit({ type: "tool_call", data: { tool: call.name, args: preview(args), step } });
   const started = Date.now();
   if (!tool) return JSON.stringify({ error: `Werkzeug "${call.name}" steht dir nicht zur Verfügung.` });
-  if (tool.requiresProject && !deps.context.repo) {
-    const error = "Dieses Gespräch läuft auf Firmenebene ohne Projekt. Schreiben geht nur in einem Projekt: Ugur öffnet das Gespräch im Office im passenden Projekt, oder du schlägst mit project_register ein Repository vor.";
-    await deps.emit({ type: "tool_result", data: { tool: call.name, ok: false, preview: error, step } });
-    return JSON.stringify({ error });
+  const verdict = await deps.policy(tool, args);
+  const policy = { class: verdict.class, level: verdict.level, reason: verdict.reason, version: verdict.policyVersion };
+  if (verdict.decision === "deny") {
+    await deps.emit({ type: "tool_result", data: { tool: call.name, ok: false, preview: verdict.reason, step, policy } });
+    return JSON.stringify({ error: verdict.reason });
   }
-
-  if (tool.requiresApproval) {
-    const { approvalId, description } = await deps.requestApproval(call.name, args);
-    await deps.emit({ type: "approval_requested", data: { approvalId, tool: call.name, step, ...description } });
+  if (verdict.decision === "approve") {
+    const { approvalId, description } = await deps.requestApproval(call.name, args, verdict);
+    await deps.emit({ type: "approval_requested", data: { approvalId, tool: call.name, step, ...description, policy } });
     return JSON.stringify({
       status: "pending_approval",
       approvalId,
       note: "Ugur entscheidet über diese Aktion. Führe sie nicht erneut aus; sag ihm kurz, was du vorschlägst, und warte.",
     });
   }
+  // Allowed without asking: visible in the office and the chat as an automatic decision of the project's policy.
+  if (verdict.class !== "read") await deps.emit({ type: "policy_allowed", data: { tool: call.name, step, detail: verdict.detail, policy } });
 
   try {
     const result = await tool.run(args, deps.context);

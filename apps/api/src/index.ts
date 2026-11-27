@@ -26,6 +26,7 @@ import { listPreviews } from "./workstation/previews.ts";
 import { handleSprints } from "./work/sprints.ts";
 import { handleTasks } from "./work/tasks.ts";
 import { HandoffError, issueHandoff, redeemHandoff } from "./handoff.ts";
+import { handlePolicies } from "./policy/routes.ts";
 
 // Containers of the agents (ADR 0036). Exported so activation is configuration only; unused until wrangler.jsonc binds them.
 
@@ -381,6 +382,9 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 
   const usage = await handleUsage(request, env, caller, path);
   if (usage) return usage;
+
+  const policies = await handlePolicies(request, env, caller, path);
+  if (policies) return policies;
 
   const sprints = await handleSprints(request, env, caller, path);
   if (sprints) return sprints;

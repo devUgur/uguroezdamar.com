@@ -7,6 +7,7 @@ import { AGENTS } from "../agents/registry.ts";
 import { APPROVAL_TTL_SECONDS, describeApproval } from "../approvals.ts";
 import type { Env } from "../env.ts";
 import type { ActorStatePort } from "../platform/ports.ts";
+import { decide, loadProjectPolicy, recordDecision } from "../policy/engine.ts";
 import { emit } from "../events.ts";
 import type { ChatMessage, ToolCall } from "../models/port.ts";
 import { ModelRouter, type PinnedModel, type RoutedResult } from "../models/router.ts";
@@ -40,6 +41,7 @@ interface ProjectRow {
   visibility: string;
   /** Explicit data policy, NULL follows visibility (projects/policy.ts). */
   model_policy: string | null;
+  write_mode?: string | null;
 }
 
 interface RunState {
@@ -292,7 +294,7 @@ export class ThreadRuntime implements AgentRuntimePort {
     if (!definition) throw new Error(`Unbekannter Agent "${agentId}"`);
 
     const [project, budgetRow, spent, thread] = await Promise.all([
-      this.env.DB.prepare("SELECT id, name, repo, status, visibility, model_policy FROM projects WHERE tenant_id = ? AND id = ?").bind(tenantId, projectId).first<ProjectRow>(),
+      this.env.DB.prepare("SELECT id, name, repo, status, visibility, model_policy, write_mode FROM projects WHERE tenant_id = ? AND id = ?").bind(tenantId, projectId).first<ProjectRow>(),
       this.env.DB.prepare("/* tenant:platform */ SELECT daily_budget_usd FROM agents WHERE id = ?").bind(agentId).first<{ daily_budget_usd: number }>(),
       spentTodayFromLedger(this.env, tenantId, agentId),
       this.env.DB.prepare("SELECT model FROM threads WHERE tenant_id = ? AND id = ?").bind(tenantId, threadId).first<{ model: string | null }>(),
@@ -314,6 +316,9 @@ export class ThreadRuntime implements AgentRuntimePort {
 
     // Company scope (no project): no repository; reading needs repo=owner/name, writing needs a project.
     const repo = project?.repo ?? (projectId ? this.env.DEFAULT_REPO : "");
+    // The project's autonomy level, read once per stage: a change by Ugur applies from the next stage on.
+    const projectPolicy = await loadProjectPolicy(this.env.DB, tenantId, projectId);
+    const writeMode = project?.write_mode === "dev-first" ? "dev-first" : "pr-only";
     const budget = new SubrequestBudget();
     const router = await ModelRouter.load(this.env, tenantId);
     const pinned = parsePinned(thread?.model);
@@ -420,9 +425,24 @@ export class ThreadRuntime implements AgentRuntimePort {
       tools: toolsByName(definition.tools),
       context,
       budget,
-      requestApproval: async (tool, args) => {
+      policy: async (tool, args) => {
+        const verdict = decide({
+          tool: tool.spec.name,
+          args,
+          writes: Boolean(tool.requiresApproval),
+          needsProject: Boolean(tool.requiresProject),
+          repo,
+          level: projectPolicy.level,
+          writeMode,
+        });
+        await recordDecision(this.env.DB, { tenantId, runId: run.runId, threadId, agentId, projectId, tool: tool.spec.name, decision: verdict });
+        return verdict;
+      },
+      requestApproval: async (tool, args, decision) => {
         const approvalId = crypto.randomUUID();
-        const description = describeApproval(tool, args);
+        const described = describeApproval(tool, args);
+        // The card names the rule that asked: Ugur sees why this needs him and what a higher level would change.
+        const description = { ...described, warnings: [...described.warnings, `Regel: ${decision.reason}`] };
         await this.env.DB.prepare(
           `INSERT INTO approvals (id, tenant_id, agent_id, thread_id, task_id, action, details, summary, risk, warnings, expires_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch() + ?)`,
@@ -434,7 +454,7 @@ export class ThreadRuntime implements AgentRuntimePort {
             threadId,
             run.taskId ?? null,
             tool,
-            JSON.stringify({ args, projectId, repo }),
+            JSON.stringify({ args, projectId, repo, policy: { class: decision.class, level: decision.level, version: decision.policyVersion } }),
             description.summary,
             description.risk,
             JSON.stringify(description.warnings),
