@@ -8,9 +8,12 @@
     "dev": "node --experimental-transform-types --disable-warning=ExperimentalWarning --watch-path=src --watch-path=../api/src src/main.ts",
     "start": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/main.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pg:schema": "node --experimental-transform-types --disable-warning=ExperimentalWarning scripts/pg-schema.ts"
   },
   "dependencies": {
+    "@electric-sql/pglite": "catalog:",
+    "postgres": "catalog:",
     "ws": "^8.21.0"
   },
   "devDependencies": {

@@ -2,6 +2,7 @@ import { createHmac, generateKeyPairSync, timingSafeEqual } from "node:crypto";
 import { vi } from "vitest";
 import api from "../../apps/api/src/index.ts";
 import type { Env } from "../../apps/api/src/env.ts";
+import { pgliteSql } from "../../apps/api/src/node/postgres.ts";
 import { sqliteD1 } from "./sqlite-d1.ts";
 
 // Workers add timingSafeEqual to crypto.subtle; Node has it on the crypto module only.
@@ -14,7 +15,16 @@ export const WEBHOOK_SECRET = "webhook-secret";
 
 /** The API's real fetch handler on real SQLite, with in-memory KV and stubbed Durable Objects. */
 export function apiHarness(extra: Record<string, unknown> = {}) {
-  const db = sqliteD1();
+  // API_TEST_SQL=postgres runs the same tests on Postgres (PGlite) instead of SQLite (ADR 0045, R2).
+  const port = process.env.API_TEST_SQL === "postgres" ? pgliteSql() : sqliteD1();
+  // Test data and checks through the port, so a test runs on either database.
+  const db = Object.assign(port, {
+    exec: async (sql: string) => {
+      for (const statement of sql.split(";").map((part) => part.trim()).filter(Boolean)) await port.prepare(statement).run();
+    },
+    one: <T = Record<string, unknown>>(sql: string) => port.prepare(sql).first<T>(),
+    rows: async <T = Record<string, unknown>>(sql: string) => (await port.prepare(sql).all<T>()).results,
+  });
   const kv = new Map<string, string>();
   const env = {
     API_SERVICE_TOKEN: SERVICE_TOKEN,

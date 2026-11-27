@@ -59,11 +59,11 @@ describe("connecting a GitHub account", () => {
   it("records the installation for the tenant that started the flow and lets it use that account", async () => {
     stubGithubApp();
     const { env, db, kv } = apiHarness(app);
-    db.raw.exec("INSERT INTO tenants (id, name) VALUES ('acme', 'Acme')");
+    await db.exec("INSERT INTO tenants (id, name) VALUES ('acme', 'Acme')");
     kv.set("github:installations", "[]");
     const result = await completeConnect(env, 42, stateOf(await startConnect(env, "acme", RETURN)));
     expect(result).toMatchObject({ returnTo: RETURN, notice: expect.stringContaining("acme-corp") });
-    expect(db.raw.prepare("SELECT tenant_id, account, selection, status FROM tenant_installations WHERE installation_id = 42").get()).toEqual({
+    expect((await db.one("SELECT tenant_id, account, selection, status FROM tenant_installations WHERE installation_id = 42"))).toEqual({
       tenant_id: "acme",
       account: "acme-corp",
       selection: "selected",
@@ -77,7 +77,7 @@ describe("connecting a GitHub account", () => {
   it("works once only: the same link a second time is refused", async () => {
     stubGithubApp();
     const { env, db } = apiHarness(app);
-    db.raw.exec("INSERT INTO tenants (id, name) VALUES ('acme', 'Acme')");
+    await db.exec("INSERT INTO tenants (id, name) VALUES ('acme', 'Acme')");
     const state = stateOf(await startConnect(env, "acme", RETURN));
     expect((await completeConnect(env, 42, state)).notice).toBeTruthy();
     expect((await completeConnect(env, 42, state)).error).toMatch(/schon benutzt/);
@@ -86,20 +86,20 @@ describe("connecting a GitHub account", () => {
   it("does not attach an installation another tenant already owns", async () => {
     stubGithubApp();
     const { env, db } = apiHarness(app);
-    db.raw.exec("INSERT INTO tenants (id, name) VALUES ('acme', 'Acme'), ('globex', 'Globex')");
+    await db.exec("INSERT INTO tenants (id, name) VALUES ('acme', 'Acme'), ('globex', 'Globex')");
     expect((await completeConnect(env, 42, stateOf(await startConnect(env, "acme", RETURN)))).notice).toBeTruthy();
     const stolen = await completeConnect(env, 42, stateOf(await startConnect(env, "globex", RETURN)));
     expect(stolen.error).toMatch(/anderen Konto/);
-    expect(db.raw.prepare("SELECT tenant_id FROM tenant_installations WHERE installation_id = 42").get()).toEqual({ tenant_id: "acme" });
+    expect((await db.one("SELECT tenant_id FROM tenant_installations WHERE installation_id = 42"))).toEqual({ tenant_id: "acme" });
   });
 
   it("asks GitHub about the installation instead of believing the id in the link", async () => {
     stubGithubApp({ installation: null });
     const { env, db } = apiHarness(app);
-    db.raw.exec("INSERT INTO tenants (id, name) VALUES ('acme', 'Acme')");
+    await db.exec("INSERT INTO tenants (id, name) VALUES ('acme', 'Acme')");
     const result = await completeConnect(env, 999, stateOf(await startConnect(env, "acme", RETURN)));
     expect(result.error).toMatch(/kennt diese Installation nicht/);
-    expect(db.raw.prepare("SELECT COUNT(*) AS n FROM tenant_installations").get()).toEqual({ n: 0 });
+    expect((await db.one("SELECT COUNT(*) AS n FROM tenant_installations"))).toEqual({ n: 0 });
   });
 
   it("refuses an invalid state without a place to return to", async () => {
@@ -112,7 +112,7 @@ describe("the connect routes", () => {
   it("answers the portal's request with the link, and the Setup URL with a redirect back to the portal", async () => {
     stubGithubApp();
     const { request, db } = apiHarness(app);
-    db.raw.exec("INSERT INTO tenants (id, name) VALUES ('owner2', 'x')");
+    await db.exec("INSERT INTO tenants (id, name) VALUES ('owner2', 'x')");
     const started = await request("/api/github/connect", { method: "POST", body: { returnTo: RETURN } });
     expect(started.status).toBe(200);
     const state = stateOf((started.body as { url: string }).url);
@@ -153,37 +153,37 @@ describe("the webhook receiver", () => {
 
   it("marks an installation deleted or suspended and drops the cached access at once", async () => {
     const { request, db, kv } = apiHarness(app);
-    db.raw.exec("INSERT INTO tenants (id, name) VALUES ('acme', 'Acme'); INSERT INTO tenant_installations (installation_id, tenant_id, account, selection) VALUES (42, 'acme', 'acme-corp', 'all')");
+    await db.exec("INSERT INTO tenants (id, name) VALUES ('acme', 'Acme'); INSERT INTO tenant_installations (installation_id, tenant_id, account, selection) VALUES (42, 'acme', 'acme-corp', 'all')");
     kv.set("github:installations", "[]");
     kv.set("github:token:42", "ghs_old");
-    const status = () => db.raw.prepare("SELECT status FROM tenant_installations WHERE installation_id = 42").get();
+    const status = () => db.one("SELECT status FROM tenant_installations WHERE installation_id = 42");
 
     expect((await request("/webhooks/github", delivery({ action: "suspend", installation: { id: 42 } }))).status).toBe(202);
-    expect(status()).toEqual({ status: "suspended" });
+    expect(await status()).toEqual({ status: "suspended" });
     expect(kv.has("github:token:42")).toBe(false);
     expect(await allowedOwnersFor(apiHarness().env, "acme")).toEqual([]);
 
     await request("/webhooks/github", delivery({ action: "unsuspend", installation: { id: 42 } }));
-    expect(status()).toEqual({ status: "active" });
+    expect(await status()).toEqual({ status: "active" });
     await request("/webhooks/github", delivery({ action: "deleted", installation: { id: 42 } }));
-    expect(status()).toEqual({ status: "deleted" });
+    expect(await status()).toEqual({ status: "deleted" });
   });
 
   it("follows a change of the selected repositories", async () => {
     const { request, db } = apiHarness(app);
-    db.raw.exec("INSERT INTO tenants (id, name) VALUES ('acme', 'Acme'); INSERT INTO tenant_installations (installation_id, tenant_id, account, selection) VALUES (42, 'acme', 'acme-corp', 'selected')");
+    await db.exec("INSERT INTO tenants (id, name) VALUES ('acme', 'Acme'); INSERT INTO tenant_installations (installation_id, tenant_id, account, selection) VALUES (42, 'acme', 'acme-corp', 'selected')");
     await request("/webhooks/github", delivery({ action: "added", installation: { id: 42, repository_selection: "all" } }, { "x-github-event": "installation_repositories" }));
-    expect(db.raw.prepare("SELECT selection, status FROM tenant_installations WHERE installation_id = 42").get()).toEqual({ selection: "all", status: "active" });
+    expect((await db.one("SELECT selection, status FROM tenant_installations WHERE installation_id = 42"))).toEqual({ selection: "all", status: "active" });
   });
 
   it("does not process a redelivery twice", async () => {
     const { request, db } = apiHarness(app);
-    db.raw.exec("INSERT INTO tenants (id, name) VALUES ('acme', 'Acme'); INSERT INTO tenant_installations (installation_id, tenant_id, account, selection) VALUES (42, 'acme', 'acme-corp', 'all')");
+    await db.exec("INSERT INTO tenants (id, name) VALUES ('acme', 'Acme'); INSERT INTO tenant_installations (installation_id, tenant_id, account, selection) VALUES (42, 'acme', 'acme-corp', 'all')");
     const first = delivery({ action: "deleted", installation: { id: 42 } });
     expect((await request("/webhooks/github", first)).status).toBe(202);
-    db.raw.exec("UPDATE tenant_installations SET status = 'active'");
+    await db.exec("UPDATE tenant_installations SET status = 'active'");
     expect((await request("/webhooks/github", first)).body).toMatchObject({ duplicate: true });
-    expect(db.raw.prepare("SELECT status FROM tenant_installations").get()).toEqual({ status: "active" });
+    expect((await db.one("SELECT status FROM tenant_installations"))).toEqual({ status: "active" });
   });
 });
 
@@ -201,7 +201,7 @@ describe("issue webhooks", () => {
 
   it("only changes tasks of the tenant that owns the sending installation", async () => {
     const { request, db } = apiHarness(app);
-    db.raw.exec(`
+    await db.exec(`
       INSERT INTO tenants (id, name) VALUES ('acme', 'Acme'), ('beta', 'Beta');
       INSERT INTO tenant_installations (installation_id, tenant_id, account, selection) VALUES (42, 'acme', 'shared', 'all'), (43, 'beta', 'shared', 'all');
       INSERT INTO projects (id, tenant_id, name, repo, status) VALUES ('p-acme', 'acme', 'repo', 'shared/repo', 'active'), ('p-beta', 'beta', 'repo', 'shared/repo', 'active');
@@ -209,7 +209,7 @@ describe("issue webhooks", () => {
     `);
     const result = await request("/webhooks/github", deliver(issue(42, "Neu von Acme")));
     expect(result.body).toMatchObject({ synced: 1 });
-    const titles = db.raw.prepare("SELECT id, title, acceptance_criteria FROM tasks ORDER BY id").all();
+    const titles = (await db.rows("SELECT id, title, acceptance_criteria FROM tasks ORDER BY id"));
     expect(titles).toEqual([
       { id: "t-acme", title: "Neu von Acme", acceptance_criteria: "Grün" },
       { id: "t-beta", title: "alt", acceptance_criteria: null },

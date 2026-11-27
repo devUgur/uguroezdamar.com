@@ -1,0 +1,16 @@
+# Postgres for the local Node host (ADR 0045, R2). Optional: without it the host keeps its data in PGlite.
+#   docker compose -f apps/node-host/compose.yaml up -d
+#   $env:NODE_HOST_DATABASE_URL="postgres://postgres@127.0.0.1:5433/agents"; pnpm dev:office
+# Reachable from this machine only; no password, so no secret lives in this file.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: agents
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - agents-postgres:/var/lib/postgresql/data
+volumes:
+  agents-postgres:

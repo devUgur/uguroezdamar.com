@@ -153,6 +153,12 @@ importers:
 
   apps/node-host:
     dependencies:
+      '@electric-sql/pglite':
+        specifier: 'catalog:'
+        version: 0.5.9
+      postgres:
+        specifier: 'catalog:'
+        version: 3.4.9
       ws:
         specifier: ^8.21.0
         version: 8.21.0

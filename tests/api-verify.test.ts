@@ -80,9 +80,11 @@ describe("code_verify over CI", () => {
   });
 
   it("waits briefly for running checks and then hands back pending", async () => {
-    vi.useFakeTimers();
     const calls = stubGithub([run({ status: "in_progress", conclusion: null })]);
-    const { env } = apiHarness({ AGENT_GITHUB_TOKEN: "test-token" });
+    const { env, db } = apiHarness({ AGENT_GITHUB_TOKEN: "test-token" });
+    // The database is ready before the clock is faked; Postgres in the process (PGlite) needs real timers to start.
+    await db.one("SELECT 1 AS ready");
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const pending = tool.run({ ref: "agent/fix" }, contextFor(env));
     await vi.runAllTimersAsync();
     expect(await pending).toMatchObject({ state: "pending" });

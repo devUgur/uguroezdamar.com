@@ -33,6 +33,7 @@
     "lint": "pnpm guard && turbo lint && eslint tooling --ext .mjs",
     "typecheck": "pnpm guard && turbo typecheck",
     "test": "pnpm guard && vitest run",
+    "test:pg": "vitest run -c vitest.postgres.config.ts",
     "check": "pnpm lint && pnpm db:check && pnpm typecheck && pnpm test",
     "clean": "turbo clean",
     "ui:add": "pnpm dlx shadcn@latest add -c packages/ui",

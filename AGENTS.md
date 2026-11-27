@@ -39,6 +39,7 @@ pnpm dev:all        # beide
 pnpm dev:clean      # blockierte Ports freigeben und dev starten
 pnpm kill:ports     # blockierte Ports (3100, 3101 etc.) beenden
 pnpm check          # Lint, Migrationscheck, Typecheck, Tests
+pnpm test:pg        # API-Tests auf Postgres (PGlite) statt SQLite (ADR 0045)
 pnpm build          # Produktionsbuild beider Apps
 pnpm ugur smoke --site <url> --portal <url>   # Deployment über HTTP prüfen
 pnpm ugur hosting status                      # Vercel-Projekte gegen das Repository prüfen
@@ -73,6 +74,7 @@ Details: [`docs/operations/secrets.md`](docs/operations/secrets.md).
 **Daten**
 - Datenbankzugriff nur in `packages/server` über `getDb()`. Apps sind Adapter: Seite → Query/Action der App → Repository im Paket → Postgres.
 - Jede Schemaänderung bekommt eine Migration (`pnpm db:generate`); angewendete Migrationen werden nicht editiert.
+- Eine neue D1-Migration in `apps/api/migrations` zieht das Postgres-Schema nach: `pnpm --filter @ugur/node-host pg:schema` (ADR 0045). Ein Test meldet ein veraltetes Schema.
 - IDs aus URLs vor der Abfrage mit `isUuid()` prüfen. Mehrschrittige Schreibvorgänge laufen in einer Transaktion.
 - Ein Datenbankfehler ist kein leeres Ergebnis: Ursache loggen (`describeDbError`), nicht verschlucken.
 

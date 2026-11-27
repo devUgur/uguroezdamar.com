@@ -186,7 +186,7 @@
 | --- | --- | --- |
 | **R0 Audit** (erledigt) | Lokale Läufe starten keine API und nutzen `API_URL` aus Infisical `dev` = api-dev auf Cloudflare (ADR 0045, Befund). | Ursache der lokalen Kontingent-Fehler geklärt |
 | **R1 Lokaler Node-Host** (erledigt) | `apps/node-host`: Node 24, derselbe Fetch-Handler, `ActorDirectory` im Prozess für Threads, Hub und Office, Scheduler-Schleife statt Alarmen. `pnpm dev:office` startet ihn mit und setzt `API_URL` auf `http://localhost:3103`. Ein Integrationstest führt einen Agenten-Chat mit gesperrtem Cloudflare-Zugriff aus. | Agenten lokal ohne Cloudflare |
-| **R2 Postgres lokal** | `SqlPort` auf PostgreSQL (Docker), Migrationen der API für Postgres, Übersetzung der SQLite-Stellen (`unixepoch()`, `INSERT OR IGNORE`, FTS5). SQLite bleibt Testhilfe. | Eine Datenbanktechnologie überall |
+| **R2 Postgres lokal** (erledigt) | `SqlPort` auf PostgreSQL (Docker), Migrationen der API für Postgres, Übersetzung der SQLite-Stellen (`unixepoch()`, `INSERT OR IGNORE`, FTS5). SQLite bleibt Testhilfe. | Eine Datenbanktechnologie überall |
 | **R3 ThreadStore und Scheduler** | `ThreadStorePort` (asynchron: Nachrichten, Laufzustand, Eingang, Zusammenfassung, Privat-Markierung) und `SchedulerPort` mit Aufträgen und Lease (`scheduled_jobs`). `ThreadRuntime` nutzt nur noch diese beiden Ports. Bestehende Verläufe aus Durable Objects werden beim ersten Zugriff übernommen. | Agentenläufe hostunabhängig |
 | **R4 Docker Compose** | `deployments/docker/`: Node-Host, Portal, Office, Postgres; ein Befehl startet alles. Die Anbieterwahl (Betriebsart local, cloud-dev, cloud) wird an einer Stelle beim Start geprüft. | Selbsthosting-Grundlage (alte P4) |
 | **R5 Cloud-Host** | Dasselbe Image auf Northflank (Test) und Railway Hobby, gemeinsames Neon Postgres. Portal und Office schalten `API_URL` nach Gesundheitsprüfung um, Rückfall auf SSE oder Polling ab der letzten Ereignis-ID. | Zweite Cloud-Runtime, Node primär |
@@ -201,6 +201,31 @@
 - **Prozess:** `apps/node-host` ist der Prozess, Node 24 mit `--experimental-transform-types`, `ws` für die WebSocket-Verbindung.
 - **Lokaler Lauf:** `pnpm dev:portal` und `pnpm dev:office` starten ihn mit und setzen `API_URL` auf `http://localhost:3103`. Mit `UGUR_API=dev` geht ein lokaler Lauf bewusst an api-dev.
 - **Noch nicht lokal:** Wissenssuche (kein Vektorindex, keine Workers-AI-Embeddings; kommt mit pgvector in R2), Workstation (ADR 0036) und Ausführungs-Nodes (ADR 0042). Modellschlüssel kommen aus der Umgebung oder werden im lokalen Portal eingetragen. Den Schlüssel dafür erzeugt der Host einmal je Datenordner.
+
+**Stand R2 (27.11.2026):**
+- **Übersetzung:** Der Kern schreibt weiter SQLite-SQL. `apps/api/src/postgres/dialect.ts` übersetzt jede Anweisung einmal und hält sie vor:
+  - Platzhalter
+  - `unixepoch()`
+  - `INSERT OR IGNORE`
+  - `json_object`
+  - skalare `MAX`/`MIN`
+  - `LIKE` → `ILIKE`
+  - `? IS NULL`
+  - camelCase-Aliase
+  - FTS5 der Wissenssuche → `tsvector`
+
+  `apps/api/src/postgres/sql.ts` ist der `SqlPort` für jeden Treiber.
+- **Schema:** `apps/api/migrations-postgres/0000_baseline.sql` wird aus dem Endstand der SQLite-Migrationen erzeugt, mit Tabellen, Checks, Schlüsseln, Indizes und Startdaten. `pnpm --filter @ugur/node-host pg:schema` schreibt sie neu, ein Test meldet ein veraltetes Schema. Inkrementelle Postgres-Migrationen gibt es erst, wenn Postgres Daten hält (R5).
+- **Node-Host:** Die Daten der API liegen jetzt in Postgres:
+  - ohne Angabe in PGlite unter `apps/node-host/.data/pg`;
+  - mit `NODE_HOST_DATABASE_URL` in einem Postgres in Docker (`apps/node-host/compose.yaml`, nur 127.0.0.1) oder bei Neon.
+
+  Nur die eigenen Kleinigkeiten des Hosts bleiben in lokalem SQLite: Tickets, Caches, Actor-Dateien.
+- **Tests:** `pnpm test:pg` führt die API-Tests auf PGlite aus. Am 27.11.2026 waren es 202 von 202. Die Tests schreiben ihre Testdaten über den Port (`db.exec`, `db.one`, `db.rows`), nicht mehr über SQLite direkt.
+- **Offen:**
+  - Ein Docker-Lauf mit postgres.js ist erst typgeprüft, nicht ausgeführt.
+  - Die Reihenfolge von `NULL` in `ORDER BY` unterscheidet sich (SQLite zuerst, Postgres zuletzt).
+  - `INSERT OR REPLACE` hat keine allgemeine Übersetzung.
 
 **Bis R5 trägt:** die Verbrauchssenkung aus ADR 0025 (Nachträge 1 und 2) und, falls der Owner sie bucht, Workers Paid als Brücke (O-R4).
 

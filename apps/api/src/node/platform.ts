@@ -8,17 +8,22 @@ import { OfficePresenceCore } from "../office/presence.ts";
 import { ThreadRuntime } from "../runtime/thread-runtime.ts";
 import { actorHost, type ActorHost } from "./actors.ts";
 import { NodeLiveHub } from "./hub.ts";
-import { applyMigrations, sqliteSql } from "./sql.ts";
+import { pgliteSql } from "./postgres.ts";
+import type { SqlPort } from "../platform/ports.ts";
 import { fileBlobs, memoryBlobs, noInference, noVectors, sqliteKeyValue } from "./storage.ts";
 
 /**
- * The platform of the Node host (ADR 0045, R1): the same ports the core gets on Cloudflare, built from node:sqlite,
- * files and in-process actors. Nothing here talks to Cloudflare. `dataDir` null keeps everything in memory (tests).
+ * The platform of the Node host (ADR 0045, R1 and R2): the same ports the core gets on Cloudflare, built from
+ * Postgres, files and in-process actors. Nothing here talks to Cloudflare. The API's data is in Postgres: `sql` when
+ * the caller brings one (Docker, Neon), otherwise PGlite in `dataDir/pg`. `dataDir` null keeps everything in memory.
+ * The host's own small state (one-time tickets, caches, actor files) stays local to the host.
  */
 export interface NodePlatformOptions {
   dataDir: string | null;
   /** Configuration and secrets as plain strings (the process environment in `main.ts`). */
   vars: Record<string, string | undefined>;
+  /** The API's database; default PGlite (`dataDir/pg`, or in memory). */
+  sql?: SqlPort & { close?(): Promise<void> | void };
 }
 
 export interface NodePlatform {
@@ -28,8 +33,6 @@ export interface NodePlatform {
   rearm(): number;
   close(): void;
 }
-
-const MIGRATIONS = resolve(import.meta.dirname, "../../migrations");
 
 // Workers add timingSafeEqual to crypto.subtle (the service-token check uses it); Node has it on node:crypto.
 (crypto.subtle as unknown as { timingSafeEqual?: unknown }).timingSafeEqual ??= (a: ArrayBuffer | ArrayBufferView, b: ArrayBuffer | ArrayBufferView) => {
@@ -44,12 +47,10 @@ const PORT_NAMES = new Set(["DB", "CONFIG", "FILES", "AI", "AGENTS", "HUB", "OFF
 export function nodePlatform(options: NodePlatformOptions): NodePlatform {
   const dir = options.dataDir ? resolve(options.dataDir) : null;
   if (dir) mkdirSync(dir, { recursive: true });
-  const apiDb = new DatabaseSync(dir ? join(dir, "api.sqlite") : ":memory:");
-  apiDb.exec("PRAGMA journal_mode = WAL");
-  applyMigrations(apiDb, MIGRATIONS);
+  const local = options.sql ? null : pgliteSql(dir ? join(dir, "pg") : undefined);
+  const DB: SqlPort = options.sql ?? local!;
   const hostDb = new DatabaseSync(dir ? join(dir, "host.sqlite") : ":memory:");
 
-  const DB = sqliteSql(apiDb);
   const CONFIG = sqliteKeyValue(hostDb);
   const hub = new NodeLiveHub(DB);
 
@@ -72,7 +73,7 @@ export function nodePlatform(options: NodePlatformOptions): NodePlatform {
     ...vars,
     // Model calls go straight to the providers; the Cloudflare AI Gateway is not on the way.
     MODEL_VIA_GATEWAY: "false",
-    STORAGE: { d1: "node:sqlite", d1Region: "local", kv: "node:sqlite", r2: "files" },
+    STORAGE: { d1: options.sql ? "postgres" : "pglite", d1Region: "local", kv: "node:sqlite", r2: "files" },
     PROVIDER_KEYS_SECRET: providerKeysSecret,
     DB,
     CONFIG,
@@ -96,8 +97,8 @@ export function nodePlatform(options: NodePlatformOptions): NodePlatform {
       agents.close();
       office.close();
       indexer.close();
-      apiDb.close();
       hostDb.close();
+      void (local ? local.pglite.close() : options.sql?.close?.());
     },
   };
 }
