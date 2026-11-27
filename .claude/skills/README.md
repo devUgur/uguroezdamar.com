@@ -31,4 +31,16 @@ Regeln für Skills:
 | `improve-codebase-architecture`, `codebase-design`, `domain-modeling` | mattpocock/skills `6f7f783` | MIT | – |
 | `agentic-actions-auditor`, `differential-review` | trailofbits/skills `149d7b2` | CC BY-SA 4.0, © Trail of Bits | `allowed-tools` entfernt |
 
+## Lokal installiert, nicht im Repository
+
+| Skill | Quelle (Commit) | Wo | Warum nicht versioniert |
+| --- | --- | --- | --- |
+| `northflank` | northflank/skills `5f8fc7f` (24.11.2026) | `~/.claude/skills/northflank` beim Owner (`SOURCE.txt` dort) | Das Repository nennt keine Lizenz, und `references/` sind 19 MB aus der Northflank-Doku generiert. Für ein Repository, das Open Source werden soll, übernehmen wir das nicht. |
+
+Für `northflank` gelten:
+- **Übernommen:** `SKILL.md` und `references/` unverändert, ohne `scripts/`. Geprüft am 27.11.2026: keine `allowed-tools`, keine Befehle beim Laden, keine Anweisungen an Agenten außerhalb der Doku.
+- **Grenzen:** Der Skill empfiehlt, die Northflank-CLI global zu installieren und `nf agent setup` auszuführen, das MCP einrichtet. Beides geschieht hier nur nach Freigabe des Owners.
+- **Zugang:** Er läuft über den Northflank-Token aus Infisical, nach ADR 0045 und `docs/architecture/r5-cloud-host.md`. Löschen und Überschreiben von Secret-Gruppen bestätigt der Owner einzeln.
+- **Aktualisieren:** Quelle am neuen Commit holen, den Diff von `SKILL.md` lesen, `references/` ersetzen und die Tabelle anpassen.
+
 Hinweis zu `domain-modeling` und `improve-codebase-architecture`: Sie erwarten ADRs unter `docs/adr/`. In diesem Repository liegen sie unter `docs/architecture/decisions/`; neue ADRs gehören dorthin, mit der dortigen Nummerierung.
