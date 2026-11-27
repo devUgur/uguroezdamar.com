@@ -4,6 +4,8 @@ import { SubrequestBudget } from "../apps/api/src/runtime/budget.ts";
 import type { ToolContext } from "../apps/api/src/tools/port.ts";
 import { toolByName } from "../apps/api/src/tools/registry.ts";
 import { byColumn, countByStatus, projectSummaries, tasksInScope } from "../apps/office/src/features/agents/ui/board/board.ts";
+import { MOVES } from "../apps/office/src/features/agents/ui/board/transitions.ts";
+import { TRANSITIONS } from "../apps/api/src/work/tasks.ts";
 import type { OfficeTask, ThreadProject } from "../apps/office/src/features/agents/types.ts";
 import { apiHarness } from "./_helpers/api-env.ts";
 
@@ -11,7 +13,8 @@ import { apiHarness } from "./_helpers/api-env.ts";
 const now = Date.UTC(2026, 10, 27);
 const seconds = (daysAgo: number) => Math.floor((now - daysAgo * 86_400_000) / 1000);
 const task = (id: string, projectId: string | null, status: OfficeTask["status"], extra: Partial<OfficeTask> = {}): OfficeTask => ({
-  id, projectId, title: id, status, priority: "normal", storyPoints: null, threadId: null, updatedAt: seconds(1), agent: null, ...extra,
+  id, projectId, title: id, status, priority: "normal", storyPoints: null, threadId: null, updatedAt: seconds(1), agent: null,
+  description: null, acceptanceCriteria: null, completionNote: null, latestReview: null, ...extra,
 });
 const project = (id: string): ThreadProject => ({ id, name: id.toUpperCase(), repo: `o/${id}`, visibility: "public" });
 
@@ -35,6 +38,13 @@ describe("office board", () => {
     expect(countByStatus(scoped)).toEqual({ backlog: 1, ready: 1, in_progress: 1, review: 0, qa: 0, blocked: 1, done: 1 });
     const columns = byColumn([task("x", "web", "ready"), task("y", "web", "ready", { priority: "high" })]);
     expect(columns.ready.map((entry) => entry.id)).toEqual(["y", "x"]);
+  });
+
+  it("offers exactly the moves the API allows; done goes through the acceptance form", () => {
+    for (const [status, allowed] of Object.entries(TRANSITIONS)) {
+      const offered = MOVES[status as OfficeTask["status"]].map((move) => move.to).sort();
+      expect(offered, status).toEqual(allowed.filter((next) => next !== "done").sort());
+    }
   });
 
   it("classifies the company view by project, most open work first, without empty projects", () => {

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { AgentsApiError, agentsApi, agentsApiOrigin, isAgentsApiId } from "@/src/adapters/agents-api";
 import { getCurrentSession } from "@/src/adapters/session";
 import { fetchOfficeBoard } from "./queries";
-import type { AgentConfig, AgentEvent, AgentSettings, AgentSettingsForm, AgentSummary, ChatView, ModelCatalog, ModelChoice, OfficeBoard, OfficeSnapshot, Thread, ThreadDetail } from "./types";
+import type { AgentConfig, AgentEvent, AgentSettings, AgentSettingsForm, AgentSummary, ChatView, ModelCatalog, ModelChoice, NewTask, OfficeBoard, OfficeSnapshot, TaskPatch, Thread, ThreadDetail } from "./types";
 
 export interface ActionResult {
   ok: boolean;
@@ -217,4 +217,49 @@ export async function saveAgentSettings(
 /** Background refresh of the office board after live events; the page itself is not reloaded. */
 export async function refreshOfficeBoard(): Promise<OfficeBoard> {
   return fetchOfficeBoard(await actor());
+}
+
+const TASK_ID = /^[0-9a-f-]{36}$/i;
+
+/** Board: status, assignee, priority or the owner's acceptance. The API enforces the allowed transitions. */
+export async function updateTask(taskId: string, patch: TaskPatch): Promise<ActionResult> {
+  try {
+    if (!TASK_ID.test(taskId)) return { ok: false, error: "Ungültige Aufgabe." };
+    await agentsApi(`/api/tasks/${taskId}`, await actor(), { method: "PATCH", body: patch });
+    return { ok: true };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+/** Starts a ready task with its assigned agent (default: chef); the run gets a conversation of its own. */
+export async function startTask(taskId: string): Promise<ActionResult & { threadId?: string }> {
+  try {
+    if (!TASK_ID.test(taskId)) return { ok: false, error: "Ungültige Aufgabe." };
+    const result = await agentsApi<{ threadId: string }>(`/api/tasks/${taskId}/run`, await actor(), { method: "POST" });
+    return { ok: true, threadId: result.threadId };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+/** Hands a task in code review to the independent QA reviewer. */
+export async function startTaskReview(taskId: string): Promise<ActionResult & { threadId?: string }> {
+  try {
+    if (!TASK_ID.test(taskId)) return { ok: false, error: "Ungültige Aufgabe." };
+    const result = await agentsApi<{ threadId: string }>(`/api/tasks/${taskId}/review`, await actor(), { method: "POST" });
+    return { ok: true, threadId: result.threadId };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function createTask(input: NewTask): Promise<ActionResult> {
+  try {
+    if (!isProjectId(input.projectId)) return { ok: false, error: "Ungültiges Projekt." };
+    await agentsApi("/api/tasks", await actor(), { method: "POST", body: input });
+    return { ok: true };
+  } catch (error) {
+    return failure(error);
+  }
 }

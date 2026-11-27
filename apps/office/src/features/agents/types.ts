@@ -207,6 +207,26 @@ export interface OfficeTask {
   /** Seconds since the epoch (D1 unixepoch). */
   updatedAt: number;
   agent: { id: string; name: string } | null;
+  description: string | null;
+  acceptanceCriteria: string | null;
+  completionNote: string | null;
+  latestReview: { status: string; verdict: "pass" | "changes_requested" | "needs_human" | null; summary: string | null; threadId: string | null } | null;
+}
+
+/** A change on the board; the API checks every transition again (apps/api/src/work/tasks.ts). */
+export interface TaskPatch {
+  status?: TaskStatus;
+  agentId?: string | null;
+  priority?: OfficeTask["priority"];
+  completionNote?: string;
+}
+
+export interface NewTask {
+  projectId: string;
+  title: string;
+  description: string;
+  acceptanceCriteria: string;
+  priority: OfficeTask["priority"];
 }
 
 /** The room: agents, their shared positions and the projects of the scope menu. Loaded once per page view. */

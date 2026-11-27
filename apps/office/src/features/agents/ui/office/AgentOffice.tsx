@@ -39,13 +39,17 @@ export function AgentOffice({ room, initialBoard, liveOrigin, portalUrl }: Agent
 
   const [board, setBoard] = useState(initialBoard);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const scheduleRefresh = useCallback((event: AgentEvent) => {
-    if (!WORK_EVENT.test(event.type)) return;
-    clearTimeout(refreshTimer.current);
-    refreshTimer.current = setTimeout(() => {
-      refreshOfficeBoard().then(setBoard, (error: unknown) => console.error("office board refresh failed", error));
-    }, 1_200);
+  const reloadBoard = useCallback(() => {
+    refreshOfficeBoard().then(setBoard, (error: unknown) => console.error("office board refresh failed", error));
   }, []);
+  const scheduleRefresh = useCallback(
+    (event: AgentEvent) => {
+      if (!WORK_EVENT.test(event.type)) return;
+      clearTimeout(refreshTimer.current);
+      refreshTimer.current = setTimeout(reloadBoard, 1_200);
+    },
+    [reloadBoard],
+  );
   useEffect(() => () => clearTimeout(refreshTimer.current), []);
 
   const { states, connected, presence, presenceError, serverOffsetMs } = useOfficeLive(agents, liveOrigin, room.presence, room.presenceError, scheduleRefresh);
@@ -104,11 +108,13 @@ export function AgentOffice({ room, initialBoard, liveOrigin, portalUrl }: Agent
         open={boardOpen}
         onOpenChange={setBoardOpen}
         title={title}
+        scope={scope}
         tasks={scopedTasks}
         projects={projects}
-        company={scope === null}
+        agents={agents}
         portalUrl={portalUrl}
         onPickProject={setScope}
+        onChanged={reloadBoard}
       />
       <AgentConfigSheet
         agent={selected}

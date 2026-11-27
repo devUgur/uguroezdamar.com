@@ -21,6 +21,8 @@ ADR 0038 hat das Office als Vollbild-Route `/office` im Portal angelegt. Der Own
      - **Daten:** Raum und Arbeit (alle Aufgaben, offene Freigaben, Verbrauch heute je Projekt) lädt die Seite einmal. Der Browser filtert sie nach Bereich; Live-Ereignisse laden die Arbeit im Hintergrund nach.
      - **Unbekannte Projekte** gelten als Firma, ohne Umleitung.
    - **Tafel:** Eine Tafel an der Rückwand des 3D-Büros zeigt die Arbeit des Bereichs je Status. Ein Klick darauf (oder auf „Tafel“) öffnet das Kanban mit Backlog, Ready, In Arbeit, Code Review, QA, Blockiert und Erledigt (die letzten 14 Tage). Auf Firmenebene ist es nach Projekten gegliedert.
+     - **Aktionen:** Eine Karte öffnet daneben ihre Details. Dort weist der Owner zu, setzt Priorität und Status, startet die Aufgabe mit dem zuständigen Agenten, übergibt an QA oder nimmt mit Notiz ab.
+     - **Prüfung:** Die API prüft jeden Übergang (`TRANSITIONS` in `apps/api/src/work/tasks.ts`); ein Test hält die Knöpfe der Tafel deckungsgleich.
 2. **Keine Datenbank im Office:**
    - Alle Daten kommen über die API (`apps/api`) mit dem Service-Token der Stufe, wie zuvor im Portal.
    - `@ugur/server` ist im Office per Lint verboten. Das hält das Bundle klein und die App unabhängig von Neon.

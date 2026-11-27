@@ -12,7 +12,7 @@ export type TaskStatus = (typeof TASK_STATUSES)[number];
 
 const PRIORITIES = ["low", "normal", "high", "urgent"] as const;
 type Priority = (typeof PRIORITIES)[number];
-const TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
+export const TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
   backlog: ["ready", "blocked"],
   ready: ["backlog", "blocked"],
   in_progress: ["ready", "review", "blocked"],

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { cn } from "@ugur/core";
 import type { OfficeTask, ThreadProject } from "../../types";
 import { byColumn, COLUMNS, projectSummaries, type ProjectSummary } from "./board";
@@ -10,14 +9,24 @@ interface TaskBoardProps {
   company: boolean;
   /** Picks a project from the company summary. */
   onPickProject: (projectId: string) => void;
+  selectedId: string | null;
+  onSelectTask: (task: OfficeTask) => void;
 }
 
 const PRIORITY_LABEL: Record<OfficeTask["priority"], string | null> = { urgent: "dringend", high: "hoch", normal: null, low: "niedrig" };
 
-function TaskCard({ task, projectName }: { task: OfficeTask; projectName: string | null }) {
+function TaskCard({ task, projectName, selected, onSelect }: { task: OfficeTask; projectName: string | null; selected: boolean; onSelect: () => void }) {
   const priority = PRIORITY_LABEL[task.priority];
-  const body = (
-    <>
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={cn(
+        "flex flex-col gap-1 rounded-md border border-border bg-card p-2.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        selected && "ring-2 ring-ring",
+      )}
+    >
       {projectName ? <span className="truncate text-[11px] uppercase tracking-wide text-muted-foreground">{projectName}</span> : null}
       <span className="line-clamp-3 text-sm leading-snug">{task.title}</span>
       <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
@@ -25,15 +34,7 @@ function TaskCard({ task, projectName }: { task: OfficeTask; projectName: string
         {task.storyPoints ? <span className="font-mono">{task.storyPoints} SP</span> : null}
         {priority ? <span className={cn("rounded-full border px-1.5", task.priority === "urgent" || task.priority === "high" ? "border-destructive text-destructive" : "border-border")}>{priority}</span> : null}
       </span>
-    </>
-  );
-  const className = "flex flex-col gap-1 rounded-md border border-border bg-card p-2.5 text-left";
-  return task.threadId ? (
-    <Link href={`/chat/${task.threadId}`} className={cn(className, "transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring")}>
-      {body}
-    </Link>
-  ) : (
-    <div className={className}>{body}</div>
+    </button>
   );
 }
 
@@ -60,7 +61,7 @@ function ProjectRow({ summary, onPick }: { summary: ProjectSummary; onPick: () =
 }
 
 /** The board: one column per status. On the company level a row of projects leads it, classified by their open work. */
-export function TaskBoard({ tasks, projects, company, onPickProject }: TaskBoardProps) {
+export function TaskBoard({ tasks, projects, company, onPickProject, selectedId, onSelectTask }: TaskBoardProps) {
   const columns = byColumn(tasks);
   const names = new Map(projects.map((project) => [project.id, project.name]));
   const summaries = company ? projectSummaries(tasks, projects) : [];
@@ -84,7 +85,13 @@ export function TaskBoard({ tasks, projects, company, onPickProject }: TaskBoard
             </header>
             <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
               {columns[column.status].map((task) => (
-                <TaskCard key={task.id} task={task} projectName={company ? (task.projectId ? (names.get(task.projectId) ?? task.projectId) : "ohne Projekt") : null} />
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  projectName={company ? (task.projectId ? (names.get(task.projectId) ?? task.projectId) : "ohne Projekt") : null}
+                  selected={task.id === selectedId}
+                  onSelect={() => onSelectTask(task)}
+                />
               ))}
             </div>
           </section>

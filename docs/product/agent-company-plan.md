@@ -163,7 +163,7 @@ Jeder Schritt ist ein `step.do` mit eigenem Lauf in `runs` (`parent_run_id` = Wo
 **Stand 27.11.2026:** Die erste Welle arbeitet schon, noch ohne Workflow.
 - Product Owner, Tech Lead, Entwickler und DevOps sind angelegt (Migration `0023_delivery_team.sql`, Registry).
 - Mit `tasks_list` lesen die Agenten die Tafel; mit `task_create` legen Product Owner und Tech Lead Aufgaben mit Abnahmekriterien an, nur in einem Projekt.
-- Zuweisen, Starten und Abnehmen bleibt im Portal beim Owner.
+- Zuweisen, Starten, QA-Übergabe und Abnahme macht der Owner auf der Tafel im Office (oder im Portal); die API prüft jeden Übergang.
 - Release Manager und Tech Writer folgen mit dem `DeliveryWorkflow`.
 
 **Rollen der ersten Welle:**
@@ -188,6 +188,7 @@ Jeder Schritt ist ein `step.do` mit eigenem Lauf in `runs` (`parent_run_id` = Wo
   - Projektwand als Tafel an der Rückwand.
   - Kanban je Projekt und für die Firma nach Projekten gegliedert.
   - Überblick mit Kosten heute, Arbeitsfluss und Freigaben.
+  - Aktionen auf der Tafel: anlegen, zuweisen, Priorität, Status, starten, an QA übergeben, abnehmen.
 - **Offen:**
   - Besprechungsraum und Besprechungen aus `meetings`.
   - Hervorheben der Mitarbeiter eines Projekts.
@@ -282,7 +283,6 @@ Danach folgen Kundenanmeldung mit GitHub, Rollen je Mandant, Grenzen und Budgets
 | 12 | Leere Prüf-Worktree-Ordner `C:\v1`–`C:\v6` | Owner | Löschen (für Agenten gesperrt) |
 | 13 | Office in Produktion (`office.uguroezdamar.com`) entsteht erst mit dem Release-PR `dev → main` | Owner | Release nach Abnahme auf `office-dev` (ADR 0039) |
 | 14 | GitHub App ohne „Actions: Read“: `code_verify` sieht nur Annotationen statt Job-Logs | Owner | Recht in der GitHub App ergänzen und Installation bestätigen |
-| 15 | Aufgaben auf der Tafel zuweisen, starten und abnehmen geht nur im Portal; im Office nur ansehen | Agent | Aktionen auf den Karten der Tafel, dann `DeliveryWorkflow` (Stufe 4) |
 
 ## 7. Entscheidungen des Owners
 
